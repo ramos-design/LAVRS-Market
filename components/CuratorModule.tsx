@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, Maximize2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, Maximize2, CheckCircle, XCircle, Clock, CreditCard } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory } from '../types';
 import { EVENTS, ZONE_DETAILS } from '../constants';
 
@@ -10,17 +10,32 @@ interface CuratorModuleProps {
 }
 
 const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onUpdateStatus }) => {
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(applications.length > 0 ? applications[0].id : null);
+  // Filter out applications that are already paid (those move to the event manager)
+  const activeApplications = applications.filter(a => a.status !== AppStatus.PAID);
 
-  const selectedApp = applications.find(a => a.id === selectedAppId) || (applications.length > 0 ? applications[0] : null);
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(activeApplications.length > 0 ? activeApplications[0].id : null);
+
+  const selectedApp = activeApplications.find(a => a.id === selectedAppId) || (activeApplications.length > 0 ? activeApplications[0] : null);
 
   const handleAction = (id: string, newStatus: AppStatus) => {
     onUpdateStatus(id, newStatus);
 
-    // Move to next application
-    const currentIndex = applications.findIndex(a => a.id === id);
-    if (currentIndex < applications.length - 1) {
-      setSelectedAppId(applications[currentIndex + 1].id);
+    // If it becomes PAID, it will be filtered out, so select next one
+    if (newStatus === AppStatus.PAID) {
+      const currentIndex = activeApplications.findIndex(a => a.id === id);
+      if (currentIndex < activeApplications.length - 1) {
+        setSelectedAppId(activeApplications[currentIndex + 1].id);
+      } else if (activeApplications.length > 1) {
+        setSelectedAppId(activeApplications[0].id);
+      } else {
+        setSelectedAppId(null);
+      }
+    } else {
+      // Just stay or move to next
+      const currentIndex = activeApplications.findIndex(a => a.id === id);
+      if (currentIndex < activeApplications.length - 1) {
+        setSelectedAppId(activeApplications[currentIndex + 1].id);
+      }
     }
   };
 
@@ -49,7 +64,9 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   const getStatusBadge = (status: AppStatus) => {
     switch (status) {
       case AppStatus.APPROVED:
-        return { bg: 'bg-green-100', text: 'text-green-700', label: 'Schváleno' };
+        return { bg: 'bg-green-100', text: 'text-green-700', label: 'Schváleno (Čeká na platbu)' };
+      case AppStatus.PAID:
+        return { bg: 'bg-green-600', text: 'text-white', label: 'Zaplaceno' };
       case AppStatus.REJECTED:
         return { bg: 'bg-red-100', text: 'text-red-700', label: 'Zamítnuto' };
       case AppStatus.WAITLIST:
@@ -116,12 +133,13 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
             <p className="text-xs text-gray-500 mt-1">Klikněte na přihlášku pro zobrazení detailu</p>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {applications.length === 0 ? (
+            {activeApplications.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">Žádné přihlášky</p>
+                <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">Žádné aktivní přihlášky</p>
+                <p className="text-[10px] text-gray-400 mt-2">Vše je posouzeno nebo zaplaceno</p>
               </div>
             ) : (
-              applications.map(app => {
+              activeApplications.map(app => {
                 const statusInfo = getStatusBadge(app.status);
                 const event = getEventDetails(app.eventId);
                 return (
@@ -375,27 +393,39 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
               {/* Action Buttons */}
               <div className="p-8 border-t border-gray-100 bg-lavrs-beige/20">
-                <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <button
                     onClick={() => handleAction(selectedApp.id, AppStatus.APPROVED)}
-                    disabled={selectedApp.status === AppStatus.APPROVED}
-                    className="bg-green-600 text-white py-5 rounded-none font-bold flex items-center justify-center gap-3 hover:bg-green-700 transition-all shadow-lg hover:shadow-green-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAID}
+                    className="bg-green-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Check size={20} /> SCHVÁLIT
+                    <Check size={18} /> SCHVÁLIT
                   </button>
+
+                  <button
+                    onClick={() => handleAction(selectedApp.id, AppStatus.PAID)}
+                    disabled={selectedApp.status !== AppStatus.APPROVED}
+                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED
+                      ? 'bg-lavrs-dark text-white hover:bg-black'
+                      : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
+                      }`}
+                  >
+                    <CreditCard size={18} /> POTVRDIT PLATBU
+                  </button>
+
                   <button
                     onClick={() => handleAction(selectedApp.id, AppStatus.REJECTED)}
                     disabled={selectedApp.status === AppStatus.REJECTED}
-                    className="bg-white text-red-600 border-2 border-red-200 py-5 rounded-none font-bold flex items-center justify-center gap-3 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-white text-red-600 border-2 border-red-200 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <X size={20} /> ZAMÍTNOUT
+                    <X size={18} /> ZAMÍTNOUT
                   </button>
                   <button
                     onClick={() => handleAction(selectedApp.id, AppStatus.WAITLIST)}
                     disabled={selectedApp.status === AppStatus.WAITLIST}
-                    className="bg-blue-600 text-white py-5 rounded-none font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-blue-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    WAITLIST
+                    <Clock size={18} /> WAITLIST
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

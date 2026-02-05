@@ -22,11 +22,15 @@ interface EventLayoutManagerProps {
 const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     eventId,
     onBack,
-    applications: propApplications,
+    applications: allApplications,
     onUpdateApplication,
     initialPlan,
     onSavePlan
 }) => {
+    // Only show people who have PAID in the layout manager
+    // People who are just APPROVED stay in the Curator (Review) module until paid
+    const propApplications = allApplications.filter(app => app.status === AppStatus.PAID);
+
     const event = EVENTS.find(e => e.id === eventId);
     const [plan, setPlan] = useState<EventPlan>(
         initialPlan || MOCK_EVENT_PLANS[eventId] || {
@@ -72,10 +76,10 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         return `${formatted} Kč`;
     };
 
-    // Filter approved but unplaced exhibitors
+    // Filter approved but unplaced exhibitors (Now only PAID as per requirements)
     const unplacedExhibitors = propApplications.filter(app =>
-        app.status === AppStatus.APPROVED || app.status === AppStatus.PAID
-    ).filter(app => !plan.stands.some(s => s.occupantId === app.id));
+        !plan.stands.some(s => s.occupantId === app.id)
+    );
 
     const placedExhibitors = propApplications.filter(app =>
         plan.stands.some(s => s.occupantId === app.id)
