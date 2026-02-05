@@ -16,7 +16,9 @@ interface ExhibitorDashboardProps {
 const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applications, brands, onApply, onPayment, onNavigate }) => {
   const [filter, setFilter] = React.useState<'ALL' | 'MINI' | 'LARGE'>('ALL');
   const [currentSlide, setCurrentSlide] = React.useState(0);
+  const [now, setNow] = React.useState(Date.now());
   const activeApp = applications.find(app => app.status === AppStatus.APPROVED);
+  const activeEvent = activeApp ? EVENTS.find(e => e.id === activeApp.eventId) : null;
 
   const slides = [
     {
@@ -46,6 +48,25 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
     return () => clearInterval(timer);
   }, [slides.length]);
 
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getRemaining = (deadlineIso?: string) => {
+    if (!deadlineIso) return null;
+    const diffMs = new Date(deadlineIso).getTime() - now;
+    if (diffMs <= 0) {
+      return { overdue: true, days: 0, hours: 0, minutes: 0 };
+    }
+    const totalMinutes = Math.ceil(diffMs / (1000 * 60));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+    return { overdue: false, days, hours, minutes };
+  };
+
+  const remaining = getRemaining(activeApp?.paymentDeadline);
   const filteredEvents = EVENTS.filter(event => {
     if (filter === 'ALL') return true;
     if (filter === 'MINI') return event.title.toLowerCase().includes('mini');
@@ -103,14 +124,26 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
               <Clock size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-lavrs-dark">Platba za MINI LAVRS Market 21. 03. 2026</h3>
+              <h3 className="text-xl font-semibold text-lavrs-dark">
+                Platba za {activeEvent?.title || 'LAVRS Market'} {activeEvent?.date || ''}
+              </h3>
               <p className="text-gray-600">Tvoje přihláška byla schválena! Proveď platbu pro potvrzení místa.</p>
             </div>
           </div>
           <div className="flex items-center gap-8">
             <div className="text-center">
               <p className="text-xs uppercase tracking-widest text-gray-400 font-bold mb-1">Zbývá času</p>
-              <p className="text-2xl font-bold text-lavrs-red">4d : 22h : 15m</p>
+              {remaining ? (
+                remaining.overdue ? (
+                  <p className="text-2xl font-bold text-red-600">Po splatnosti</p>
+                ) : (
+                  <p className="text-2xl font-bold text-lavrs-red">
+                    {remaining.days}d : {remaining.hours}h : {remaining.minutes}m
+                  </p>
+                )
+              ) : (
+                <p className="text-2xl font-bold text-gray-400">—</p>
+              )}
             </div>
             <button
               onClick={onPayment}

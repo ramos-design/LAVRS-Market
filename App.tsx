@@ -13,6 +13,7 @@ import Profile from './components/Profile';
 import PaymentsAndInvoicing from './components/PaymentsAndInvoicing';
 import EventsConfig from './components/EventsConfig';
 import AutomatedEmails from './components/AutomatedEmails';
+import BrandsList from './components/BrandsList';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('EXHIBITOR');
@@ -47,7 +48,22 @@ const App: React.FC = () => {
   };
 
   const handleUpdateApplicationStatus = (id: string, newStatus: AppStatus) => {
-    setApplications(prev => prev.map(app => app.id === id ? { ...app, status: newStatus } : app));
+    setApplications(prev => prev.map(app => {
+      if (app.id !== id) {
+        return app;
+      }
+
+      const next = { ...app, status: newStatus };
+
+      if (newStatus === AppStatus.APPROVED) {
+        const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
+        next.paymentDeadline = new Date(Date.now() + fiveDaysMs).toISOString();
+      } else {
+        next.paymentDeadline = undefined;
+      }
+
+      return next;
+    }));
   };
 
   const user: UserType = {
@@ -149,6 +165,10 @@ const App: React.FC = () => {
 
           {currentScreen === 'EMAILS' && (
             <AutomatedEmails />
+          )}
+
+          {currentScreen === 'BRANDS' && (
+            <BrandsList applications={applications} brands={brandProfiles} />
           )}
 
           {currentScreen === 'PAYMENT' && (

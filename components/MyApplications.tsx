@@ -17,6 +17,12 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
         }
     };
 
+    const formatDate = (iso: string) => new Date(iso).toLocaleDateString('cs-CZ');
+    const getDaysLeft = (iso: string) => {
+        const diffMs = new Date(iso).getTime() - Date.now();
+        return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    };
+
     return (
         <div className="space-y-8 animate-fadeIn">
             <header className="flex justify-between items-end">
@@ -35,8 +41,10 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
             </header>
 
             <div className="grid grid-cols-1 gap-4">
-                {applications.map((app) => (
-                    <div key={app.id} className="bg-white p-6 rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
+                {applications.map((app) => {
+                    const daysLeft = app.paymentDeadline ? getDaysLeft(app.paymentDeadline) : null;
+                    return (
+                        <div key={app.id} className="bg-white p-6 rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
                         <div className="flex items-center gap-6">
                             <div className="w-12 h-12 bg-lavrs-beige rounded-none flex items-center justify-center text-lavrs-red group-hover:scale-110 transition-transform">
                                 <FileText size={24} />
@@ -55,6 +63,17 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
                                     <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
                                     <span className="font-medium text-gray-500">ID: {app.id}</span>
                                 </div>
+                                {app.status === AppStatus.APPROVED && app.paymentDeadline && (
+                                    <div className="mt-2 text-xs text-lavrs-dark">
+                                        <span className="font-bold">Splatnost faktury:</span> {formatDate(app.paymentDeadline)}
+                                        {' '}
+                                        {daysLeft !== null && daysLeft >= 0 ? (
+                                            <span className="text-gray-500">(zbývá {daysLeft} dní)</span>
+                                        ) : (
+                                            <span className="text-red-600 font-bold">Po splatnosti</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -67,8 +86,9 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
                                 <ChevronRight size={20} />
                             </button>
                         </div>
-                    </div>
-                ))}
+                        </div>
+                    );
+                })}
             </div>
 
             <div className="bg-blue-50/50 p-6 rounded-none border border-blue-100 flex gap-4">

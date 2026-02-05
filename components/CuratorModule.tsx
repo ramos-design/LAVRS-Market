@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, Maximize2, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { Application, AppStatus, ZoneType } from '../types';
-import { EVENTS } from '../constants';
+import { Application, AppStatus, ZoneCategory } from '../types';
+import { EVENTS, ZONE_DETAILS } from '../constants';
 
 interface CuratorModuleProps {
   onBack: () => void;
@@ -28,6 +28,24 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
     return EVENTS.find(e => e.id === eventId);
   };
 
+  const getZoneCategoryLabel = (category?: ZoneCategory) => {
+    if (!category) return 'Neuvedeno';
+    switch (category) {
+      case ZoneCategory.SECONDHANDS:
+        return 'Secondhands – Vintage a second-hand móda';
+      case ZoneCategory.CESKE_ZNACKY:
+        return 'České značky – Lokální české značky';
+      case ZoneCategory.DESIGNERS:
+        return 'Designers – Designérské kousky';
+      case ZoneCategory.BEAUTY:
+        return 'Beauty ZONE – Kosmetika a péče';
+      case ZoneCategory.TATTOO:
+        return 'TATTOO – Tetování a body art';
+      default:
+        return category;
+    }
+  };
+
   const getStatusBadge = (status: AppStatus) => {
     switch (status) {
       case AppStatus.APPROVED:
@@ -39,6 +57,12 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
       default:
         return { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Čeká' };
     }
+  };
+
+  const formatDate = (iso: string) => new Date(iso).toLocaleDateString('cs-CZ');
+  const getDaysLeft = (iso: string) => {
+    const diffMs = new Date(iso).getTime() - Date.now();
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   };
 
   const pendingCount = applications.filter(a => a.status === AppStatus.PENDING).length;
@@ -202,12 +226,24 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                     </div>
                     <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
-                        <Maximize2 size={16} className="text-lavrs-red" />
-                        <p className="text-[10px] text-gray-400 uppercase font-bold">Vybraná zóna</p>
+                        <Package size={16} className="text-lavrs-red" />
+                        <p className="text-[10px] text-gray-400 uppercase font-bold">Kategorie zóny</p>
                       </div>
-                      <p className="text-base font-bold text-lavrs-dark">Zóna {selectedApp.zone}</p>
+                      <p className="text-base font-bold text-lavrs-dark">{getZoneCategoryLabel(selectedApp.zoneCategory)}</p>
                     </div>
-                    <div className="col-span-2 bg-lavrs-beige/30 p-5 rounded-none border border-gray-100">
+                    <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Maximize2 size={16} className="text-lavrs-red" />
+                        <p className="text-[10px] text-gray-400 uppercase font-bold">Velikost místa</p>
+                      </div>
+                      <p className="text-base font-bold text-lavrs-dark">
+                        {ZONE_DETAILS[selectedApp.zone]?.label || `Zóna ${selectedApp.zone}`}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {ZONE_DETAILS[selectedApp.zone]?.dimensions || ''}
+                      </p>
+                    </div>
+                    <div className="bg-lavrs-beige/30 p-5 rounded-none border border-gray-100">
                       <div className="flex items-center gap-3 mb-2">
                         <Package size={16} className="text-lavrs-red" />
                         <p className="text-[10px] text-gray-400 uppercase font-bold">Požadavky na místo</p>
@@ -296,6 +332,35 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                     </div>
                   </div>
                 </section>
+
+                {/* Payment Deadline */}
+                {selectedApp.status === AppStatus.APPROVED && selectedApp.paymentDeadline && (
+                  <section>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Clock size={14} className="text-lavrs-red" />
+                      Splatnost faktury
+                    </h4>
+                    <div className="bg-white p-6 rounded-none border border-gray-100 shadow-sm flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Termín úhrady</p>
+                        <p className="text-base font-bold text-lavrs-dark">{formatDate(selectedApp.paymentDeadline)}</p>
+                      </div>
+                      <div className="text-right">
+                        {getDaysLeft(selectedApp.paymentDeadline) >= 0 ? (
+                          <>
+                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Zbývá</p>
+                            <p className="text-base font-bold text-lavrs-red">{getDaysLeft(selectedApp.paymentDeadline)} dní</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Stav</p>
+                            <p className="text-base font-bold text-red-600">Po splatnosti</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                )}
 
                 {/* Internal Notes */}
                 <section>

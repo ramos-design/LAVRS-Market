@@ -50,6 +50,13 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const event = EVENTS.find(e => e.id === eventId) || EVENTS[0];
   const isWaitlist = event.status === 'closed';
   const totalSteps = isWaitlist ? 1 : 5;
+  const extrasList = [
+    { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
+    { id: 'extra-table', label: 'Extra Stůl', price: '400 Kč' },
+    { id: 'rack-rent', label: 'Extra stojan', price: '300 Kč' },
+    { id: 'electricity', label: 'Přípojka elektřiny', price: '500 Kč' }
+  ];
+  const selectedExtras = extrasList.filter(extra => extras[extra.id]);
 
   const handleBrandSelect = (brandId: string | 'new') => {
     if (brandId === 'new') {
@@ -139,7 +146,13 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     onApply(newApp);
   };
 
-  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
+  const isZoneCategoryMissing = !isWaitlist && step === 3 && !selectedZoneCategory;
+  const nextStep = () => {
+    if (isZoneCategoryMissing) {
+      return;
+    }
+    setStep(s => Math.min(s + 1, totalSteps));
+  };
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
   // Logic for showing the save/update box - exclude selectedZone as it's now event-specific
@@ -244,6 +257,18 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                     <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mb-1">Cena rezervace</p>
                     <p className="text-2xl font-bold">{ZONE_DETAILS[selectedZone].price}</p>
                     <p className="text-[10px] opacity-80">včetně základního vybavení</p>
+                  </div>
+                )}
+                {(step >= 2 && selectedExtras.length > 0) && (
+                  <div className="p-4 bg-white rounded-none shadow-sm border border-lavrs-red/30 animate-fadeIn">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Zvolené doplňky</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedExtras.map(extra => (
+                        <span key={extra.id} className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-none border border-lavrs-red/20 text-lavrs-dark bg-lavrs-red/5">
+                          {extra.label} +{extra.price}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>
@@ -378,12 +403,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                 <section className="space-y-6">
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Doplňky k místu (Extra)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
-                      { id: 'extra-table', label: 'Extra Stůl', price: '400 Kč' },
-                      { id: 'rack-rent', label: 'Extra stojan', price: '300 Kč' },
-                      { id: 'electricity', label: 'Přípojka elektřiny', price: '500 Kč' }
-                    ].map(extra => (
+                    {extrasList.map(extra => (
                       <button
                         key={extra.id}
                         onClick={() => {
@@ -472,21 +492,40 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
 
                   {/* Zone Category Selection */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Kategorie zóny *</label>
-                    <select
-                      value={selectedZoneCategory || ''}
-                      onChange={(e) => setSelectedZoneCategory(e.target.value as ZoneCategory)}
-                      required
-                      className="w-full bg-white p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-semibold text-base transition-all"
-                    >
-                      <option value="" disabled>Vyberte kategorii...</option>
-                      <option value={ZoneCategory.SECONDHANDS}>Secondhands - Vintage a second-hand móda</option>
-                      <option value={ZoneCategory.CESKE_ZNACKY}>České značky - Lokální české značky</option>
-                      <option value={ZoneCategory.DESIGNERS}>Designers - Designérské kousky</option>
-                      <option value={ZoneCategory.BEAUTY}>Beauty ZONE - Kosmetika a péče</option>
-                      <option value={ZoneCategory.TATTOO}>TATTOO - Tetování a body art</option>
-                    </select>
+                    <div className={`bg-lavrs-beige/50 border p-5 rounded-none ${isZoneCategoryMissing ? 'border-lavrs-red' : 'border-lavrs-pink/30'}`}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                        { id: ZoneCategory.SECONDHANDS, title: 'Secondhands', desc: 'Vintage a second-hand móda' },
+                        { id: ZoneCategory.CESKE_ZNACKY, title: 'České značky', desc: 'Lokální české značky' },
+                        { id: ZoneCategory.DESIGNERS, title: 'Designers', desc: 'Designérské kousky' },
+                        { id: ZoneCategory.BEAUTY, title: 'Beauty ZONE', desc: 'Kosmetika a péče' },
+                        { id: ZoneCategory.TATTOO, title: 'TATTOO', desc: 'Tetování a body art' }
+                        ].map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setSelectedZoneCategory(cat.id)}
+                            className={`p-5 rounded-none border-2 text-left transition-all ${selectedZoneCategory === cat.id
+                              ? 'border-lavrs-red bg-white shadow-md'
+                              : 'border-white/70 bg-white/80 hover:border-lavrs-pink'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-bold text-lavrs-dark">{cat.title}</p>
+                              {selectedZoneCategory === cat.id && <Check size={16} className="text-lavrs-red" strokeWidth={3} />}
+                            </div>
+                            <p className="text-[11px] text-gray-600 mt-1">{cat.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {isZoneCategoryMissing && (
+                      <p className="text-[11px] text-red-600 font-semibold ml-1">
+                        Vyberte prosím kategorii zóny pro pokračování.
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -681,9 +720,10 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               <button
                 onClick={step === totalSteps ? handleFinalSubmit : nextStep}
                 disabled={
-                  (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
+                  (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno)) ||
+                  (step !== totalSteps && isZoneCategoryMissing)
                 }
-                className={`px-12 py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl ${(step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
+                className={`px-12 py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl ${((step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno)) || (step !== totalSteps && isZoneCategoryMissing))
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-lavrs-dark text-white hover:bg-lavrs-red hover:translate-y-[-2px] active:translate-y-[0px]'
                   }`}
