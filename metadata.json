@@ -1,0 +1,7 @@
+{
+  "name": "LAVRS Market App - Curator & Exhibitor System",
+  "description": "An exclusive editorial SaaS platform for LAVRS Market exhibitors and organizers. Featuring a high-fashion aesthetic, Bento Grid layouts, and a sophisticated curation workflow for the circular fashion industry.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

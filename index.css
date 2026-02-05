@@ -1,0 +1,93 @@
+:root {
+    /* Original LAVRS Light Palette */
+    --lavrs-red: #E1261C;
+    --lavrs-pink: #F8D7D7;
+    --lavrs-dark: #111111;
+    --lavrs-beige: #F5F1EE;
+    --lavrs-white: #FFFFFF;
+    --bg-main: #FDFBFA;
+
+    --text-primary: #111111;
+    --text-secondary: #6B7280;
+    --glass-white: rgba(255, 255, 255, 0.8);
+    --border-light: rgba(248, 215, 215, 0.3);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border-radius: 0 !important;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Premium Light Typography */
+h1,
+h2,
+h3,
+h4,
+.font-heading {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* Light Mode Cards */
+.glass-card {
+    background: var(--lavrs-white);
+    border: 1px solid #F3F4F6;
+    border-radius: 0;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+    border-color: var(--lavrs-red);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Unified Buttons */
+.btn-primary {
+    background: var(--lavrs-red);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 0;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--lavrs-pink);
+    border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--lavrs-red);
+}
