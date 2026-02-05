@@ -16,6 +16,8 @@ import EventsConfig from './components/EventsConfig';
 import AutomatedEmails from './components/AutomatedEmails';
 import BrandsList from './components/BrandsList';
 import EventLayoutManager from './components/EventLayoutManager';
+import MobileHeader from './components/MobileHeader';
+import { MOCK_EVENT_PLANS } from './constants';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('EXHIBITOR');
@@ -43,6 +45,14 @@ const App: React.FC = () => {
 
   // Shared Applications State
   const [applications, setApplications] = useState<Application[]>(MOCK_APPLICATIONS);
+  const [eventPlans, setEventPlans] = useState<{ [key: string]: any }>(MOCK_EVENT_PLANS);
+
+  const handleUpdateEventPlan = (eventId: string, newPlan: any) => {
+    setEventPlans(prev => ({
+      ...prev,
+      [eventId]: newPlan
+    }));
+  };
 
   const handleAddApplication = (newApp: Application) => {
     setApplications(prev => [newApp, ...prev]);
@@ -76,7 +86,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="flex min-h-screen bg-lavrs-beige/30">
+    <div className="flex flex-col md:flex-row min-h-screen bg-lavrs-beige/30">
       {/* Role Switcher (Development Only) */}
       <div className="fixed bottom-4 right-4 z-50 flex gap-2 bg-white p-2 rounded-none shadow-lg border border-gray-100">
         <button
@@ -93,13 +103,19 @@ const App: React.FC = () => {
         </button>
       </div>
 
+      <MobileHeader
+        role={viewMode}
+        activeItem={currentScreen}
+        onNavigate={(screen) => setCurrentScreen(screen)}
+      />
+
       <Sidebar
         role={viewMode}
         activeItem={currentScreen}
         onNavigate={(screen) => setCurrentScreen(screen)}
       />
 
-      <main className="flex-1 p-4 md:p-6 lg:p-12 overflow-y-auto max-h-screen">
+      <main className="flex-1 p-4 md:p-6 lg:p-12 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
         <div className="max-w-7xl mx-auto animate-fadeIn">
           {currentScreen === 'DASHBOARD' && (
             viewMode === 'EXHIBITOR' ? (
@@ -135,6 +151,7 @@ const App: React.FC = () => {
                 });
               }}
               onApply={handleAddApplication}
+              eventPlan={eventPlans[selectedEventId]}
             />
           )}
 
@@ -183,6 +200,8 @@ const App: React.FC = () => {
               eventId={selectedEventId}
               onBack={() => setCurrentScreen('DASHBOARD')}
               applications={applications}
+              initialPlan={eventPlans[selectedEventId]}
+              onSavePlan={(newPlan) => handleUpdateEventPlan(selectedEventId, newPlan)}
             />
           )}
         </div>

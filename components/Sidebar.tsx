@@ -16,13 +16,13 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate }) => {
     { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
     { id: 'APPLICATIONS', label: 'Moje Přihlášky', icon: FileText },
     { id: 'BILLING', label: 'Fakturace', icon: CreditCard },
-    { id: 'PROFILE', label: 'Moje značka', icon: User },
+    { id: 'PROFILE', label: 'Můj profil', icon: User },
   ] : [
     { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
     { id: 'CURATOR', label: 'Aktivní přihlášky', icon: Layers },
+    { id: 'EVENTS_CONFIG', label: 'Správa Eventů', icon: Settings },
     { id: 'BRANDS', label: 'Seznam značek', icon: Users },
     { id: 'PAYMENTS', label: 'Platby & Fakturace', icon: DollarSign },
-    { id: 'EVENTS_CONFIG', label: 'Správa Eventů', icon: Settings },
     { id: 'EMAILS', label: 'Automatické emaily', icon: Mail },
   ];
 
@@ -52,15 +52,12 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate }) => {
         })}
       </nav>
 
-      <div className="pt-6 border-t border-white/10">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded-none bg-white flex items-center justify-center text-lavrs-red font-bold shadow-lg">
-            {role === 'ADMIN' ? 'A' : 'T'}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white tracking-tight">{role === 'ADMIN' ? 'Admin' : 'Tereza'}</p>
-            <p className="text-[10px] uppercase font-bold tracking-widest text-white/50">{role === 'ADMIN' ? 'Head Curator' : 'Vintage Soul'}</p>
-          </div>
+      <div className="pt-6 border-t border-white/10 space-y-3">
+        <div className="grid grid-cols-1 gap-2">
+          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</a>
+          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</a>
+          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Storno podmínky</a>
+          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Kontaktujte nás</a>
         </div>
       </div>
     </aside>

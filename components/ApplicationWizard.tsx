@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
-import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus } from '../types';
+import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan } from '../types';
 import { ZONE_DETAILS, EVENTS, MOCK_EVENT_PLANS } from '../constants';
 
 interface ApplicationWizardProps {
@@ -9,6 +9,7 @@ interface ApplicationWizardProps {
   savedBrands: BrandProfile[];
   onSaveBrand: (brand: BrandProfile) => void;
   onApply: (app: Application) => void;
+  eventPlan?: EventPlan;
 }
 
 const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
@@ -16,7 +17,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   onCancel,
   savedBrands = [],
   onSaveBrand,
-  onApply
+  onApply,
+  eventPlan
 }) => {
   const [step, setStep] = useState(1);
   const [saveToProfile, setSaveToProfile] = useState(true);
@@ -50,7 +52,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const event = EVENTS.find(e => e.id === eventId) || EVENTS[0];
   const isWaitlist = event.status === 'closed';
   const totalSteps = isWaitlist ? 1 : 5;
-  const extrasList = [
+  const extrasList = eventPlan?.extras || [
     { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
     { id: 'extra-table', label: 'Extra Stůl', price: '400 Kč' },
     { id: 'rack-rent', label: 'Extra stojan', price: '300 Kč' },
@@ -147,7 +149,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   };
 
   const checkIsFull = (size: SpotSize, category: ZoneCategory | null) => {
-    const plan = MOCK_EVENT_PLANS[eventId];
+    const plan = eventPlan || MOCK_EVENT_PLANS[eventId];
     if (!plan || !category) return false;
 
     const zone = plan.zones.find((z: any) => z.category === category);
@@ -277,7 +279,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                 {(step >= 2 && selectedZone) && (
                   <div className="p-4 bg-lavrs-red text-white rounded-none shadow-lg border border-lavrs-red animate-fadeIn">
                     <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mb-1">Cena rezervace</p>
-                    <p className="text-2xl font-bold">{ZONE_DETAILS[selectedZone].price}</p>
+                    <p className="text-2xl font-bold">{eventPlan?.prices[selectedZone] || ZONE_DETAILS[selectedZone].price}</p>
                     <p className="text-[10px] opacity-80">včetně základního vybavení</p>
                   </div>
                 )}
@@ -398,13 +400,13 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                             </div>
                             <p className="text-sm text-gray-400 font-medium">Orientační rozměr: {data.dimensions}</p>
                           </div>
-                          <p className="text-xl font-bold text-lavrs-red">{data.price}</p>
+                          <p className="text-xl font-bold text-lavrs-red">{eventPlan?.prices[type] || data.price}</p>
                         </div>
 
                         <div className="space-y-3">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Vybavení v ceně:</p>
                           <ul className="flex flex-wrap gap-2">
-                            {data.equipment.map((item: string) => (
+                            {(eventPlan?.equipment?.[type] || data.equipment).map((item: string) => (
                               <li key={item} className="flex items-center gap-1.5 text-[11px] bg-green-50 text-green-700 px-3 py-1.5 rounded-none border border-green-100 font-bold uppercase tracking-tight">
                                 <Check size={12} strokeWidth={3} /> {item}
                               </li>

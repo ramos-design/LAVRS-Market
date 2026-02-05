@@ -30,7 +30,7 @@ export interface MarketEvent {
   title: string;
   date: string;
   location: string;
-  status: 'open' | 'closed' | 'waitlist';
+  status: 'open' | 'closed' | 'waitlist' | 'draft';
   image: string;
   description?: string;
 }
@@ -89,11 +89,24 @@ export interface Zone {
   };
 }
 
+export interface ExtraItem {
+  id: string;
+  label: string;
+  price: string;
+}
+
 export interface EventPlan {
   eventId: string;
   zones: Zone[];
   stands: Stand[];
   gridSize: { width: number; height: number };
+  prices: {
+    [key in SpotSize]: string;
+  };
+  equipment: {
+    [key in SpotSize]: string[];
+  };
+  extras: ExtraItem[];
 }
 
 export type ViewMode = 'EXHIBITOR' | 'ADMIN';

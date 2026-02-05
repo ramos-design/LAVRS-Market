@@ -131,6 +131,22 @@ export const MOCK_EVENT_PLANS: { [key: string]: any } = {
       { id: 's2', x: 1, y: 2, size: 'M', zoneId: 'z1' },
       { id: 's3', x: 2, y: 1, size: 'S', zoneId: 'z1' },
       { id: 's4', x: 5, y: 5, size: 'L', zoneId: 'z2' }
+    ],
+    prices: {
+      S: '2.500 Kč',
+      M: '4.200 Kč',
+      L: '6.800 Kč'
+    },
+    equipment: {
+      S: ['1x Stůl', '1x Židle'],
+      M: ['1x Stojan na šaty', '1x Stůl', '2x Židle'],
+      L: ['2x Stojan na šaty', '2x Stůl', '2x Židle', 'Zrcadlo']
+    },
+    extras: [
+      { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
+      { id: 'extra-table', label: 'Extra Stůl', price: '400 Kč' },
+      { id: 'rack-rent', label: 'Extra stojan', price: '300 Kč' },
+      { id: 'electricity', label: 'Přípojka elektřiny', price: '500 Kč' }
     ]
   }
 };
