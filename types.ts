@@ -7,11 +7,23 @@ export enum AppStatus {
   PAID = 'PAID'
 }
 
-export enum ZoneType {
+export enum SpotSize {
   S = 'S',
   M = 'M',
   L = 'L'
 }
+
+export enum ZoneCategory {
+  SECONDHANDS = 'Secondhands',
+  CESKE_ZNACKY = 'České značky',
+  DESIGNERS = 'Designers',
+  BEAUTY = 'Beauty ZONE',
+  TATTOO = 'TATTOO'
+}
+
+// Keep old ZoneType for backward compatibility
+export const ZoneType = SpotSize;
+export type ZoneType = SpotSize;
 
 export interface MarketEvent {
   id: string;
@@ -41,7 +53,8 @@ export interface Application {
   billingEmail: string;
 
   // Configuration
-  zone: ZoneType;
+  zone: ZoneType; // Spot size (S/M/L)
+  zoneCategory?: ZoneCategory; // Brand category
   status: AppStatus;
   submittedAt: string;
   images: string[];

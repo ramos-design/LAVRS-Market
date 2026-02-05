@@ -251,15 +251,14 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
           </div>
 
           {/* Social Media Box */}
-          <div className="bg-lavrs-dark rounded-none p-8 shadow-sm space-y-6 text-white overflow-hidden relative">
-            <Sparkles className="absolute -top-4 -right-4 text-white/5 w-24 h-24 rotate-12" />
-            <h3 className="text-xl font-bold relative z-10">Sleduj sociální sítě LAVRS MARKET</h3>
-            <div className="grid grid-cols-2 gap-4 relative z-10">
-              <a href="#" className="flex flex-col items-center justify-center py-8 bg-lavrs-red hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
+          <div className="bg-white rounded-none p-8 shadow-sm border border-gray-100 space-y-6">
+            <h3 className="text-xl font-bold text-lavrs-dark">Sleduj sociální sítě<br />LAVRS MARKET</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <a href="#" className="flex flex-col items-center justify-center py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
                 <Instagram size={32} className="mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Instagram</span>
               </a>
-              <a href="#" className="flex flex-col items-center justify-center py-8 bg-lavrs-red hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
+              <a href="#" className="flex flex-col items-center justify-center py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
                 <Facebook size={32} className="mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Facebook</span>
               </a>

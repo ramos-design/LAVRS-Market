@@ -10,6 +10,9 @@ import CuratorModule from './components/CuratorModule';
 import MyApplications from './components/MyApplications';
 import Billing from './components/Billing';
 import Profile from './components/Profile';
+import PaymentsAndInvoicing from './components/PaymentsAndInvoicing';
+import EventsConfig from './components/EventsConfig';
+import AutomatedEmails from './components/AutomatedEmails';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('EXHIBITOR');
@@ -134,6 +137,18 @@ const App: React.FC = () => {
               applications={applications}
               onUpdateStatus={handleUpdateApplicationStatus}
             />
+          )}
+
+          {currentScreen === 'PAYMENTS' && (
+            <PaymentsAndInvoicing />
+          )}
+
+          {currentScreen === 'EVENTS_CONFIG' && (
+            <EventsConfig />
+          )}
+
+          {currentScreen === 'EMAILS' && (
+            <AutomatedEmails />
           )}
 
           {currentScreen === 'PAYMENT' && (

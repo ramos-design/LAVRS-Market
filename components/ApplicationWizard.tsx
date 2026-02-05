@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
-import { ZoneType, BrandProfile, Application, AppStatus } from '../types';
+import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus } from '../types';
 import { ZONE_DETAILS, EVENTS } from '../constants';
 
 interface ApplicationWizardProps {
@@ -30,7 +30,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const [contactPerson, setContactPerson] = useState(savedBrands.length > 0 ? savedBrands[0].contactPerson || '' : '');
   const [phone, setPhone] = useState(savedBrands.length > 0 ? savedBrands[0].phone || '' : '');
   const [email, setEmail] = useState(savedBrands.length > 0 ? savedBrands[0].email || '' : '');
-  const [selectedZone, setSelectedZone] = useState<ZoneType | null>(null);
+  const [selectedZone, setSelectedZone] = useState<SpotSize | null>(null); // Spot size (S/M/L)
+  const [selectedZoneCategory, setSelectedZoneCategory] = useState<ZoneCategory | null>(null); // Brand category
 
   const [billingName, setBillingName] = useState(savedBrands.length > 0 ? savedBrands[0].billingName || '' : '');
   const [ic, setIc] = useState(savedBrands.length > 0 ? savedBrands[0].ic || '' : '');
@@ -123,7 +124,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
       ic: ic || '',
       billingAddress: billingAddress || '',
       billingEmail: billingEmail || '',
-      zone: selectedZone || ZoneType.S,
+      zone: selectedZone || SpotSize.S,
+      zoneCategory: selectedZoneCategory || undefined,
       status: isWaitlist ? AppStatus.WAITLIST : AppStatus.PENDING,
       submittedAt: new Date().toISOString(),
       images: ['https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=400'],
@@ -321,7 +323,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             </>
           )}
 
-          {/* Normal Reservation Step 2 */}
+          {/* Step 2: Rezervace místa */}
           {!isWaitlist && step === 2 && (
             <div className="max-w-xl mx-auto py-20 px-8">
               <div className="space-y-12 animate-fadeIn">
@@ -332,7 +334,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                   </header>
 
                   <div className="grid grid-cols-1 gap-4">
-                    {(Object.entries(ZONE_DETAILS) as [ZoneType, any][]).map(([type, data]) => (
+                    {(Object.entries(ZONE_DETAILS) as [SpotSize, any][]).map(([type, data]) => (
                       <button
                         key={type}
                         onClick={() => setSelectedZone(type)}
@@ -466,6 +468,25 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Název Značky</label>
                     <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" placeholder="Vaše značka" className="w-full bg-white p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-bold text-xl transition-all" />
+                  </div>
+
+
+                  {/* Zone Category Selection */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Kategorie zóny *</label>
+                    <select
+                      value={selectedZoneCategory || ''}
+                      onChange={(e) => setSelectedZoneCategory(e.target.value as ZoneCategory)}
+                      required
+                      className="w-full bg-white p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-semibold text-base transition-all"
+                    >
+                      <option value="" disabled>Vyberte kategorii...</option>
+                      <option value={ZoneCategory.SECONDHANDS}>Secondhands - Vintage a second-hand móda</option>
+                      <option value={ZoneCategory.CESKE_ZNACKY}>České značky - Lokální české značky</option>
+                      <option value={ZoneCategory.DESIGNERS}>Designers - Designérské kousky</option>
+                      <option value={ZoneCategory.BEAUTY}>Beauty ZONE - Kosmetika a péče</option>
+                      <option value={ZoneCategory.TATTOO}>TATTOO - Tetování a body art</option>
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

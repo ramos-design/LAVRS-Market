@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail } from 'lucide-react';
 import { ViewMode } from '../types';
 
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
@@ -18,9 +18,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate }) => {
     { id: 'BILLING', label: 'Fakturace', icon: CreditCard },
     { id: 'PROFILE', label: 'Moje značka', icon: User },
   ] : [
-    { id: 'DASHBOARD', label: 'Admin Panel', icon: LayoutDashboard },
-    { id: 'CURATOR', label: 'Kurátor Hub', icon: Layers },
+    { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
+    { id: 'CURATOR', label: 'Aktivní přihlášky', icon: Layers },
+    { id: 'PAYMENTS', label: 'Platby & Fakturace', icon: DollarSign },
     { id: 'EVENTS_CONFIG', label: 'Správa Eventů', icon: Settings },
+    { id: 'EMAILS', label: 'Automatické emaily', icon: Mail },
   ];
 
   return (

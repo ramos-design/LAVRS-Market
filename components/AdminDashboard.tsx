@@ -14,7 +14,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator }) 
     <div className="space-y-12">
       <header className="flex items-end justify-between">
         <div>
-          <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-lavrs-dark">Operational Hub</h2>
+          <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-lavrs-dark">Operativní Hub</h2>
           <p className="text-gray-500">Vítej zpět v mozkovém centru LAVRS.</p>
         </div>
         <button className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all flex items-center gap-2 shadow-lg active:scale-95">
@@ -50,7 +50,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator }) 
         {/* Active Markets Table */}
         <div className="lg:col-span-2 bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden flex flex-col">
           <div className="p-8 border-b border-gray-50 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-lavrs-dark">Aktivní Produkce</h3>
+            <h3 className="text-xl font-bold text-lavrs-dark">Přehled eventů LAVRS MARKET</h3>
             <div className="flex gap-2 p-1 bg-gray-50 rounded-none">
               <button className="p-2 bg-white rounded-none shadow-sm"><LayoutGrid size={16} /></button>
               <button className="p-2 text-gray-400"><List size={16} /></button>
@@ -60,8 +60,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator }) 
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  <th className="px-8 py-4">Event</th>
-                  <th className="px-8 py-4">Datum / Lokace</th>
+                  <th className="px-8 py-4">Event / Datum / Lokace</th>
                   <th className="px-8 py-4">Kapacita</th>
                   <th className="px-8 py-4">Stav</th>
                   <th className="px-8 py-4"></th>
@@ -72,15 +71,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator }) 
                   <tr key={event.id} className="group hover:bg-lavrs-beige/30 transition-colors">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-none overflow-hidden shadow-sm">
+                        <div className="w-10 h-10 rounded-none overflow-hidden shadow-sm shrink-0">
                           <img src={event.image} alt="" className="w-full h-full object-cover" />
                         </div>
-                        <span className="font-semibold text-sm text-lavrs-dark">{event.title}</span>
+                        <div>
+                          <p className="font-bold text-sm text-lavrs-dark">{event.title}</p>
+                          <p className="text-xs text-gray-500 font-medium">{event.date} · {event.location}</p>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-medium text-lavrs-dark">{event.date}</p>
-                      <p className="text-[10px] text-gray-400">{event.location}</p>
                     </td>
                     <td className="px-8 py-6">
                       <div className="w-32 h-2 bg-gray-100 rounded-none overflow-hidden">
@@ -114,17 +112,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator }) 
 
         {/* Action Sidebar */}
         <div className="space-y-8">
-          <div className="bg-lavrs-dark rounded-none p-10 text-white shadow-xl relative overflow-hidden group">
-            <div className="relative z-10">
-              <Calendar className="text-lavrs-red mb-6" size={32} />
-              <h4 className="text-2xl font-bold tracking-tight mb-4">Plánování Sezóny 2027</h4>
-              <p className="text-gray-400 text-sm leading-relaxed mb-8">Strategický framework pro příští rok je připraven k revizi. Chceme expandovat do Brna a Vídně.</p>
-              <button className="w-full py-4 bg-white text-lavrs-dark rounded-none font-bold hover:bg-lavrs-red hover:text-white transition-all shadow-lg active:scale-95">
-                Otevřít Strategii
-              </button>
-            </div>
-            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-lavrs-red/10 rounded-none blur-3xl group-hover:bg-lavrs-red/20 transition-all duration-700"></div>
-          </div>
 
           <div className="bg-white rounded-none p-8 border border-gray-100 shadow-sm space-y-6">
             <h4 className="text-lg font-bold text-lavrs-dark">Nedávné aktivity</h4>
