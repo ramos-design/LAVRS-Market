@@ -117,3 +117,20 @@ export const ZONE_DETAILS = {
     price: '6.800 Kč'
   }
 };
+
+export const MOCK_EVENT_PLANS: { [key: string]: any } = {
+  'mini-1': {
+    eventId: 'mini-1',
+    gridSize: { width: 12, height: 8 },
+    zones: [
+      { id: 'z1', name: 'Hlavní sál', color: '#EF4444', category: 'Secondhands', capacities: { S: 5, M: 10, L: 2 } },
+      { id: 'z2', name: 'Designers Zone', color: '#8B5CF6', category: 'Designers', capacities: { S: 2, M: 5, L: 1 } }
+    ],
+    stands: [
+      { id: 's1', x: 1, y: 1, size: 'M', zoneId: 'z1', occupantId: 'app-2' },
+      { id: 's2', x: 1, y: 2, size: 'M', zoneId: 'z1' },
+      { id: 's3', x: 2, y: 1, size: 'S', zoneId: 'z1' },
+      { id: 's4', x: 5, y: 5, size: 'L', zoneId: 'z2' }
+    ]
+  }
+};

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ViewMode, User as UserType, BrandProfile, ZoneType, Application, AppStatus } from './types';
+import { MOCK_APPLICATIONS } from './constants';
 import Sidebar from './components/Sidebar';
 import ExhibitorDashboard from './components/ExhibitorDashboard';
 import AdminDashboard from './components/AdminDashboard';
@@ -14,6 +15,7 @@ import PaymentsAndInvoicing from './components/PaymentsAndInvoicing';
 import EventsConfig from './components/EventsConfig';
 import AutomatedEmails from './components/AutomatedEmails';
 import BrandsList from './components/BrandsList';
+import EventLayoutManager from './components/EventLayoutManager';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('EXHIBITOR');
@@ -40,7 +42,7 @@ const App: React.FC = () => {
   ]);
 
   // Shared Applications State
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<Application[]>(MOCK_APPLICATIONS);
 
   const handleAddApplication = (newApp: Application) => {
     setApplications(prev => [newApp, ...prev]);
@@ -113,6 +115,7 @@ const App: React.FC = () => {
               <AdminDashboard
                 user={user}
                 onOpenCurator={() => setCurrentScreen('CURATOR')}
+                onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
               />
             )
           )}
@@ -160,7 +163,7 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'EVENTS_CONFIG' && (
-            <EventsConfig />
+            <EventsConfig onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }} />
           )}
 
           {currentScreen === 'EMAILS' && (
@@ -173,6 +176,14 @@ const App: React.FC = () => {
 
           {currentScreen === 'PAYMENT' && (
             <PaymentPage onBack={() => setCurrentScreen('DASHBOARD')} />
+          )}
+
+          {currentScreen === 'EVENT_PLAN' && selectedEventId && (
+            <EventLayoutManager
+              eventId={selectedEventId}
+              onBack={() => setCurrentScreen('DASHBOARD')}
+              applications={applications}
+            />
           )}
         </div>
       </main>

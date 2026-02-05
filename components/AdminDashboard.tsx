@@ -7,9 +7,10 @@ import { EVENTS } from '../constants';
 interface AdminDashboardProps {
   user: User;
   onOpenCurator: () => void;
+  onManageEvent?: (eventId: string) => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, onManageEvent }) => {
   return (
     <div className="space-y-12">
       <header className="flex items-end justify-between">
@@ -97,7 +98,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator }) 
                     </td>
                     <td className="px-8 py-6 text-right">
                       <button
-                        onClick={onOpenCurator}
+                        onClick={() => onManageEvent ? onManageEvent(event.id) : onOpenCurator()}
                         className="text-lavrs-red text-xs font-bold hover:underline"
                       >
                         SPRAVOVAT

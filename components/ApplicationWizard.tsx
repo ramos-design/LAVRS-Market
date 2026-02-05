@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
 import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus } from '../types';
-import { ZONE_DETAILS, EVENTS } from '../constants';
+import { ZONE_DETAILS, EVENTS, MOCK_EVENT_PLANS } from '../constants';
 
 interface ApplicationWizardProps {
   eventId: string;
@@ -146,6 +146,22 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     onApply(newApp);
   };
 
+  const checkIsFull = (size: SpotSize, category: ZoneCategory | null) => {
+    const plan = MOCK_EVENT_PLANS[eventId];
+    if (!plan || !category) return false;
+
+    const zone = plan.zones.find((z: any) => z.category === category);
+    if (!zone) return false;
+
+    const total = zone.capacities[size] || 0;
+    // Count both placed stands and apps with same size/category
+    const used = plan.stands.filter((s: any) => s.zoneId === zone.id && s.size === size && s.occupantId).length;
+
+    return used >= total;
+  };
+
+  const isZoneFull = selectedZone && selectedZoneCategory ? checkIsFull(selectedZone, selectedZoneCategory) : false;
+
   const isZoneCategoryMissing = !isWaitlist && step === 3 && !selectedZoneCategory;
   const nextStep = () => {
     if (isZoneCategoryMissing) {
@@ -203,6 +219,12 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             {!isWaitlist && step === 4 && "Fakturační údaje"}
             {!isWaitlist && step === 5 && "Vizuály a souhlasy"}
           </h2>
+
+          {isZoneFull && step >= 3 && (
+            <div className="p-4 bg-amber-50 border-l-4 border-amber-500 text-amber-900 text-xs font-bold animate-fadeIn mb-8">
+              Kapacita pro {selectedZoneCategory} ve velikosti {selectedZone} je momentálně plná. Vaše přihláška bude zařazena na waiting list.
+            </div>
+          )}
 
           <div className="space-y-6">
             {isWaitlist ? (
@@ -395,6 +417,12 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                             <Check size={16} strokeWidth={3} />
                           </div>
                         )}
+
+                        {selectedZoneCategory && checkIsFull(type, selectedZoneCategory) && (
+                          <div className="absolute top-4 right-4 px-2 py-1 bg-amber-500 text-white text-[8px] font-black uppercase tracking-widest shadow-lg">
+                            PLNÁ KAPACITA (WAITLIST)
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -497,11 +525,11 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                     <div className={`bg-lavrs-beige/50 border p-5 rounded-none ${isZoneCategoryMissing ? 'border-lavrs-red' : 'border-lavrs-pink/30'}`}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {[
-                        { id: ZoneCategory.SECONDHANDS, title: 'Secondhands', desc: 'Vintage a second-hand móda' },
-                        { id: ZoneCategory.CESKE_ZNACKY, title: 'České značky', desc: 'Lokální české značky' },
-                        { id: ZoneCategory.DESIGNERS, title: 'Designers', desc: 'Designérské kousky' },
-                        { id: ZoneCategory.BEAUTY, title: 'Beauty ZONE', desc: 'Kosmetika a péče' },
-                        { id: ZoneCategory.TATTOO, title: 'TATTOO', desc: 'Tetování a body art' }
+                          { id: ZoneCategory.SECONDHANDS, title: 'Secondhands', desc: 'Vintage a second-hand móda' },
+                          { id: ZoneCategory.CESKE_ZNACKY, title: 'České značky', desc: 'Lokální české značky' },
+                          { id: ZoneCategory.DESIGNERS, title: 'Designers', desc: 'Designérské kousky' },
+                          { id: ZoneCategory.BEAUTY, title: 'Beauty ZONE', desc: 'Kosmetika a péče' },
+                          { id: ZoneCategory.TATTOO, title: 'TATTOO', desc: 'Tetování a body art' }
                         ].map((cat) => (
                           <button
                             key={cat.id}
@@ -517,6 +545,11 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                               {selectedZoneCategory === cat.id && <Check size={16} className="text-lavrs-red" strokeWidth={3} />}
                             </div>
                             <p className="text-[11px] text-gray-600 mt-1">{cat.desc}</p>
+                            {selectedZone && checkIsFull(selectedZone, cat.id) && (
+                              <p className="mt-2 text-[8px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-1 py-0.5 inline-block">
+                                Velikost {selectedZone} plná
+                              </p>
+                            )}
                           </button>
                         ))}
                       </div>
@@ -733,8 +766,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

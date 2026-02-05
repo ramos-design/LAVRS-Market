@@ -2,7 +2,11 @@ import React from 'react';
 import { Settings, Plus, Edit, Trash2, Calendar, MapPin, Users } from 'lucide-react';
 import { EVENTS } from '../constants';
 
-const EventsConfig: React.FC = () => {
+interface EventsConfigProps {
+    onManageEvent?: (eventId: string) => void;
+}
+
+const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
     return (
         <div className="space-y-8">
             <header className="flex items-end justify-between">
@@ -47,8 +51,11 @@ const EventsConfig: React.FC = () => {
                             </div>
 
                             <div className="flex gap-2 pt-4 border-t border-gray-100">
-                                <button className="flex-1 py-3 bg-lavrs-dark text-white rounded-none font-bold hover:bg-lavrs-red transition-all flex items-center justify-center gap-2">
-                                    <Edit size={16} /> Editovat
+                                <button
+                                    onClick={() => onManageEvent && onManageEvent(event.id)}
+                                    className="flex-1 py-3 bg-lavrs-dark text-white rounded-none font-bold hover:bg-lavrs-red transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Edit size={16} /> Spravovat
                                 </button>
                                 <button className="px-4 py-3 bg-red-50 text-red-600 rounded-none font-bold hover:bg-red-100 transition-all">
                                     <Trash2 size={16} />

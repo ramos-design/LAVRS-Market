@@ -70,6 +70,32 @@ export interface Application {
   paymentDeadline?: string;
 }
 
+export interface Stand {
+  id: string;
+  x: number; // grid position x
+  y: number; // grid position y
+  size: SpotSize;
+  zoneId: string;
+  occupantId?: string; // ID of the application/brand
+}
+
+export interface Zone {
+  id: string;
+  name: string;
+  color: string;
+  category: ZoneCategory;
+  capacities: {
+    [key in SpotSize]?: number;
+  };
+}
+
+export interface EventPlan {
+  eventId: string;
+  zones: Zone[];
+  stands: Stand[];
+  gridSize: { width: number; height: number };
+}
+
 export type ViewMode = 'EXHIBITOR' | 'ADMIN';
 
 export interface User {
