@@ -47,55 +47,7 @@ export const EVENTS: MarketEvent[] = [
   }
 ];
 
-export const MOCK_APPLICATIONS: Application[] = [
-  {
-    id: 'app-1',
-    brandName: 'Vintage Soul',
-    brandDescription: 'Curated 90s sportswear and luxury accessories.',
-    instagram: '@vintage.soul',
-    website: 'vintagesoul.cz',
-    contactPerson: 'Tereza Nováková',
-    phone: '+420 777 123 456',
-    email: 'tereza@vintagesoul.cz',
-    billingName: 'Vintage Soul s.r.o.',
-    ic: '12345678',
-    billingAddress: 'Vnitroblock, Holešovice, Praha',
-    billingEmail: 'faktury@vintagesoul.cz',
-    zone: ZoneType.M,
-    status: AppStatus.PENDING,
-    submittedAt: '2024-08-01',
-    images: ['https://picsum.photos/seed/brand1/400/400', 'https://picsum.photos/seed/brand2/400/400'],
-    eventId: 'mini-1',
-    consentGDPR: true,
-    consentOrg: true,
-    consentStorno: true,
-    consentNewsletter: false
-  },
-  {
-    id: 'app-2',
-    brandName: 'Linen Dreams',
-    brandDescription: 'Slow fashion made from deadstock linen fabrics.',
-    instagram: '@linen_dreams',
-    website: 'linendreams.eu',
-    contactPerson: 'Jana Modrá',
-    phone: '+420 602 111 222',
-    email: 'jana@linendreams.eu',
-    billingName: 'Jana Modrá',
-    ic: '87654321',
-    billingAddress: 'Brno, Česká 12',
-    billingEmail: 'jana@linendreams.eu',
-    zone: ZoneType.S,
-    status: AppStatus.APPROVED,
-    submittedAt: '2024-07-28',
-    images: ['https://picsum.photos/seed/brand3/400/400'],
-    eventId: 'mini-1',
-    paymentDeadline: '2024-08-15',
-    consentGDPR: true,
-    consentOrg: true,
-    consentStorno: true,
-    consentNewsletter: true
-  }
-];
+export const MOCK_APPLICATIONS: Application[] = [];
 
 export const ZONE_DETAILS = {
   [ZoneType.S]: {
@@ -127,7 +79,7 @@ export const MOCK_EVENT_PLANS: { [key: string]: any } = {
       { id: 'z2', name: 'Designers Zone', color: '#8B5CF6', category: 'Designers', capacities: { S: 2, M: 5, L: 1 } }
     ],
     stands: [
-      { id: 's1', x: 1, y: 1, size: 'M', zoneId: 'z1', occupantId: 'app-2' },
+      { id: 's1', x: 1, y: 1, size: 'M', zoneId: 'z1' },
       { id: 's2', x: 1, y: 2, size: 'M', zoneId: 'z1' },
       { id: 's3', x: 2, y: 1, size: 'S', zoneId: 'z1' },
       { id: 's4', x: 5, y: 5, size: 'L', zoneId: 'z2' }
