@@ -3,8 +3,8 @@ import { CreditCard, Download, FileText, ExternalLink, ArrowUpRight, TrendingUp 
 
 const Billing: React.FC = () => {
     const invoices = [
-        { id: 'INV-2026-001', date: '16. 3. 2026', amount: '4.200 Kč', status: 'PAID', event: 'LAVRS Market #12' },
-        { id: 'INV-2026-002', date: '2. 4. 2026', amount: '2.500 Kč', status: 'UNPAID', event: 'LAVRS Mini #4' }
+        { id: 'INV-2026-001', date: '16. 3. 2026', amount: '4.200 Kč', status: 'PAID', event: 'LAVRS market #12' },
+        { id: 'INV-2026-002', date: '2. 4. 2026', amount: '2.500 Kč', status: 'UNPAID', event: 'LAVRS #4' }
     ];
 
     return (

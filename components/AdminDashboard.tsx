@@ -2,7 +2,7 @@
 import React from 'react';
 import { Plus, Users, ShoppingBag, LayoutGrid, List, MoreVertical, TrendingUp, Calendar } from 'lucide-react';
 import { User } from '../types';
-import { EVENTS } from '../constants';
+import { EVENTS, MOCK_EVENT_PLANS } from '../constants';
 
 interface AdminDashboardProps {
   user: User;
@@ -11,6 +11,20 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, onManageEvent }) => {
+  const getEventOccupancy = (eventId: string) => {
+    const plan = MOCK_EVENT_PLANS[eventId];
+    if (!plan) return 0;
+    
+    let totalCapacity = 0;
+    plan.zones.forEach((z: any) => {
+        totalCapacity += (z.capacities.S + z.capacities.M + z.capacities.L);
+    });
+    
+    const occupied = plan.stands.filter((s: any) => s.occupantId).length;
+    
+    return totalCapacity > 0 ? Math.round((occupied / totalCapacity) * 100) : 0;
+  };
+
   return (
     <div className="space-y-12">
       <header className="flex items-end justify-between">
@@ -51,7 +65,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
         {/* Active Markets Table */}
         <div className="lg:col-span-2 bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden flex flex-col">
           <div className="p-8 border-b border-gray-50 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-lavrs-dark">Přehled eventů LAVRS MARKET</h3>
+            <h3 className="text-xl font-bold text-lavrs-dark">Přehled eventů LAVRS market</h3>
             <div className="flex gap-2 p-1 bg-gray-50 rounded-none">
               <button className="p-2 bg-white rounded-none shadow-sm"><LayoutGrid size={16} /></button>
               <button className="p-2 text-gray-400"><List size={16} /></button>
@@ -68,44 +82,47 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {EVENTS.map(event => (
-                  <tr key={event.id} className="group hover:bg-lavrs-beige/30 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-none overflow-hidden shadow-sm shrink-0">
-                          <img src={event.image} alt="" className="w-full h-full object-cover" />
+                {EVENTS.map(event => {
+                  const occupancy = getEventOccupancy(event.id);
+                  return (
+                    <tr key={event.id} className="group hover:bg-lavrs-beige/30 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-none overflow-hidden shadow-sm shrink-0">
+                            <img src={event.image} alt="" className="w-full h-full object-cover" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-lavrs-dark">{event.title}</p>
+                            <p className="text-xs text-gray-500 font-medium">{event.date} · {event.location}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-sm text-lavrs-dark">{event.title}</p>
-                          <p className="text-xs text-gray-500 font-medium">{event.date} · {event.location}</p>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="w-32 h-2 bg-gray-100 rounded-none overflow-hidden">
+                          <div
+                            className={`h-full rounded-none ${occupancy >= 100 ? 'bg-gray-300' : 'bg-lavrs-red'}`}
+                            style={{ width: `${occupancy}%` }}
+                          />
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="w-32 h-2 bg-gray-100 rounded-none overflow-hidden">
-                        <div
-                          className={`h-full rounded-none ${event.status === 'open' ? 'bg-lavrs-red' : 'bg-gray-300'}`}
-                          style={{ width: event.status === 'open' ? '85%' : '100%' }}
-                        />
-                      </div>
-                      <p className="text-[10px] font-bold mt-1 text-gray-400">{event.status === 'open' ? '85% Obsazeno' : 'FULL'}</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider ${event.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
-                        {event.status === 'open' ? 'Otevřeno' : 'Waitlist'}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <button
-                        onClick={() => onManageEvent ? onManageEvent(event.id) : onOpenCurator()}
-                        className="text-lavrs-red text-xs font-bold hover:underline"
-                      >
-                        SPRAVOVAT
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        <p className="text-[10px] font-bold mt-1 text-gray-400">{occupancy >= 100 ? 'FULL' : `${occupancy}% Obsazeno`}</p>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider ${event.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                          {event.status === 'open' ? 'Otevřeno' : 'Waitlist'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <button
+                          onClick={() => onManageEvent ? onManageEvent(event.id) : onOpenCurator()}
+                          className="text-lavrs-red text-xs font-bold hover:underline"
+                        >
+                          SPRAVOVAT
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -120,7 +137,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
               {[
                 { user: 'Admin J.', action: 'Schválil značku Vintage Soul', time: '12m' },
                 { user: 'Systém', action: 'Nová platba: 4.200 Kč', time: '1h' },
-                { user: 'Admin K.', action: 'Změnil kapacitu Mini LAVRS', time: '3h' },
+                { user: 'Admin K.', action: 'Změnil kapacitu LAVRS', time: '3h' },
               ].map((activity, i) => (
                 <div key={i} className="flex gap-4">
                   <div className="w-8 h-8 rounded-none bg-lavrs-pink flex items-center justify-center text-[10px] font-bold text-lavrs-red">

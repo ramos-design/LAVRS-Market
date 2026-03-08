@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
-import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan } from '../types';
+import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
 import { ZONE_DETAILS, EVENTS, MOCK_EVENT_PLANS } from '../constants';
 
 interface ApplicationWizardProps {
@@ -10,6 +10,7 @@ interface ApplicationWizardProps {
   onSaveBrand: (brand: BrandProfile) => void;
   onApply: (app: Application) => void;
   eventPlan?: EventPlan;
+  categories: Category[];
 }
 
 const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
@@ -18,9 +19,11 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   savedBrands = [],
   onSaveBrand,
   onApply,
-  eventPlan
+  eventPlan,
+  categories
 }) => {
   const [step, setStep] = useState(1);
+  const [totalSteps, setTotalSteps] = useState(6);
   const [saveToProfile, setSaveToProfile] = useState(true);
 
   // Form State
@@ -42,22 +45,58 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const [billingEmail, setBillingEmail] = useState(savedBrands.length > 0 ? savedBrands[0].billingEmail || '' : '');
 
   const [extras, setExtras] = useState<{ [key: string]: number }>({});
+  const [extraNote, setExtraNote] = useState('');
 
   // Consents State
   const [consentGDPR, setConsentGDPR] = useState(false);
   const [consentOrg, setConsentOrg] = useState(false);
   const [consentStorno, setConsentStorno] = useState(false);
   const [consentNewsletter, setConsentNewsletter] = useState(false);
+  const [showCatError, setShowCatError] = useState(false);
 
   const event = EVENTS.find(e => e.id === eventId) || EVENTS[0];
   const isWaitlist = event.status === 'closed';
-  const totalSteps = isWaitlist ? 1 : 5;
+  
+  useEffect(() => {
+    setTotalSteps(isWaitlist ? 1 : 5);
+  }, [isWaitlist]);
+
   const extrasList = eventPlan?.extras || [
     { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
     { id: 'extra-table', label: 'Extra Stůl', price: '400 Kč' },
     { id: 'rack-rent', label: 'Extra stojan', price: '300 Kč' },
     { id: 'electricity', label: 'Přípojka elektřiny', price: '500 Kč' }
   ];
+
+  const getCategoryPrice = (cat: ZoneCategory | null) => {
+    if (!cat) return 0;
+    
+    // Use price from eventPlan if available
+    if (eventPlan?.prices?.[cat]) {
+      return parseInt(eventPlan.prices[cat].replace(/[^\d]/g, '')) || 0;
+    }
+
+    const mapping: { [key: string]: number } = {
+      'Secondhands': 2500,
+      'České značky': 3800,
+      'Designers': 4200,
+      'Beauty ZONE': 3500,
+      'TATTOO': 5500
+    };
+    return mapping[cat] || 0;
+  };
+
+  const calculateTotal = () => {
+    const base = getCategoryPrice(selectedZoneCategory);
+    const extrasTotal = extrasList.reduce((sum, item) => {
+      const count = extras[item.id] || 0;
+      if (count <= 0) return sum;
+      const price = parseInt(item.price.replace(/[^\d]/g, '')) || 0;
+      return sum + (price * count);
+    }, 0);
+    return base + extrasTotal;
+  };
+
   const selectedExtras = extrasList.filter(extra => extras[extra.id]);
 
   const handleBrandSelect = (brandId: string | 'new') => {
@@ -142,7 +181,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
       consentGDPR,
       consentOrg,
       consentStorno,
-      consentNewsletter
+      consentNewsletter,
+      extraNote
     };
 
     onApply(newApp);
@@ -164,12 +204,15 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
   const isZoneFull = selectedZone && selectedZoneCategory ? checkIsFull(selectedZone, selectedZoneCategory) : false;
 
-  const isZoneCategoryMissing = !isWaitlist && step === 3 && !selectedZoneCategory;
+  const isZoneCategoryEmpty = !isWaitlist && step === 2 && !selectedZoneCategory;
   const nextStep = () => {
-    if (isZoneCategoryMissing) {
+    if (isZoneCategoryEmpty) {
+      setShowCatError(true);
       return;
     }
+    setShowCatError(false);
     setStep(s => Math.min(s + 1, totalSteps));
+    window.scrollTo(0, 0);
   };
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
@@ -204,7 +247,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
           <div className="mb-2 flex gap-2">
             <span className="text-white bg-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
-              {event.id.includes('mini') ? 'Mini Event' : 'Velký Market'}
+              {event.id.includes('mini') ? 'Event' : 'Velký market'}
             </span>
             {event.status === 'closed' && (
               <span className="bg-white text-lavrs-red border border-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
@@ -216,9 +259,9 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
           <p className="text-lavrs-red font-bold uppercase tracking-widest text-[10px] mb-4">Krok {step} z {totalSteps}</p>
           <h2 className="text-4xl font-bold leading-tight text-lavrs-dark mb-8">
             {isWaitlist ? "Chci na Waitlist" : (step === 1 ? "O akci" : "")}
-            {!isWaitlist && step === 2 && "Rezervace místa"}
-            {!isWaitlist && step === 3 && "Informace o značce"}
-            {!isWaitlist && step === 4 && "Fakturační údaje"}
+            {!isWaitlist && step === 2 && "Kategorie zóny"}
+            {!isWaitlist && step === 3 && "Doplňky a vybavení"}
+            {!isWaitlist && step === 4 && "Informace o značce"}
             {!isWaitlist && step === 5 && "Vizuály a souhlasy"}
           </h2>
 
@@ -276,23 +319,26 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                   )}
                 </div>
 
-                {(step >= 2 && selectedZone) && (
-                  <div className="p-4 bg-lavrs-red text-white rounded-none shadow-lg border border-lavrs-red animate-fadeIn">
-                    <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mb-1">Cena rezervace</p>
-                    <p className="text-2xl font-bold">{eventPlan?.prices[selectedZone] || ZONE_DETAILS[selectedZone].price}</p>
-                    <p className="text-[10px] opacity-80">včetně základního vybavení</p>
-                  </div>
-                )}
-                {(step >= 2 && selectedExtras.length > 0) && (
-                  <div className="p-4 bg-white rounded-none shadow-sm border border-lavrs-red/30 animate-fadeIn">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Zvolené doplňky</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedExtras.map(extra => (
-                        <span key={extra.id} className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-none border border-lavrs-red/20 text-lavrs-dark bg-lavrs-red/5">
-                          {extra.label} +{extra.price}
-                        </span>
-                      ))}
+                {(step === totalSteps && selectedZoneCategory) && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="p-4 bg-lavrs-red text-white rounded-none shadow-lg border border-lavrs-red">
+                      <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mb-1">Předpokládaná cena</p>
+                      <p className="text-2xl font-bold">{calculateTotal().toLocaleString('cs-CZ')} Kč</p>
+                      <p className="text-[10px] opacity-80">včetně doplňků a vybavení</p>
                     </div>
+                
+                    {selectedExtras.length > 0 && (
+                      <div className="p-4 bg-white rounded-none shadow-sm border border-lavrs-red/30">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Zvolené doplňky</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedExtras.map(extra => (
+                            <span key={extra.id} className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-none border border-lavrs-red/20 text-lavrs-dark bg-lavrs-red/5">
+                              {extra.label} +{extra.price}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -334,7 +380,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                 <section className="space-y-4">
                   <h3 className="text-xs font-black text-lavrs-red uppercase tracking-[0.2em]">O akci</h3>
                   <div className="prose prose-sm text-gray-600 leading-relaxed text-base italic">
-                    <p>LAVRS Market v prostorách {event.location} je kurátorovaný výběr nejlepších lokálních značek.</p>
+                    <p>LAVRS market v prostorách {event.location} je kurátorovaný výběr nejlepších lokálních značek.</p>
                     <p className="mt-4">Kapacita pro přímé přihlašování je vyčerpána, ale budeme rádi, když se zapíšete na waitlist – o uvolněných místech informujeme přednostně.</p>
                   </div>
                 </section>
@@ -362,7 +408,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                     <section className="space-y-6 mb-16">
                       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">O tomto eventu</h3>
                       <div className="prose prose-sm text-gray-600 leading-relaxed text-lg italic">
-                        <p>LAVRS Market není jen prodejní akce. Je to komunita. Pro nadcházející edici v prostorách Vnitroblocku jsme připravili kurátorovaný výběr těch nejlepších lokálních značek, které kladou důraz na udržitelnost a kvalitu zpracování.</p>
+                        <p>LAVRS market není jen prodejní akce. Je to komunita. Pro nadcházející edici v prostorách Vnitroblocku jsme připravili kurátorovaný výběr těch nejlepších lokálních značek, které kladou důraz na udržitelnost a kvalitu zpracování.</p>
                         <p className="mt-4">Čeká vás doprovodný program, workshopy zaměřené na upcyklaci a samozřejmě ta nejlepší atmosféra, kterou jinde nezažijete. Buďte součástí změny, kterou chcete vidět v módním průmyslu.</p>
                       </div>
                     </section>
@@ -372,66 +418,68 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             </>
           )}
 
-          {/* Step 2: Rezervace místa */}
+          {/* Step 2: Kategorie zóny */}
           {!isWaitlist && step === 2 && (
+            <div className="max-w-2xl mx-auto py-20 px-8">
+              <div className="space-y-12 animate-fadeIn">
+                <header className="text-center">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">KATEGORIE ZÓNY *</h3>
+                </header>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedZoneCategory(cat.id);
+                        const configuredSize = eventPlan?.categorySizes?.[cat.id];
+                        if (configuredSize) {
+                          setSelectedZone(configuredSize);
+                        } else {
+                          // Default fallbacks for common categories
+                          if (cat.name === 'Secondhands') setSelectedZone(SpotSize.M);
+                          else if (cat.name === 'České značky') setSelectedZone(SpotSize.L);
+                          else setSelectedZone(SpotSize.S);
+                        }
+                      }}
+                      className={`p-10 rounded-none border-2 text-left transition-all ${selectedZoneCategory === cat.id
+                        ? 'border-lavrs-red bg-white shadow-xl scale-[1.02]'
+                        : 'border-white bg-white/60 hover:border-lavrs-pink'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-2xl font-black text-lavrs-dark leading-tight">{cat.name}</p>
+                        {selectedZoneCategory === cat.id && (
+                          <div className="w-6 h-6 bg-lavrs-red text-white flex items-center justify-center">
+                            <Check size={16} strokeWidth={4} />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 font-medium">{cat.description}</p>
+                    </button>
+                  ))}
+                </div>
+                
+                {showCatError && !selectedZoneCategory && (
+                  <p className="text-center text-sm text-lavrs-red font-bold animate-bounce pt-12">
+                    Vyberte prosím kategorii zóny pro pokračování.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Doplňky k místu */}
+          {!isWaitlist && step === 3 && (
             <div className="max-w-xl mx-auto py-20 px-8">
               <div className="space-y-12 animate-fadeIn">
                 <section className="space-y-6">
                   <header>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Výběr velikosti místa</h3>
-                    <p className="text-sm text-gray-500">Vyberte si prostor, který nejlépe vyhovuje vaší prezentaci. Konkrétní umístění určuje organizátor.</p>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Doplňky k místu (Extra)</h3>
+                    <p className="text-sm text-gray-500">Můžete si doobjednat vybavení nad rámec standardního balíčku.</p>
                   </header>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    {(Object.entries(ZONE_DETAILS) as [SpotSize, any][]).map(([type, data]) => (
-                      <button
-                        key={type}
-                        onClick={() => setSelectedZone(type)}
-                        className={`relative p-8 rounded-none border-2 text-left transition-all ${selectedZone === type
-                          ? 'border-lavrs-red bg-white shadow-xl scale-[1.01]'
-                          : 'border-gray-100 bg-white hover:border-lavrs-pink'
-                          }`}
-                      >
-                        <div className="flex justify-between items-start mb-6 pr-10">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="bg-lavrs-dark text-white px-2 py-0.5 rounded text-[10px] font-black uppercase">{type}</span>
-                              <h4 className="text-2xl font-bold text-lavrs-dark">{data.label}</h4>
-                            </div>
-                            <p className="text-sm text-gray-400 font-medium">Orientační rozměr: {data.dimensions}</p>
-                          </div>
-                          <p className="text-xl font-bold text-lavrs-red">{eventPlan?.prices[type] || data.price}</p>
-                        </div>
-
-                        <div className="space-y-3">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Vybavení v ceně:</p>
-                          <ul className="flex flex-wrap gap-2">
-                            {(eventPlan?.equipment?.[type] || data.equipment).map((item: string) => (
-                              <li key={item} className="flex items-center gap-1.5 text-[11px] bg-green-50 text-green-700 px-3 py-1.5 rounded-none border border-green-100 font-bold uppercase tracking-tight">
-                                <Check size={12} strokeWidth={3} /> {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {selectedZone === type && (
-                          <div className="absolute top-4 right-4 w-6 h-6 bg-lavrs-red rounded-none flex items-center justify-center text-white shadow-lg animate-fadeIn">
-                            <Check size={16} strokeWidth={3} />
-                          </div>
-                        )}
-
-                        {selectedZoneCategory && checkIsFull(type, selectedZoneCategory) && (
-                          <div className="absolute top-4 right-4 px-2 py-1 bg-amber-500 text-white text-[8px] font-black uppercase tracking-widest shadow-lg">
-                            PLNÁ KAPACITA (WAITLIST)
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="space-y-6">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Doplňky k místu (Extra)</h3>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {extrasList.map(extra => (
                       <button
@@ -442,8 +490,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                             [extra.id]: prev[extra.id] ? 0 : 1
                           }));
                         }}
-                        className={`p-4 rounded-none border-2 flex justify-between items-center transition-all ${extras[extra.id]
-                          ? 'border-lavrs-red bg-white'
+                        className={`p-6 rounded-none border-2 flex justify-between items-center transition-all ${extras[extra.id]
+                          ? 'border-lavrs-red bg-white shadow-md'
                           : 'border-gray-50 bg-white hover:border-gray-200'
                           }`}
                       >
@@ -454,19 +502,33 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                   </div>
                 </section>
 
-                <div className="flex gap-4 p-6 bg-blue-50/50 rounded-none border border-blue-100 relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-400/50" />
-                  <Info size={20} className="text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-blue-900 leading-relaxed font-medium">
-                    <strong>Důležité info:</strong> Konkrétní umístění v prostoru určuje organizátor s ohledem na zónu, skladbu značek a provoz akce.
+                <section className="space-y-4">
+                  <header>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Vlastní doplňků nebo poznámka</h3>
+                    <p className="text-sm text-gray-500">Pokud potřebujete něco, co v seznamu chybí, napište nám to zde.</p>
+                  </header>
+                  <textarea
+                    rows={4}
+                    value={extraNote}
+                    onChange={(e) => setExtraNote(e.target.value)}
+                    placeholder="Mám vlastní věšáky, potřebuji více místa pro převlékárnu..."
+                    className="w-full p-6 rounded-none bg-white border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red resize-none text-sm transition-all"
+                  />
+                </section>
+
+                <div className="flex gap-4 p-6 bg-lavrs-beige/50 rounded-none border border-lavrs-pink/20 relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-lavrs-red/30" />
+                  <Info size={20} className="text-lavrs-red shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-gray-600 leading-relaxed font-medium">
+                    <strong>Vybavení v ceně:</strong> Každé místo obsahuje základní balíček (stůl/židle) dle vybrané kategorie. Konkrétní seznam obdržíte v potvrzovacím e-mailu.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 3: Informace o značce */}
-          {step === 3 && (
+          {/* Step 4: Informace o značce */}
+          {step === 4 && (
             <div className="max-w-xl mx-auto py-20 px-8">
               <div className="space-y-10 animate-fadeIn">
                 {/* Brand Selection from History */}
@@ -521,47 +583,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                   </div>
 
 
-                  {/* Zone Category Selection */}
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Kategorie zóny *</label>
-                    <div className={`bg-lavrs-beige/50 border p-5 rounded-none ${isZoneCategoryMissing ? 'border-lavrs-red' : 'border-lavrs-pink/30'}`}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {[
-                          { id: ZoneCategory.SECONDHANDS, title: 'Secondhands', desc: 'Vintage a second-hand móda' },
-                          { id: ZoneCategory.CESKE_ZNACKY, title: 'České značky', desc: 'Lokální české značky' },
-                          { id: ZoneCategory.DESIGNERS, title: 'Designers', desc: 'Designérské kousky' },
-                          { id: ZoneCategory.BEAUTY, title: 'Beauty ZONE', desc: 'Kosmetika a péče' },
-                          { id: ZoneCategory.TATTOO, title: 'TATTOO', desc: 'Tetování a body art' }
-                        ].map((cat) => (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setSelectedZoneCategory(cat.id)}
-                            className={`p-5 rounded-none border-2 text-left transition-all ${selectedZoneCategory === cat.id
-                              ? 'border-lavrs-red bg-white shadow-md'
-                              : 'border-white/70 bg-white/80 hover:border-lavrs-pink'
-                              }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-bold text-lavrs-dark">{cat.title}</p>
-                              {selectedZoneCategory === cat.id && <Check size={16} className="text-lavrs-red" strokeWidth={3} />}
-                            </div>
-                            <p className="text-[11px] text-gray-600 mt-1">{cat.desc}</p>
-                            {selectedZone && checkIsFull(selectedZone, cat.id) && (
-                              <p className="mt-2 text-[8px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-1 py-0.5 inline-block">
-                                Velikost {selectedZone} plná
-                              </p>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {isZoneCategoryMissing && (
-                      <p className="text-[11px] text-red-600 font-semibold ml-1">
-                        Vyberte prosím kategorii zóny pro pokračování.
-                      </p>
-                    )}
-                  </div>
+                  {/* Category selection removed from here as it's now Step 2 */}
+
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -620,54 +643,32 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             </div>
           )}
 
-          {/* Step 4: Fakturační údaje */}
-          {step === 4 && (
-            <div className="max-w-xl mx-auto py-20 px-8">
-              <div className="space-y-8 animate-fadeIn">
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Fakturační jméno / Firma</label>
-                    <div className="relative">
-                      <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input value={billingName} onChange={(e) => setBillingName(e.target.value)} type="text" placeholder="Např. LAVRS s.r.o." className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-semibold transition-all" />
-                    </div>
-                  </div>
+          {/* Billing Info Step Removed - Moved to post-approval phase */}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">IČ</label>
-                      <input value={ic} onChange={(e) => setIc(e.target.value)} type="text" placeholder="12345678" className="w-full bg-white px-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">DIČ (pokud jste plátci)</label>
-                      <input value={dic} onChange={(e) => setDic(e.target.value)} type="text" placeholder="CZ12345678" className="w-full bg-white px-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Adresa sídla</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-6 top-8 text-gray-400" size={18} />
-                      <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} rows={2} placeholder="Ulice, č.p., PSČ a město" className="w-full bg-white pl-14 pr-6 py-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red resize-none transition-all" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">E-mail pro fakturaci</label>
-                    <div className="relative">
-                      <CreditCard className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} type="email" placeholder="faktury@vas-brand.cz" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Step 5: Souhlasy & Vizuály */}
           {step === 5 && (
             <div className="max-w-xl mx-auto py-20 px-8">
               <div className="space-y-10 animate-fadeIn">
+                {/* Price Confirmation Note */}
+                <div className="p-8 bg-lavrs-beige border-2 border-lavrs-red/10 rounded-none relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <CreditCard size={120} />
+                  </div>
+                  <h4 className="text-[10px] font-bold text-lavrs-red uppercase tracking-widest mb-4">REKAPITULACE</h4>
+                  <div className="space-y-2 relative z-10">
+                    <p className="text-sm text-gray-600 font-medium leading-relaxed">
+                      Pokud bude vaše přihláška schválena kurátorským týmem, bude vám zaslána výzva k platbě ve výši:
+                    </p>
+                    <p className="text-4xl font-black text-lavrs-dark">
+                      {calculateTotal().toLocaleString('cs-CZ')} Kč
+                    </p>
+                    <p className="text-[11px] text-gray-400 italic">
+                      (Základní balíček {selectedZoneCategory} + zvolené doplňky)
+                    </p>
+                  </div>
+                </div>
+
                 <section className="space-y-4 border-t border-gray-100 pt-10">
                   <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Závěrečné souhlasy</h4>
 
@@ -675,8 +676,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                     {[
                       { id: 'gdpr', label: 'Souhlasím se zpracováním osobních údajů (GDPR)', required: true, state: consentGDPR, setState: setConsentGDPR },
                       { id: 'org', label: 'Souhlasím se zasíláním organizačních informací k akci', required: true, state: consentOrg, setState: setConsentOrg },
-                      { id: 'storno', label: 'Souhlasím se STORNO podmínkami LAVRS Market', required: true, state: consentStorno, setState: setConsentStorno },
-                      { id: 'newsletter', label: 'Chci odebírat newsletter LAVRS Market (novinky, termíny)', required: false, state: consentNewsletter, setState: setConsentNewsletter }
+                      { id: 'storno', label: 'Souhlasím se STORNO podmínkami LAVRS market', required: true, state: consentStorno, setState: setConsentStorno },
+                      { id: 'newsletter', label: 'Chci odebírat newsletter LAVRS market (novinky, termíny)', required: false, state: consentNewsletter, setState: setConsentNewsletter }
                     ].map(consent => (
                       <label key={consent.id} className="flex items-start gap-4 cursor-pointer group">
                         <div className="relative mt-1 w-6 h-6 shrink-0">
@@ -755,10 +756,9 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               <button
                 onClick={step === totalSteps ? handleFinalSubmit : nextStep}
                 disabled={
-                  (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno)) ||
-                  (step !== totalSteps && isZoneCategoryMissing)
+                  (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
                 }
-                className={`px-12 py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl ${((step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno)) || (step !== totalSteps && isZoneCategoryMissing))
+                className={`px-12 py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl ${(step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-lavrs-dark text-white hover:bg-lavrs-red hover:translate-y-[-2px] active:translate-y-[0px]'
                   }`}

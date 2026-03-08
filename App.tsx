@@ -17,7 +17,9 @@ import AutomatedEmails from './components/AutomatedEmails';
 import BrandsList from './components/BrandsList';
 import EventLayoutManager from './components/EventLayoutManager';
 import MobileHeader from './components/MobileHeader';
-import { MOCK_EVENT_PLANS } from './constants';
+import BannerManager from './components/BannerManager';
+import CategoryManager from './components/CategoryManager';
+import { MOCK_EVENT_PLANS, INITIAL_BANNERS, INITIAL_CATEGORIES } from './constants';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('EXHIBITOR');
@@ -46,12 +48,22 @@ const App: React.FC = () => {
   // Shared Applications State
   const [applications, setApplications] = useState<Application[]>(MOCK_APPLICATIONS);
   const [eventPlans, setEventPlans] = useState<{ [key: string]: any }>(MOCK_EVENT_PLANS);
+  const [banners, setBanners] = useState(INITIAL_BANNERS);
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
 
   const handleUpdateEventPlan = (eventId: string, newPlan: any) => {
     setEventPlans(prev => ({
       ...prev,
       [eventId]: newPlan
     }));
+  };
+
+  const handleUpdateBanners = (newBanners: any) => {
+    setBanners(newBanners);
+  };
+
+  const handleUpdateCategories = (newCategories: any) => {
+    setCategories(newCategories);
   };
 
   const handleAddApplication = (newApp: Application) => {
@@ -126,6 +138,7 @@ const App: React.FC = () => {
                 onApply={(id) => { setSelectedEventId(id); setCurrentScreen('APPLY'); }}
                 onPayment={() => setCurrentScreen('PAYMENT')}
                 onNavigate={setCurrentScreen}
+                banners={banners}
               />
             ) : (
               <AdminDashboard
@@ -152,6 +165,7 @@ const App: React.FC = () => {
               }}
               onApply={handleAddApplication}
               eventPlan={eventPlans[selectedEventId]}
+              categories={categories}
             />
           )}
 
@@ -192,7 +206,33 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'PAYMENT' && (
-            <PaymentPage onBack={() => setCurrentScreen('DASHBOARD')} />
+            <PaymentPage 
+              onBack={() => setCurrentScreen('DASHBOARD')} 
+              initialBillingDetails={brandProfiles[0]}
+              onSaveBilling={(details) => {
+                setBrandProfiles(prev => {
+                  const updated = [...prev];
+                  if (updated.length > 0) {
+                    updated[0] = { ...updated[0], ...details };
+                  }
+                  return updated;
+                });
+              }}
+            />
+          )}
+
+          {currentScreen === 'BANNERS' && (
+            <BannerManager 
+              banners={banners} 
+              onUpdateBanners={handleUpdateBanners} 
+            />
+          )}
+
+          {currentScreen === 'CATEGORIES' && (
+            <CategoryManager 
+              categories={categories} 
+              onUpdateCategories={handleUpdateCategories} 
+            />
           )}
 
           {currentScreen === 'EVENT_PLAN' && selectedEventId && (
@@ -202,6 +242,7 @@ const App: React.FC = () => {
               applications={applications}
               initialPlan={eventPlans[selectedEventId]}
               onSavePlan={(newPlan) => handleUpdateEventPlan(selectedEventId, newPlan)}
+              categories={categories}
             />
           )}
         </div>

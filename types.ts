@@ -13,13 +13,14 @@ export enum SpotSize {
   L = 'L'
 }
 
-export enum ZoneCategory {
-  SECONDHANDS = 'Secondhands',
-  CESKE_ZNACKY = 'České značky',
-  DESIGNERS = 'Designers',
-  BEAUTY = 'Beauty ZONE',
-  TATTOO = 'TATTOO'
+export type ZoneCategory = string;
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
 }
+
 
 // Keep old ZoneType for backward compatibility
 export const ZoneType = SpotSize;
@@ -67,6 +68,7 @@ export interface Application {
   consentNewsletter: boolean;
 
   curatorNote?: string;
+  extraNote?: string;
   paymentDeadline?: string;
 }
 
@@ -101,10 +103,13 @@ export interface EventPlan {
   stands: Stand[];
   gridSize: { width: number; height: number };
   prices: {
-    [key in SpotSize]: string;
+    [key: string]: string;
   };
   equipment: {
-    [key in SpotSize]: string[];
+    [key: string]: string[];
+  };
+  categorySizes?: {
+    [key: string]: SpotSize;
   };
   extras: ExtraItem[];
 }
@@ -133,3 +138,12 @@ export interface BrandProfile {
   billingAddress?: string;
   billingEmail?: string;
 }
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  tag: string;
+}
+

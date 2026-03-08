@@ -1,18 +1,32 @@
 import React from 'react';
 import { Settings, Plus, Edit, Trash2, Calendar, MapPin, Users } from 'lucide-react';
-import { EVENTS } from '../constants';
+import { EVENTS, MOCK_EVENT_PLANS } from '../constants';
 
 interface EventsConfigProps {
     onManageEvent?: (eventId: string) => void;
 }
 
 const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
+    const getEventOccupancy = (eventId: string) => {
+        const plan = MOCK_EVENT_PLANS[eventId];
+        if (!plan) return 0;
+        
+        let totalCapacity = 0;
+        plan.zones.forEach((z: any) => {
+            totalCapacity += (z.capacities.S + z.capacities.M + z.capacities.L);
+        });
+        
+        const occupied = plan.stands.filter((s: any) => s.occupantId).length;
+        
+        return totalCapacity > 0 ? Math.round((occupied / totalCapacity) * 100) : 0;
+    };
+
     return (
         <div className="space-y-8">
             <header className="flex items-end justify-between">
                 <div>
                     <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-lavrs-dark">Správa Eventů</h2>
-                    <p className="text-gray-500">Vytváření a editace eventů LAVRS Market.</p>
+                    <p className="text-gray-500">Vytváření a editace eventů LAVRS market.</p>
                 </div>
                 <button className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all flex items-center gap-2 shadow-lg active:scale-95">
                     <Plus size={20} /> Vytvořit nový event
@@ -45,7 +59,7 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                         <Users size={14} className="text-lavrs-red" />
-                                        <span>Kapacita: 85%</span>
+                                        <span>Obsazenost: {getEventOccupancy(event.id)}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -64,24 +78,6 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
                         </div>
                     </div>
                 ))}
-            </div>
-
-            {/* Quick Stats */}
-            <div className="bg-white rounded-none border border-gray-100 shadow-sm p-8">
-                <h3 className="text-xl font-bold text-lavrs-dark mb-6">Statistiky eventů</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {[
-                        { label: 'Celkem eventů', value: EVENTS.length.toString() },
-                        { label: 'Aktivní eventy', value: EVENTS.filter(e => e.status === 'open').length.toString() },
-                        { label: 'Waitlist eventy', value: EVENTS.filter(e => e.status === 'closed').length.toString() },
-                        { label: 'Průměrná obsazenost', value: '87%' },
-                    ].map((stat, i) => (
-                        <div key={i} className="text-center">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{stat.label}</p>
-                            <h4 className="text-3xl font-extrabold tracking-tight text-lavrs-dark">{stat.value}</h4>
-                        </div>
-                    ))}
-                </div>
             </div>
         </div>
     );

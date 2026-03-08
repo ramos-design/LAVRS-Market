@@ -1,12 +1,48 @@
 
 import React from 'react';
 import { LayoutDashboard, FileText, CreditCard, User, CheckCircle2, XCircle, Clock, ExternalLink } from 'lucide-react';
-import { MarketEvent, ZoneType, Application, AppStatus } from './types';
+import { MarketEvent, ZoneType, Application, AppStatus, ZoneCategory, Banner, Category } from './types';
+
+export const INITIAL_CATEGORIES: Category[] = [
+  { id: 'Secondhands', name: 'Secondhands', description: 'Vintage a second-hand móda' },
+  { id: 'České značky', name: 'České značky', description: 'Lokální české značky' },
+  { id: 'Designers', name: 'Designers', description: 'Designérské kousky' },
+  { id: 'Beauty ZONE', name: 'Beauty ZONE', description: 'Kosmetika a péče' },
+  { id: 'TATTOO', name: 'TATTOO', description: 'Tetování a body art' },
+  { id: 'Reuse', name: 'Reuse zone', description: 'Udržitelná a kreativní tvorba' }
+];
+
+// ... existing code ...
+
+export const INITIAL_BANNERS: Banner[] = [
+  {
+    id: 'b1',
+    title: "Přípravy na Vánoce vrcholí",
+    subtitle: "Nezapomeňte si včas rezervovat své místo na Vánočním LAVRS marketu. Kapacity se rychle plní!",
+    image: "/media/1cde43c8-e02d-43da-aa4c-2c21532f5797.webp",
+    tag: "DŮLEŽITÉ"
+  },
+  {
+    id: 'b2',
+    title: "Nová lokace v Holešovicích",
+    subtitle: "Zářijový LAVRS market se přesouvá do úžasných prostor Garbe Holešovice. Máte se na co těšit.",
+    image: "/media/lavrs-market.webp",
+    tag: "NOVINKA"
+  },
+  {
+    id: 'b3',
+    title: "Workshop: Circular Fashion",
+    subtitle: "Chcete se dozvědět více o tom, jak lépe prezentovat svou udržitelnou značku? Sledujte náš newsletter.",
+    image: "/media/Lavrsmarket-2022-foto-Dominika-Hruba.jpg",
+    tag: "WORKSHOP"
+  }
+];
+
 
 export const EVENTS: MarketEvent[] = [
   {
     id: 'mini-1',
-    title: 'MINI LAVRS Market',
+    title: 'LAVRS market',
     date: '21. 03. 2026',
     location: 'Vnitroblock, Holešovice',
     status: 'open',
@@ -14,7 +50,7 @@ export const EVENTS: MarketEvent[] = [
   },
   {
     id: 'mini-2',
-    title: 'MINI LAVRS Market',
+    title: 'LAVRS market',
     date: '30. 05. 2026',
     location: 'Vnitroblock, Holešovice',
     status: 'open',
@@ -22,7 +58,7 @@ export const EVENTS: MarketEvent[] = [
   },
   {
     id: 'mini-3',
-    title: 'MINI LAVRS Market',
+    title: 'LAVRS market',
     date: '25. 07. 2026',
     location: 'Vnitroblock, Holešovice',
     status: 'open',
@@ -30,7 +66,7 @@ export const EVENTS: MarketEvent[] = [
   },
   {
     id: 'vianoce-mini-1',
-    title: 'Vánoční MINI LAVRS Market',
+    title: 'Vánoční LAVRS market',
     date: '28. 11. 2026',
     location: 'Radlická Kulturní Sportovna',
     status: 'closed',
@@ -38,7 +74,7 @@ export const EVENTS: MarketEvent[] = [
   },
   {
     id: 'lavrs-big-1',
-    title: 'LAVRS Market',
+    title: 'LAVRS market',
     date: '25.–26. 09. 2026',
     location: 'Garbe Holešovice',
     status: 'closed',
@@ -85,14 +121,28 @@ export const MOCK_EVENT_PLANS: { [key: string]: any } = {
       { id: 's4', x: 5, y: 5, size: 'L', zoneId: 'z2' }
     ],
     prices: {
-      S: '2.500 Kč',
-      M: '4.200 Kč',
-      L: '6.800 Kč'
+      'Secondhands': '2.500 Kč',
+      'České značky': '3.800 Kč',
+      'Designers': '4.200 Kč',
+      'Beauty ZONE': '3.500 Kč',
+      'TATTOO': '5.500 Kč',
+      'Reuse': '2.200 Kč'
     },
     equipment: {
-      S: ['1x Stůl', '1x Židle'],
-      M: ['1x Stojan na šaty', '1x Stůl', '2x Židle'],
-      L: ['2x Stojan na šaty', '2x Stůl', '2x Židle', 'Zrcadlo']
+      'Secondhands': ['1x Stojan na šaty (vlastní)', '1x Stůl', '1x Židle'],
+      'České značky': ['1x Stojan na šaty', '1x Stůl', '2x Židle'],
+      'Designers': ['1x Stojan na šaty', '1x Stůl', '2x Židle', 'Zrcadlo'],
+      'Beauty ZONE': ['1x Stůl', '2x Židle', 'Zrcadlo'],
+      'TATTOO': ['1x Stůl', '2x Židle', 'Podložka'],
+      'Reuse': ['1x Stůl', '2x Židle']
+    },
+    categorySizes: {
+      'Secondhands': 'Spot M',
+      'České značky': 'Spot S',
+      'Designers': 'Spot M',
+      'Beauty ZONE': 'Spot S',
+      'TATTOO': 'Spot L',
+      'Reuse': 'Spot M'
     },
     extras: [
       { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },

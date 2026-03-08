@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users, Image as ImageIcon, Tags } from 'lucide-react';
 import { ViewMode } from '../types';
 
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
@@ -22,14 +22,16 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate }) => {
     { id: 'CURATOR', label: 'Aktivní přihlášky', icon: Layers },
     { id: 'EVENTS_CONFIG', label: 'Správa Eventů', icon: Settings },
     { id: 'BRANDS', label: 'Seznam značek', icon: Users },
+    { id: 'CATEGORIES', label: 'Kategorie značek', icon: Tags },
     { id: 'PAYMENTS', label: 'Platby & Fakturace', icon: DollarSign },
+    { id: 'BANNERS', label: 'Správa bannerů', icon: ImageIcon },
     { id: 'EMAILS', label: 'Automatické emaily', icon: Mail },
   ];
 
   return (
     <aside className="hidden md:flex w-80 bg-lavrs-red flex-col py-10 px-8 shrink-0 h-screen sticky top-0 border-r border-white/5 shadow-2xl">
       <div className="mb-12 flex justify-center">
-        <img src={logo} alt="LAVRS Market" className="h-10 w-auto object-contain" />
+        <img src={logo} alt="LAVRS market" className="h-10 w-auto object-contain" />
       </div>
 
       <nav className="flex-1 space-y-4">
@@ -52,7 +54,17 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate }) => {
         })}
       </nav>
 
-      <div className="pt-6 border-t border-white/10 space-y-3">
+      {role === 'EXHIBITOR' && (
+        <div className="mt-auto mb-6 flex justify-center pointer-events-none select-none overflow-visible px-2 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <img 
+            src="/media/leopard.png" 
+            alt="Mascot" 
+            className="w-full max-w-[240px] h-auto object-contain" 
+          />
+        </div>
+      )}
+
+      <div className="pt-8 border-t border-white/10 space-y-4">
         <div className="grid grid-cols-1 gap-2">
           <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</a>
           <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</a>

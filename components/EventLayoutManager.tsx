@@ -5,9 +5,10 @@ import {
     ChevronLeft, LayoutDashboard, Info, Download,
     Search, Filter, Maximize2, Move, Save,
     Calendar, MapPin, Image as ImageIcon, Type, Camera,
-    XCircle, Clock
+    XCircle, Clock, CreditCard, X, BarChart3, TrendingUp, PieChart,
+    ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
-import { Application, MarketEvent, EventPlan, Zone, Stand, SpotSize, AppStatus, ZoneCategory } from '../types';
+import { MarketEvent, Zone, Stand, SpotSize, ZoneCategory, Application, AppStatus, EventPlan, Category } from '../types';
 import { EVENTS, MOCK_APPLICATIONS, MOCK_EVENT_PLANS, ZONE_DETAILS } from '../constants';
 
 interface EventLayoutManagerProps {
@@ -16,7 +17,8 @@ interface EventLayoutManagerProps {
     applications: Application[];
     onUpdateApplication?: (updatedApp: Application) => void;
     initialPlan?: EventPlan;
-    onSavePlan?: (plan: EventPlan) => void;
+    onSavePlan: (plan: EventPlan) => void;
+    categories: Category[];
 }
 
 const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
@@ -25,37 +27,56 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     applications: allApplications,
     onUpdateApplication,
     initialPlan,
-    onSavePlan
+    onSavePlan,
+    categories
 }) => {
     // Only show people who have PAID in the layout manager
     // People who are just APPROVED stay in the Curator (Review) module until paid
     const propApplications = allApplications.filter(app => app.status === AppStatus.PAID);
 
-    const event = EVENTS.find(e => e.id === eventId);
+    const currentEvent = EVENTS.find(e => e.id === eventId);
     const [plan, setPlan] = useState<EventPlan>(
         initialPlan || MOCK_EVENT_PLANS[eventId] || {
             eventId,
             gridSize: { width: 15, height: 10 },
             zones: [],
             stands: [],
-            prices: { S: '2.500 Kč', M: '4.200 Kč', L: '6.800 Kč' },
+            prices: { 
+                'Secondhands': '2.500 Kč',
+                'České značky': '3.800 Kč',
+                'Designers': '4.200 Kč',
+                'Beauty ZONE': '3.500 Kč',
+                'TATTOO': '5.500 Kč',
+                'Reuse': '2.200 Kč'
+            },
             equipment: {
-                S: ['1x Stůl', '1x Židle'],
-                M: ['1x Stojan na šaty', '1x Stůl', '2x Židle'],
-                L: ['2x Stojan na šaty', '2x Stůl', '2x Židle', 'Zrcadlo']
+                'Secondhands': ['1x Stojan na šaty (vlastní)', '1x Stůl', '1x Židle'],
+                'České značky': ['1x Stojan na šaty', '1x Stůl', '2x Židle'],
+                'Designers': ['1x Stojan na šaty', '1x Stůl', '2x Židle', 'Zrcadlo'],
+                'Beauty ZONE': ['1x Stůl', '2x Židle', 'Zrcadlo'],
+                'TATTOO': ['1x Stůl', '2x Židle', 'Podložka'],
+                'Reuse': ['1x Stůl', '2x Židle']
+            },
+            categorySizes: {
+                'Secondhands': 'Spot M',
+                'České značky': 'Spot S',
+                'Designers': 'Spot M',
+                'Beauty ZONE': 'Spot S',
+                'TATTOO': 'Spot L',
+                'Reuse': 'Spot M'
             },
             extras: []
         }
     );
 
-    const [activeTab, setActiveTab] = useState<'info' | 'layout' | 'pricing' | 'exhibitors'>('info');
+    const [activeTab, setActiveTab] = useState<'info' | 'layout' | 'pricing' | 'exhibitors' | 'stats'>('info');
     const [eventDetails, setEventDetails] = useState({
-        title: event?.title || '',
-        date: event?.date || '',
-        location: event?.location || '',
-        description: event?.description || 'LAVRS Market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
-        image: event?.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
-        status: event?.status || 'draft'
+        title: currentEvent?.title || '',
+        date: currentEvent?.date || '',
+        location: currentEvent?.location || '',
+        description: currentEvent?.description || 'LAVRS market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
+        image: currentEvent?.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
+        status: currentEvent?.status || 'draft'
     });
     const [selectedZoneId, setSelectedZoneId] = useState<string | null>(plan.zones[0]?.id || null);
     const [activeTool, setActiveTool] = useState<'select' | 'place-s' | 'place-m' | 'place-l' | 'erase'>('select');
@@ -63,6 +84,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     const [showExhibitorList, setShowExhibitorList] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [isSaved, setIsSaved] = useState(false);
+    const [exhibitorFilter, setExhibitorFilter] = useState<string>('ALL');
 
     const formatPriceInput = (value: string) => {
         // Remove everything except digits
@@ -159,7 +181,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
             id: `z-${Date.now()}`,
             name: 'Nová zóna',
             color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-            category: ZoneCategory.CESKE_ZNACKY,
+            category: categories[0]?.id || 'Secondhands',
             capacities: { S: 5, M: 5, L: 2 }
         };
         setPlan(prev => ({
@@ -195,13 +217,14 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     // Capacity monitoring
     const getCapacityInfo = (zoneId: string, size: SpotSize) => {
         const zone = plan.zones.find(z => z.id === zoneId);
-        if (!zone) return { used: 0, total: 0 };
+        if (!zone) return { used: 0, total: 0, placedStands: 0, free: 0 };
 
         const total = zone.capacities[size] || 0;
         const used = plan.stands.filter(s => s.zoneId === zoneId && s.size === size && s.occupantId).length;
         const placedStands = plan.stands.filter(s => s.zoneId === zoneId && s.size === size).length;
+        const free = Math.max(0, total - placedStands);
 
-        return { used, total, placedStands };
+        return { used, total, placedStands, free };
     };
 
     const renderGrid = () => {
@@ -271,7 +294,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-[10px] font-black uppercase tracking-widest bg-lavrs-dark text-white px-2 py-0.5">ADMIN</span>
-                            <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark">{event?.title}</h2>
+                            <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark">{currentEvent?.title}</h2>
                         </div>
                         <p className="text-gray-500 flex items-center gap-2">
                             <Map size={14} className="text-lavrs-red" />
@@ -325,6 +348,12 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                     className={`px-8 py-4 text-sm font-bold uppercase tracking-widest transition-all ${activeTab === 'exhibitors' ? 'text-lavrs-red border-b-2 border-lavrs-red bg-white' : 'text-gray-400 hover:text-lavrs-dark'}`}
                 >
                     Seznam vystavovatelů
+                </button>
+                <button
+                    onClick={() => setActiveTab('stats')}
+                    className={`px-8 py-4 text-sm font-bold uppercase tracking-widest transition-all ${activeTab === 'stats' ? 'text-lavrs-red border-b-2 border-lavrs-red bg-white' : 'text-gray-400 hover:text-lavrs-dark'}`}
+                >
+                    Statistiky
                 </button>
             </div>
 
@@ -495,85 +524,225 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     ))}
                                 </div>
 
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase">Aktivní zóna: {getZone(selectedZoneId || '')?.name || 'Vyberte zónu'}</p>
-                                        {selectedZoneId && (
-                                            <button
-                                                onClick={() => deleteZone(selectedZoneId)}
-                                                className="text-gray-400 hover:text-lavrs-red"
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        )}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center bg-gray-50/50 p-2 border border-gray-100">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                            {selectedZoneId ? `Editace: ${getZone(selectedZoneId)?.name}` : 'Správa zón'}
+                                        </p>
+                                        <button
+                                            onClick={addZone}
+                                            className="text-lavrs-red hover:bg-lavrs-red/10 p-1.5 transition-colors"
+                                            title="Přidat novou zónu"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
                                     </div>
 
                                     {selectedZoneId && (
-                                        <input
-                                            type="text"
-                                            className="w-full text-xs font-bold border-gray-100 border p-2 mb-2 focus:border-lavrs-red outline-none"
-                                            value={getZone(selectedZoneId)?.name}
-                                            onChange={(e) => updateZone(selectedZoneId, { name: e.target.value })}
-                                            placeholder="Název zóny"
-                                        />
+                                        <div className="bg-white border-2 border-lavrs-dark/5 p-4 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {['#EF4444', '#8B5CF6', '#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#6B7280', '#000000'].map(c => (
+                                                    <button
+                                                        key={c}
+                                                        onClick={() => updateZone(selectedZoneId, { color: c })}
+                                                        className={`h-6 w-full transition-transform active:scale-90 ${getZone(selectedZoneId)?.color === c ? 'ring-2 ring-offset-1 ring-lavrs-dark scale-110 z-10' : 'opacity-70 hover:opacity-100'}`}
+                                                        style={{ backgroundColor: c }}
+                                                    />
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="space-y-3 pt-2">
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Název sálu / zóny</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full text-sm font-bold border-gray-100 border-b-2 p-2 focus:border-lavrs-red outline-none bg-gray-50/30 transition-all"
+                                                        value={getZone(selectedZoneId)?.name}
+                                                        onChange={(e) => updateZone(selectedZoneId, { name: e.target.value })}
+                                                        placeholder="Např. Hlavní sál"
+                                                    />
+                                                </div>
+                                                
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Kategorie značek</label>
+                                                    <select
+                                                        className="w-full text-[10px] font-black uppercase border-gray-100 border-b-2 p-2 focus:border-lavrs-red outline-none bg-gray-50/30 tracking-widest cursor-pointer"
+                                                        value={getZone(selectedZoneId)?.category}
+                                                        onChange={(e) => updateZone(selectedZoneId, { category: e.target.value as ZoneCategory })}
+                                                    >
+                                                        {categories.map(cat => (
+                                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <button 
+                                                onClick={() => deleteZone(selectedZoneId)}
+                                                className="w-full py-2 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
+                                            >
+                                                <Trash2 size={12} /> Odstranit zónu
+                                            </button>
+                                        </div>
                                     )}
-                                    <div className="space-y-1">
+
+                                    <div className="grid grid-cols-1 gap-2">
                                         {plan.zones.map(zone => (
                                             <button
                                                 key={zone.id}
                                                 onClick={() => setSelectedZoneId(zone.id)}
                                                 className={`
-                          w-full text-left p-3 border flex items-center justify-between group transition-all
-                          ${selectedZoneId === zone.id ? 'border-lavrs-red bg-lavrs-beige/20' : 'border-gray-50 bg-gray-50'}
-                        `}
+                                                    group relative w-full text-left p-4 border-l-4 transition-all overflow-hidden
+                                                    ${selectedZoneId === zone.id 
+                                                        ? 'bg-white shadow-md border-lavrs-red scale-[1.02] z-10' 
+                                                        : 'bg-gray-50/50 border-gray-100 hover:bg-white hover:border-gray-300'}
+                                                `}
+                                                style={{ borderLeftColor: zone.color }}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-3 h-3" style={{ backgroundColor: zone.color }} />
-                                                    <span className="text-xs font-bold text-lavrs-dark">{zone.name}</span>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-lavrs-dark leading-none mb-1">{zone.name}</h4>
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{zone.category}</p>
+                                                    </div>
+                                                    <Layers size={14} className={selectedZoneId === zone.id ? 'text-lavrs-red' : 'text-gray-300'} />
                                                 </div>
-                                                <Layers size={14} className={selectedZoneId === zone.id ? 'text-lavrs-red' : 'text-gray-300'} />
+                                                
+                                                {/* Mini Stats Bar */}
+                                                <div className="mt-3 flex gap-1 h-1 w-full bg-gray-200">
+                                                    {[SpotSize.S, SpotSize.M, SpotSize.L].map(s => {
+                                                        const info = getCapacityInfo(zone.id, s);
+                                                        const pct = info.total > 0 ? (info.placedStands / info.total) * 100 : 0;
+                                                        return (
+                                                            <div 
+                                                                key={s} 
+                                                                className="h-full bg-lavrs-red/30 transition-all" 
+                                                                style={{ width: `${pct/3}%`, backgroundColor: pct >= 100 ? '#EF4444' : zone.color }} 
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
                                             </button>
                                         ))}
-                                        <button
-                                            onClick={addZone}
-                                            className="w-full text-left p-3 border border-dashed border-gray-200 text-gray-400 hover:text-lavrs-dark hover:border-lavrs-dark transition-all text-xs font-bold flex items-center gap-2"
-                                        >
-                                            <Plus size={14} /> Přidat zónu
-                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Capacity and Stats */}
-                            <div className="bg-lavrs-dark text-white p-6 space-y-6 shadow-xl">
-                                <h3 className="text-xs font-black uppercase tracking-widest border-b border-white/10 pb-3 flex items-center gap-2">
-                                    <Users size={14} /> Obsazenost zón
-                                </h3>
-
-                                <div className="space-y-4">
+                            {/* Capacity and Stats - Black Box Redesign */}
+                            <div className="bg-lavrs-dark text-white p-6 space-y-6 shadow-2xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                    <BarChart3 size={80} />
+                                </div>
+                                
+                                <header className="flex justify-between items-center border-b border-white/10 pb-4">
+                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 bg-lavrs-red animate-pulse" />
+                                        Kapacita a obsazenost
+                                    </h3>
+                                    <div className="text-[10px] font-bold text-white/40 uppercase">Live Sync</div>
+                                </header>
+    
+                                <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                     {plan.zones.map(zone => (
-                                        <div key={zone.id} className="space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-xs font-bold">{zone.name}</span>
-                                                <span className="text-[10px] text-white/50">{zone.category}</span>
+                                        <div key={zone.id} className="group/zone bg-white/5 border border-white/10 overflow-hidden transition-all hover:border-white/20">
+                                            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                                                <div>
+                                                    <h4 className="text-xs font-bold flex items-center gap-2">
+                                                        <div className="w-2 h-2" style={{ backgroundColor: zone.color }} />
+                                                        {zone.name}
+                                                    </h4>
+                                                    <p className="text-[9px] font-black text-white/30 truncate uppercase mt-0.5 tracking-wider">{zone.category}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[9px] font-black text-lavrs-red uppercase tracking-widest">
+                                                        {(() => {
+                                                            const s = getCapacityInfo(zone.id, SpotSize.S);
+                                                            const m = getCapacityInfo(zone.id, SpotSize.M);
+                                                            const l = getCapacityInfo(zone.id, SpotSize.L);
+                                                            const free = s.free + m.free + l.free;
+                                                            return free === 0 ? 'Plně obsazeno' : `${free} VOLNÝCH MÍST`;
+                                                        })()}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                {(['S', 'M', 'L'] as SpotSize[]).map(size => {
-                                                    const { used, total, placedStands } = getCapacityInfo(zone.id, size);
-                                                    const percent = total > 0 ? (placedStands / total) * 100 : 0;
-                                                    return (
-                                                        <div key={size} className="bg-white/5 border border-white/10 p-2 text-center">
-                                                            <p className="text-[8px] font-black text-white/40 mb-1">{size}</p>
-                                                            <p className="text-xs font-bold">{placedStands}<span className="text-white/30 ml-0.5">/ {total}</span></p>
-                                                            <div className="mt-1 w-full h-1 bg-white/10">
-                                                                <div className="h-full bg-lavrs-red" style={{ width: `${Math.min(percent, 100)}%` }} />
+                                            
+                                            <div className="p-4 pt-3">
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    {[SpotSize.S, SpotSize.M, SpotSize.L].map(size => {
+                                                        const { placedStands, total, free } = getCapacityInfo(zone.id, size);
+                                                        const isLow = free <= 1 && total > 0;
+                                                        
+                                                        return (
+                                                            <div key={size} className="space-y-2">
+                                                                <div className="flex justify-between items-end px-1">
+                                                                    <span className="text-[9px] font-black text-white/20">{size}</span>
+                                                                    <span className={`text-[10px] font-bold ${isLow ? 'text-lavrs-red' : 'text-white/60'}`}>
+                                                                        {placedStands} /
+                                                                    </span>
+                                                                </div>
+                                                                
+                                                                <div className="relative group/input">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        className="w-full bg-white/5 border border-white/10 px-2 py-1.5 text-xs font-black text-center outline-none focus:bg-white/10 focus:border-lavrs-red transition-all"
+                                                                        value={zone.capacities[size]}
+                                                                        onChange={(e) => {
+                                                                            const val = parseInt(e.target.value) || 0;
+                                                                            const newCaps = { ...zone.capacities, [size]: val };
+                                                                            updateZone(zone.id, { capacities: newCaps });
+                                                                        }}
+                                                                    />
+                                                                    <div className="absolute -bottom-2 -left-1 opacity-0 group-focus-within/input:opacity-100 transition-opacity">
+                                                                        <div className="text-[7px] bg-lavrs-red text-white px-1 font-black">EDIT LIMIT</div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex justify-between items-center px-1">
+                                                                    <div className="flex-1 h-1 bg-white/5 overflow-hidden mr-2">
+                                                                        <div 
+                                                                            className="h-full bg-lavrs-red transition-all duration-500" 
+                                                                            style={{ width: `${total > 0 ? (placedStands/total)*100 : 0}%` }} 
+                                                                        />
+                                                                    </div>
+                                                                    <span className={`text-[8px] font-black ${free > 0 ? 'text-green-400' : 'text-white/20'}`}>
+                                                                        {free} FR
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+
+                                <div className="pt-2">
+                                    <div className="bg-lavrs-red/10 border border-lavrs-red/20 p-4 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-[10px] font-black text-lavrs-red uppercase tracking-widest">Celkový přehled</p>
+                                            <TrendingUp size={14} className="text-lavrs-red" />
+                                        </div>
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <p className="text-2xl font-black">{plan.stands.length}<span className="text-white/20 text-sm ml-2">/ {
+                                                    plan.zones.reduce((acc, z) => acc + z.capacities.S + z.capacities.M + z.capacities.L, 0)
+                                                }</span></p>
+                                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Stánků na mapě / Kapacita</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-green-400">
+                                                    {plan.zones.reduce((acc, z) => {
+                                                        const s = getCapacityInfo(z.id, SpotSize.S);
+                                                        const m = getCapacityInfo(z.id, SpotSize.M);
+                                                        const l = getCapacityInfo(z.id, SpotSize.L);
+                                                        return acc + s.free + m.free + l.free;
+                                                    }, 0)}
+                                                </p>
+                                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Volných slotů</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -784,6 +953,23 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                 </button>
                             </div>
                         </div>
+                        <div className="px-8 py-4 border-b border-gray-50 flex flex-wrap gap-2 bg-gray-50/30">
+                            <button
+                                onClick={() => setExhibitorFilter('ALL')}
+                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${exhibitorFilter === 'ALL' ? 'border-lavrs-red text-lavrs-red bg-white shadow-sm' : 'border-transparent text-gray-400 hover:text-lavrs-dark'}`}
+                            >
+                                Všechny značky
+                            </button>
+                            {categories.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setExhibitorFilter(cat.id)}
+                                    className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${exhibitorFilter === cat.id ? 'border-lavrs-red text-lavrs-red bg-white shadow-sm' : 'border-transparent text-gray-400 hover:text-lavrs-dark'}`}
+                                >
+                                    {cat.name}
+                                </button>
+                            ))}
+                        </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
@@ -791,15 +977,15 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
                                         <th className="px-8 py-4">Vystavovatel</th>
                                         <th className="px-8 py-4">Kategorie</th>
-                                        <th className="px-8 py-4">Požadovaný Spot</th>
-                                        <th className="px-8 py-4">Reálný Spot</th>
+                                        <th className="px-8 py-4">Velikost spotu</th>
                                         <th className="px-8 py-4">Stav Umístění</th>
-                                        <th className="px-8 py-4">Stav Platby</th>
                                         <th className="px-8 py-4 text-right">Akce</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {propApplications.map(app => {
+                                    {propApplications
+                                        .filter(app => exhibitorFilter === 'ALL' || app.zoneCategory === exhibitorFilter)
+                                        .map(app => {
                                         const stand = plan.stands.find(s => s.occupantId === app.id);
                                         return (
                                             <tr key={app.id} className="group hover:bg-lavrs-beige/10 transition-colors">
@@ -819,18 +1005,18 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                         {app.zoneCategory}
                                                     </span>
                                                 </td>
-                                                <td className="px-8 py-6 font-black text-sm text-lavrs-dark">{app.zone}</td>
                                                 <td className="px-8 py-6">
-                                                    {stand ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-black text-sm text-lavrs-red">{stand.size}</span>
-                                                            <span className="text-[10px] items-center gap-1 font-bold text-gray-400 px-1.5 py-0.5 border border-gray-100">
-                                                                {getZone(stand.zoneId)?.name}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-300 italic text-xs">—</span>
-                                                    )}
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-sm text-lavrs-dark">{app.zone}</span>
+                                                        {stand && (
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <span className="text-[9px] font-bold text-lavrs-red uppercase bg-lavrs-pink px-1">REAL: {stand.size}</span>
+                                                                <span className="text-[9px] font-medium text-gray-400 truncate max-w-[80px]">
+                                                                    ({getZone(stand.zoneId)?.name})
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     {stand ? (
@@ -843,12 +1029,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-8 py-6">
-                                                    <span className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider ${app.status === AppStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                                                        }`}>
-                                                        {app.status === AppStatus.PAID ? 'Zaplaceno' : 'Čeká na platbu'}
-                                                    </span>
-                                                </td>
+
                                                 <td className="px-8 py-6 text-right">
                                                     <button className="p-2 text-gray-400 hover:text-lavrs-dark">
                                                         <Info size={16} />
@@ -879,79 +1060,124 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
 
             {activeTab === 'pricing' && (
                 <div className="bg-white border border-gray-100 p-12 space-y-12 shadow-sm animate-fadeIn min-h-[600px]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    <div className="grid grid-cols-1 gap-12">
                         {/* Base Prices */}
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             <h3 className="text-xl font-black uppercase tracking-tight text-lavrs-dark border-b-2 border-lavrs-red pb-4 flex items-center gap-3">
-                                <Maximize2 size={24} className="text-lavrs-red" /> Základní ceník ploch
+                                <Maximize2 size={24} className="text-lavrs-red" /> Ceník a vybavení dle kategorií
                             </h3>
-                            <div className="space-y-4">
-                                {(['S', 'M', 'L'] as SpotSize[]).map(size => (
-                                    <div key={size} className="flex items-center gap-4 group">
-                                        <div className="w-16 h-16 bg-lavrs-dark text-white flex flex-col items-center justify-center font-black">
-                                            <span className="text-[10px] opacity-40 uppercase">VELIKOST</span>
-                                            {size}
-                                        </div>
-                                        <div className="flex-1 space-y-3">
-                                            <div>
-                                                <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">CENA ZA PLOCHU</label>
-                                                <input
-                                                    type="text"
-                                                    value={plan.prices[size]}
-                                                    onChange={(e) => {
-                                                        const formatted = formatPriceInput(e.target.value);
-                                                        setPlan(prev => ({
-                                                            ...prev,
-                                                            prices: { ...prev.prices, [size]: formatted || e.target.value }
-                                                        }));
-                                                    }}
-                                                    className="w-full p-4 border border-gray-100 focus:border-lavrs-red outline-none font-bold text-lg bg-gray-50 group-hover:bg-white transition-all shadow-inner"
-                                                />
+                            <div className="grid grid-cols-1 gap-8">
+                                {categories.map(cat => {
+                                    const category = cat.id;
+                                    return (
+                                        <div key={category} className="group bg-gray-50/50 hover:bg-white border border-gray-100 p-8 transition-all hover:shadow-xl relative overflow-hidden">
+                                            {/* Category Tag Decoration */}
+                                            <div className="absolute top-0 right-0 py-1 px-4 bg-lavrs-dark text-[9px] font-black text-white uppercase tracking-widest">
+                                                ID: {category}
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] font-black uppercase text-gray-400 block mb-2">VYBAVENÍ V CENĚ</label>
-                                                <div className="flex flex-wrap gap-2 mb-2">
-                                                    {(plan.equipment?.[size] || []).map((item, idx) => (
-                                                        <span key={idx} className="bg-lavrs-pink/20 text-lavrs-dark px-2 py-1 text-[10px] font-bold flex items-center gap-2 group/item">
-                                                            {item}
-                                                            <button
-                                                                onClick={() => {
-                                                                    const newEquip = [...(plan.equipment?.[size] || [])];
-                                                                    newEquip.splice(idx, 1);
+
+                                            <div className="flex flex-col md:flex-row gap-8">
+                                                {/* Left side: Category Title & Description */}
+                                                <div className="md:w-1/3 space-y-2">
+                                                    <h4 className="text-2xl font-black text-lavrs-dark leading-tight">{cat.name}</h4>
+                                                    <p className="text-xs text-gray-400 font-medium italic">"{cat.description}"</p>
+                                                </div>
+
+                                                {/* Right side: Price & Spot Size Inputs */}
+                                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <label className="text-[10px] font-black uppercase text-gray-400 block mb-2 tracking-widest">Cena za balíček</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="text"
+                                                                value={plan.prices[category] || ''}
+                                                                onChange={(e) => {
+                                                                    const formatted = formatPriceInput(e.target.value);
                                                                     setPlan(prev => ({
                                                                         ...prev,
-                                                                        equipment: { ...prev.equipment, [size]: newEquip }
+                                                                        prices: { ...prev.prices, [category]: formatted || e.target.value }
                                                                     }));
                                                                 }}
-                                                                className="hover:text-lavrs-red"
-                                                            >
-                                                                <Trash2 size={10} />
-                                                            </button>
-                                                        </span>
-                                                    ))}
+                                                                className="w-full p-4 border border-gray-200 focus:border-lavrs-red outline-none font-bold text-lg bg-white transition-all shadow-sm"
+                                                                placeholder="Napr. 2.500 Kč"
+                                                            />
+                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                                <CreditCard size={18} className="text-gray-200" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="text-[10px] font-black uppercase text-gray-400 block mb-2 tracking-widest">Velikost a info o spotu</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="text"
+                                                                value={plan.categorySizes?.[category] || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setPlan(prev => ({
+                                                                        ...prev,
+                                                                        categorySizes: { ...prev.categorySizes, [category]: val }
+                                                                    }));
+                                                                }}
+                                                                className="w-full p-4 border border-gray-200 focus:border-lavrs-red outline-none font-black text-[14px] bg-white uppercase transition-all shadow-sm"
+                                                                placeholder="Napr. Spot M"
+                                                            />
+                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                                <Maximize2 size={18} className="text-gray-200" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Equipment Section (Full Width across inputs) */}
+                                                    <div className="sm:col-span-2 pt-4">
+                                                        <label className="text-[10px] font-black uppercase text-gray-400 block mb-3 tracking-widest">Vybavení v ceně</label>
+                                                        <div className="flex flex-wrap gap-2 mb-4">
+                                                            {(plan.equipment?.[category] || []).map((item, idx) => (
+                                                                <span key={idx} className="bg-white border border-gray-100 text-lavrs-dark px-3 py-1.5 text-[10px] font-black uppercase tracking-wider flex items-center gap-3 group/item hover:border-lavrs-red transition-colors shadow-sm">
+                                                                    {item}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const newEquip = [...(plan.equipment?.[category] || [])];
+                                                                            newEquip.splice(idx, 1);
+                                                                            setPlan(prev => ({
+                                                                                ...prev,
+                                                                                equipment: { ...prev.equipment, [category]: newEquip }
+                                                                            }));
+                                                                        }}
+                                                                        className="text-gray-300 hover:text-lavrs-red transition-colors"
+                                                                    >
+                                                                        <X size={12} strokeWidth={3} />
+                                                                    </button>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="+ Přidat vybavení a stisknout Enter"
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                                                        const val = e.currentTarget.value.trim();
+                                                                        const current = plan.equipment?.[category] || [];
+                                                                        if (!current.includes(val)) {
+                                                                            setPlan(prev => ({
+                                                                                ...prev,
+                                                                                equipment: { ...prev.equipment, [category]: [...current, val] }
+                                                                            }));
+                                                                        }
+                                                                        e.currentTarget.value = '';
+                                                                    }
+                                                                }}
+                                                                className="w-full p-3 text-xs border-b-2 border-gray-100 outline-none focus:border-lavrs-red bg-transparent font-medium italic"
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <input
-                                                    type="text"
-                                                    placeholder="+ Přidat vybavení (Enter)"
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                                                            const val = e.currentTarget.value.trim();
-                                                            const current = plan.equipment?.[size] || [];
-                                                            if (!current.includes(val)) {
-                                                                setPlan(prev => ({
-                                                                    ...prev,
-                                                                    equipment: { ...prev.equipment, [size]: [...current, val] }
-                                                                }));
-                                                            }
-                                                            e.currentTarget.value = '';
-                                                        }
-                                                    }}
-                                                    className="w-full p-2 text-xs border-b border-gray-100 outline-none focus:border-lavrs-red bg-transparent"
-                                                />
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -1033,10 +1259,163 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                 <h4 className="font-bold text-lavrs-dark text-lg mb-2">Jak funguje ceník?</h4>
                                 <p className="text-gray-600 leading-relaxed">
                                     Ceny, které zde nastavíte, se <strong>automaticky promítnou do přihlašovacího formuláře</strong> pro vystavovatele u tohoto konkrétního eventu.
-                                    Vystavovatel při výběru plochy „S, M, L“ uvidí vaši aktuální cenu a stejně tak se mu nabídne seznam doplňkového vybavení, které zde definujete.
+                                    Vystavovatel po volbě své kategorie uvidí vaši aktuální cenu a stejně tak se mu nabídne seznam doplňkového vybavení, které zde definujete.
+                                    Každé kategorii odpovídá jedna pevně daná konfigurace.
                                     Po uložení se změny ihned projeví u nových přihlášek.
                                 </p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'stats' && (
+                <div className="bg-white border border-gray-100 p-8 md:p-12 space-y-12 shadow-sm animate-fadeIn min-h-[600px]">
+                    {/* Top Overview Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="bg-lavrs-dark p-6 text-white group hover:scale-[1.02] transition-all">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-white/10 text-white"><CreditCard size={20} /></div>
+                                <div className="flex items-center gap-1 text-[10px] font-black text-green-400">
+                                    <TrendingUp size={12} /> +12%
+                                </div>
+                            </div>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">CELKEM VYBRÁNO</h4>
+                            <p className="text-2xl font-black">
+                                {new Intl.NumberFormat('cs-CZ').format(
+                                    propApplications.reduce((acc, app) => acc + parseInt(plan.prices[app.zoneCategory]?.replace(/[^\d]/g, '') || '0'), 0)
+                                )} Kč
+                            </p>
+                            <p className="text-[9px] text-white/30 mt-2 italic font-medium">Pouze ze základního nájemného</p>
+                        </div>
+
+                        <div className="bg-gray-50 p-6 border border-gray-100 group hover:border-lavrs-red transition-all">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-lavrs-red text-white"><Users size={20} /></div>
+                            </div>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">POČET ZNAČEK</h4>
+                            <p className="text-2xl font-black text-lavrs-dark">{propApplications.length}</p>
+                            <p className="text-[9px] text-gray-400 mt-2 italic font-medium">Schválení a zaplacení vystavovatelé</p>
+                        </div>
+
+                        <div className="bg-gray-50 p-6 border border-gray-100 group hover:border-lavrs-red transition-all">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-amber-500 text-white"><PieChart size={20} /></div>
+                            </div>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">OBSAZENOST</h4>
+                            <p className="text-2xl font-black text-lavrs-dark">
+                                {Math.round((plan.stands.filter(s => s.occupantId).length / (plan.zones.reduce((sum, z) => sum + z.capacities.S + z.capacities.M + z.capacities.L, 0) || 1)) * 100)}%
+                            </p>
+                            <div className="mt-2 w-full h-1 bg-gray-200">
+                                <div className="h-full bg-amber-500" style={{ width: `${Math.min((plan.stands.filter(s => s.occupantId).length / (plan.zones.reduce((sum, z) => sum + z.capacities.S + z.capacities.M + z.capacities.L, 0) || 1)) * 100, 100)}%` }} />
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-6 border border-gray-100 group hover:border-lavrs-red transition-all">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-lavrs-red text-white"><Map size={20} /></div>
+                            </div>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">VOLNÉ KAPACITY</h4>
+                            <p className="text-2xl font-black text-lavrs-dark">
+                                {plan.zones.reduce((sum, z) => sum + z.capacities.S + z.capacities.M + z.capacities.L, 0) - plan.stands.filter(s => s.occupantId).length}
+                            </p>
+                            <p className="text-[9px] text-gray-400 mt-2 italic font-medium">Zbývající místa k prodeji</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        {/* Categories Breakdowns */}
+                        <div className="space-y-6">
+                            <h3 className="text-lg font-black uppercase tracking-tight text-lavrs-dark border-b-2 border-lavrs-red pb-4 flex items-center gap-3">
+                                <BarChart3 size={20} className="text-lavrs-red" /> Zastoupení kategorií
+                            </h3>
+                            <div className="space-y-4">
+                                {categories.map(cat => {
+                                    const count = propApplications.filter(app => app.zoneCategory === cat.id).length;
+                                    const total = propApplications.length || 1;
+                                    const percent = (count / total) * 100;
+                                    return (
+                                        <div key={cat.id} className="space-y-1.5">
+                                            <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
+                                                <span className="text-lavrs-dark">{cat.name}</span>
+                                                <span className="text-gray-400">{count} značek ({Math.round(percent)}%)</span>
+                                            </div>
+                                            <div className="w-full h-2 bg-gray-50 border border-gray-100 flex overflow-hidden">
+                                                <div className="h-full bg-lavrs-dark transition-all duration-500" style={{ width: `${percent}%` }} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Capacity Per Zone Detail */}
+                        <div className="space-y-6">
+                            <h3 className="text-lg font-black uppercase tracking-tight text-lavrs-dark border-b-2 border-lavrs-red pb-4 flex items-center gap-3">
+                                <Maximize2 size={20} className="text-lavrs-red" /> Kapacity a umístění dle zón
+                            </h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                {plan.zones.map(zone => {
+                                    const totalZoneCapacity = zone.capacities.S + zone.capacities.M + zone.capacities.L;
+                                    const occupiedStands = plan.stands.filter(s => s.zoneId === zone.id && s.occupantId).length;
+                                    const occupancyRate = (occupiedStands / (totalZoneCapacity || 1)) * 100;
+                                    
+                                    return (
+                                        <div key={zone.id} className="p-4 border border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className="w-2 h-10 flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                                                <div className="truncate">
+                                                    <h4 className="font-black text-xs text-lavrs-dark uppercase">{zone.name}</h4>
+                                                    <p className="text-[10px] text-gray-400 font-medium italic truncate">{zone.category}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-6">
+                                                <div className="text-center">
+                                                    <p className="text-[10px] font-black text-gray-400 leading-none mb-1">OBSAZENO</p>
+                                                    <p className="text-lg font-black text-lavrs-dark leading-none">{occupiedStands}<span className="text-xs text-gray-300 ml-1">/ {totalZoneCapacity}</span></p>
+                                                </div>
+                                                <div className="w-16 h-16 relative">
+                                                    <svg className="w-full h-full transform -rotate-90">
+                                                        <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-200" />
+                                                        <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" 
+                                                            strokeDasharray={175.9}
+                                                            strokeDashoffset={175.9 - (175.9 * Math.min(occupancyRate, 100)) / 100}
+                                                            className="text-lavrs-red" />
+                                                    </svg>
+                                                    <div className="absolute inset-0 flex items-center justify-center font-black text-[10px]">
+                                                        {Math.round(occupancyRate)}%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Help/Context Box */}
+                    <div className="bg-lavrs-dark p-8 text-white flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+                        <div className="flex-1 space-y-2 text-center md:text-left">
+                            <h4 className="text-xl font-black uppercase tracking-tight flex items-center gap-3 justify-center md:justify-start">
+                                <TrendingUp className="text-lavrs-red" /> Finanční predikce
+                            </h4>
+                            <p className="text-sm text-white/50 leading-relaxed max-w-2xl">
+                                Tyto statistiky vycházejí z <strong>aktuálně schválených a zaplacených přihlášek</strong> a vašeho nastavení ceníku.
+                                Příjmy nezahrnují doplňkové vybavení a extra položky, pokud nebyly přímo součástí základního balíčku.
+                            </p>
+                        </div>
+                        <div className="p-4 border border-white/10 bg-white/5 backdrop-blur-sm text-center min-w-[200px]">
+                            <p className="text-[10px] font-black text-white/40 uppercase mb-2">POTENCIÁL AKCE</p>
+                            <p className="text-3xl font-black text-white">
+                                {new Intl.NumberFormat('cs-CZ').format(
+                                    plan.zones.reduce((sum, z) => {
+                                        const catPrice = parseInt(plan.prices[z.category]?.replace(/[^\d]/g, '') || '0');
+                                        return sum + (catPrice * (z.capacities.S + z.capacities.M + z.capacities.L));
+                                    }, 0)
+                                )} Kč
+                            </p>
+                            <p className="text-[9px] text-lavrs-red font-black mt-2 uppercase">Při 100% obsazenosti</p>
                         </div>
                     </div>
                 </div>

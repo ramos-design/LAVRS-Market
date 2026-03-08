@@ -46,16 +46,18 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   const getZoneCategoryLabel = (category?: ZoneCategory) => {
     if (!category) return 'Neuvedeno';
     switch (category) {
-      case ZoneCategory.SECONDHANDS:
+      case 'Secondhands':
         return 'Secondhands – Vintage a second-hand móda';
-      case ZoneCategory.CESKE_ZNACKY:
+      case 'České značky':
         return 'České značky – Lokální české značky';
-      case ZoneCategory.DESIGNERS:
+      case 'Designers':
         return 'Designers – Designérské kousky';
-      case ZoneCategory.BEAUTY:
+      case 'Beauty ZONE':
         return 'Beauty ZONE – Kosmetika a péče';
-      case ZoneCategory.TATTOO:
+      case 'TATTOO':
         return 'TATTOO – Tetování a body art';
+      case 'Reuse':
+        return 'Reuse zone – Udržitelná a kreativní tvorba';
       default:
         return category;
     }

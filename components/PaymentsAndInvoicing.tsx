@@ -3,11 +3,11 @@ import { DollarSign, Search, Download, Filter, CheckCircle, Clock, AlertCircle }
 
 const PaymentsAndInvoicing: React.FC = () => {
     const payments = [
-        { id: 'PAY-001', brand: 'Vintage Soul', event: 'MINI LAVRS Market', amount: '4.200 Kč', status: 'paid', date: '2026-02-01', invoice: 'INV-2026-001' },
-        { id: 'PAY-002', brand: 'Retro Vibes', event: 'MINI LAVRS Market', amount: '4.200 Kč', status: 'pending', date: '2026-02-03', invoice: 'INV-2026-002' },
-        { id: 'PAY-003', brand: 'Urban Threads', event: 'LAVRS Market', amount: '8.400 Kč', status: 'overdue', date: '2026-01-28', invoice: 'INV-2026-003' },
-        { id: 'PAY-004', brand: 'Eco Fashion Co.', event: 'MINI LAVRS Market', amount: '4.200 Kč', status: 'paid', date: '2026-02-02', invoice: 'INV-2026-004' },
-        { id: 'PAY-005', brand: 'Second Life Style', event: 'LAVRS Market', amount: '8.400 Kč', status: 'pending', date: '2026-02-04', invoice: 'INV-2026-005' },
+        { id: 'PAY-001', brand: 'Vintage Soul', event: 'LAVRS market', amount: '4.200 Kč', status: 'paid', date: '2026-02-01', invoice: 'INV-2026-001' },
+        { id: 'PAY-002', brand: 'Retro Vibes', event: 'LAVRS market', amount: '4.200 Kč', status: 'pending', date: '2026-02-03', invoice: 'INV-2026-002' },
+        { id: 'PAY-003', brand: 'Urban Threads', event: 'LAVRS market', amount: '8.400 Kč', status: 'overdue', date: '2026-01-28', invoice: 'INV-2026-003' },
+        { id: 'PAY-004', brand: 'Eco Fashion Co.', event: 'LAVRS market', amount: '4.200 Kč', status: 'paid', date: '2026-02-02', invoice: 'INV-2026-004' },
+        { id: 'PAY-005', brand: 'Second Life Style', event: 'LAVRS market', amount: '8.400 Kč', status: 'pending', date: '2026-02-04', invoice: 'INV-2026-005' },
     ];
 
     const getStatusStyle = (status: string) => {

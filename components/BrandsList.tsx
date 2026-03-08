@@ -8,28 +8,31 @@ interface BrandsListProps {
   brands: BrandProfile[];
 }
 
-const zoneCategoryTabs: { id: 'ALL' | ZoneCategory; label: string }[] = [
+const zoneCategoryTabs: { id: 'ALL' | string; label: string }[] = [
   { id: 'ALL', label: 'Vše' },
-  { id: ZoneCategory.SECONDHANDS, label: 'Secondhands' },
-  { id: ZoneCategory.CESKE_ZNACKY, label: 'České značky' },
-  { id: ZoneCategory.DESIGNERS, label: 'Designers' },
-  { id: ZoneCategory.BEAUTY, label: 'Beauty ZONE' },
-  { id: ZoneCategory.TATTOO, label: 'TATTOO' }
+  { id: 'Secondhands', label: 'Secondhands' },
+  { id: 'České značky', label: 'České značky' },
+  { id: 'Designers', label: 'Designers' },
+  { id: 'Beauty ZONE', label: 'Beauty ZONE' },
+  { id: 'TATTOO', label: 'TATTOO' },
+  { id: 'Reuse', label: 'Reuse zone' }
 ];
 
 const getZoneCategoryLabel = (category?: ZoneCategory) => {
   if (!category) return 'Neuvedeno';
   switch (category) {
-    case ZoneCategory.SECONDHANDS:
+    case 'Secondhands':
       return 'Secondhands';
-    case ZoneCategory.CESKE_ZNACKY:
+    case 'České značky':
       return 'České značky';
-    case ZoneCategory.DESIGNERS:
+    case 'Designers':
       return 'Designers';
-    case ZoneCategory.BEAUTY:
+    case 'Beauty ZONE':
       return 'Beauty ZONE';
-    case ZoneCategory.TATTOO:
+    case 'TATTOO':
       return 'TATTOO';
+    case 'Reuse':
+      return 'Reuse zone';
     default:
       return category;
   }

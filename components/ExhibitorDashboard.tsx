@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles } from 'lucide-react';
-import { MarketEvent, User, AppStatus, Application, BrandProfile } from '../types';
+import { MarketEvent, User, AppStatus, Application, BrandProfile, Banner } from '../types';
 import { EVENTS } from '../constants';
 
 interface ExhibitorDashboardProps {
@@ -11,37 +11,21 @@ interface ExhibitorDashboardProps {
   onApply: (eventId: string) => void;
   onPayment: () => void;
   onNavigate: (screen: string) => void;
+  banners: Banner[];
 }
 
-const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applications, brands, onApply, onPayment, onNavigate }) => {
-  const [filter, setFilter] = React.useState<'ALL' | 'MINI' | 'LARGE'>('ALL');
+const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applications, brands, onApply, onPayment, onNavigate, banners }) => {
+
   const [currentSlide, setCurrentSlide] = React.useState(0);
   const [now, setNow] = React.useState(Date.now());
   const activeApp = applications.find(app => app.status === AppStatus.APPROVED);
   const activeEvent = activeApp ? EVENTS.find(e => e.id === activeApp.eventId) : null;
 
-  const slides = [
-    {
-      title: "Přípravy na Vánoce vrcholí",
-      subtitle: "Nezapomeňte si včas rezervovat své místo na Vánočním MINI LAVRS Marketu. Kapacity se rychle plní!",
-      image: "/media/1cde43c8-e02d-43da-aa4c-2c21532f5797.webp",
-      tag: "DŮLEŽITÉ"
-    },
-    {
-      title: "Nová lokace v Holešovicích",
-      subtitle: "Zářijový LAVRS Market se přesouvá do úžasných prostor Garbe Holešovice. Máte se na co těšit.",
-      image: "/media/lavrs-market.webp",
-      tag: "NOVINKA"
-    },
-    {
-      title: "Workshop: Circular Fashion",
-      subtitle: "Chcete se dozvědět více o tom, jak lépe prezentovat svou udržitelnou značku? Sledujte náš newsletter.",
-      image: "/media/Lavrsmarket-2022-foto-Dominika-Hruba.jpg",
-      tag: "WORKSHOP"
-    }
-  ];
+  const slides = banners;
+
 
   React.useEffect(() => {
+    if (slides.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
@@ -67,12 +51,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
   };
 
   const remaining = getRemaining(activeApp?.paymentDeadline);
-  const filteredEvents = EVENTS.filter(event => {
-    if (filter === 'ALL') return true;
-    if (filter === 'MINI') return event.title.toLowerCase().includes('mini');
-    if (filter === 'LARGE') return !event.title.toLowerCase().includes('mini');
-    return true;
-  });
+
 
   return (
     <div className="space-y-12">
@@ -82,39 +61,41 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
       </header>
 
       {/* Banner Slideshow */}
-      <div className="relative h-64 md:h-80 overflow-hidden group shadow-2xl border border-white/20">
-        {slides.map((slide, index) => (
-          <div
-            key={index}
-            className={`absolute inset-0 transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
-              }`}
-          >
-            <img src={slide.image} className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]" alt="" />
-            <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/40 to-transparent flex items-center p-12">
-              <div className="max-w-md space-y-4">
-                <span className="px-3 py-1 bg-lavrs-red text-white text-[10px] font-black tracking-widest uppercase">
-                  {slide.tag}
-                </span>
-                <h3 className="text-3xl md:text-4xl font-black text-white leading-tight uppercase tracking-tighter">
-                  {slide.title}
-                </h3>
-                <p className="text-white/80 text-sm md:text-base font-medium">
-                  {slide.subtitle}
-                </p>
+      {slides.length > 0 && (
+        <div className="relative h-64 md:h-80 overflow-hidden group shadow-2xl border border-white/20">
+          {slides.map((slide, index) => (
+            <div
+              key={slide.id}
+              className={`absolute inset-0 transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
+                }`}
+            >
+              <img src={slide.image} className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]" alt="" />
+              <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/40 to-transparent flex items-center p-12">
+                <div className="max-w-md space-y-4">
+                  <span className="px-3 py-1 bg-lavrs-red text-white text-[10px] font-black tracking-widest uppercase">
+                    {slide.tag}
+                  </span>
+                  <h3 className="text-3xl md:text-4xl font-black text-white leading-tight uppercase tracking-tighter">
+                    {slide.title}
+                  </h3>
+                  <p className="text-white/80 text-sm md:text-base font-medium">
+                    {slide.subtitle}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        {/* Progress indicators */}
-        <div className="absolute bottom-6 left-12 flex gap-3 z-10">
-          {slides.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1 transition-all duration-300 ${i === currentSlide ? 'w-12 bg-lavrs-red' : 'w-4 bg-white/30'}`}
-            />
           ))}
+          {/* Progress indicators */}
+          <div className="absolute bottom-6 left-12 flex gap-3 z-10">
+            {slides.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1 transition-all duration-300 ${i === currentSlide ? 'w-12 bg-lavrs-red' : 'w-4 bg-white/30'}`}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Action Required Widget */}
       {activeApp && (
@@ -125,7 +106,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
             </div>
             <div>
               <h3 className="text-xl font-semibold text-lavrs-dark">
-                Platba za {activeEvent?.title || 'LAVRS Market'} {activeEvent?.date || ''}
+                Platba za {activeEvent?.title || 'LAVRS market'} {activeEvent?.date || ''}
               </h3>
               <p className="text-gray-600">Tvoje přihláška byla schválena! Proveď platbu pro potvrzení místa.</p>
             </div>
@@ -164,28 +145,10 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
             <div>
               <h3 className="text-2xl font-bold text-lavrs-dark">Nadcházející Eventy</h3>
             </div>
-
-            <div className="flex gap-2">
-              {[
-                { id: 'ALL', label: 'Všechny' },
-                { id: 'MINI', label: 'MINI LAVRS Market' },
-                { id: 'LARGE', label: 'LAVRS Market' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilter(tab.id as any)}
-                  className={`px-6 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 ${filter === tab.id
-                    ? 'border-lavrs-red text-lavrs-red bg-white'
-                    : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredEvents.map(event => (
+            {EVENTS.map(event => (
               <div key={event.id} className="group glass-card overflow-hidden">
                 <div className="relative h-64 overflow-hidden">
                   <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -285,7 +248,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
 
           {/* Social Media Box */}
           <div className="bg-white rounded-none p-8 shadow-sm border border-gray-100 space-y-6">
-            <h3 className="text-xl font-bold text-lavrs-dark">Sleduj sociální sítě<br />LAVRS MARKET</h3>
+            <h3 className="text-xl font-bold text-lavrs-dark">Sleduj sociální sítě<br />LAVRS market</h3>
             <div className="grid grid-cols-2 gap-4">
               <a href="#" className="flex flex-col items-center justify-center py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
                 <Instagram size={32} className="mb-2 group-hover:scale-110 transition-transform" />

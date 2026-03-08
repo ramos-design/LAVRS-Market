@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users } from 'lucide-react';
+import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users, Image as ImageIcon, Tags } from 'lucide-react';
 import { ViewMode } from '../types';
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
 
@@ -23,7 +23,9 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
         { id: 'CURATOR', label: 'Aktivní přihlášky', icon: Layers },
         { id: 'EVENTS_CONFIG', label: 'Správa Eventů', icon: Settings },
         { id: 'BRANDS', label: 'Seznam značek', icon: Users },
+        { id: 'CATEGORIES', label: 'Kategorie značek', icon: Tags },
         { id: 'PAYMENTS', label: 'Platby & Fakturace', icon: DollarSign },
+        { id: 'BANNERS', label: 'Správa bannerů', icon: ImageIcon },
         { id: 'EMAILS', label: 'Automatické emaily', icon: Mail },
     ];
 
@@ -44,7 +46,7 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
                 </button>
 
                 <div className="flex items-center justify-center">
-                    <img src={logo} alt="LAVRS Market" className="h-8 w-auto object-contain" />
+                    <img src={logo} alt="LAVRS market" className="h-8 w-auto object-contain" />
                 </div>
 
                 <button

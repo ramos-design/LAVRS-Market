@@ -1,4 +1,4 @@
-# 📜 Project Constitution: LAVRS Market
+# 📜 Project Constitution: LAVRS market
 
 ## 🎯 Behavioral Rules
 - **Rule: No Auto-Acceptance**: Application submission never reserves a spot. Status must pass through manual approval ("Pending" -> "Approved").
