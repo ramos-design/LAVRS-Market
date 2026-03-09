@@ -1,11 +1,31 @@
 import React from 'react';
 import { CreditCard, Download, FileText, ExternalLink, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { useApplications, useBrandProfiles } from '../hooks/useSupabase';
+import { dbBrandProfileToApp } from '../lib/mappers';
 
 const Billing: React.FC = () => {
-    const invoices = [
-        { id: 'INV-2026-001', date: '16. 3. 2026', amount: '4.200 Kč', status: 'PAID', event: 'LAVRS market #12' },
-        { id: 'INV-2026-002', date: '2. 4. 2026', amount: '2.500 Kč', status: 'UNPAID', event: 'LAVRS #4' }
-    ];
+    const { applications, loading: appsLoading } = useApplications();
+    const { profiles: dbProfiles, loading: profilesLoading } = useBrandProfiles();
+
+    const profiles = dbProfiles.map(dbBrandProfileToApp);
+
+    // In a real scenario, we would fetch actual invoices from a 'payments' or 'invoices' table.
+    // For now, we will show an empty state if no paid applications or invoices exist.
+    const paidInvoices = applications
+        .filter(app => app.status === 'approved' || app.status === 'confirmed')
+        .map(app => ({
+            id: `INV-${new Date(app.submitted_at).getFullYear()}-${app.id.slice(0, 4).toUpperCase()}`,
+            date: new Date(app.submitted_at).toLocaleDateString('cs-CZ'),
+            amount: 'TBD', // Amount would come from event prices/zones
+            status: 'PAID', // This would depend on payment_status in application
+            event: app.brand_name
+        }));
+
+    const mainProfile = profiles[0];
+
+    if (appsLoading || profilesLoading) {
+        return <div className="p-12 text-center text-gray-400">Načítám fakturační údaje...</div>;
+    }
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -20,19 +40,19 @@ const Billing: React.FC = () => {
                         <TrendingUp size={20} />
                     </div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Celkem zaplaceno</p>
-                    <p className="text-2xl font-bold text-lavrs-dark">6.700 Kč</p>
+                    <p className="text-2xl font-bold text-lavrs-dark">0 Kč</p>
                 </div>
                 <div className="bg-white p-6 rounded-none border border-gray-100 shadow-sm space-y-2">
                     <div className="w-10 h-10 bg-orange-50 rounded-none flex items-center justify-center text-orange-600 mb-4">
                         <CreditCard size={20} />
                     </div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">K úhradě</p>
-                    <p className="text-2xl font-bold text-orange-600">2.500 Kč</p>
+                    <p className="text-2xl font-bold text-orange-600">0 Kč</p>
                 </div>
                 <div className="bg-lavrs-beige p-6 rounded-none border border-lavrs-red/10 flex items-center justify-between">
                     <div>
                         <p className="text-sm font-bold text-lavrs-dark mb-1">Fakturační údaje</p>
-                        <p className="text-xs text-gray-500 font-medium">Vintage Soul s.r.o.</p>
+                        <p className="text-xs text-gray-500 font-medium">{mainProfile?.billingName || 'Žádné údaje'}</p>
                     </div>
                     <button className="text-lavrs-red hover:bg-lavrs-red hover:text-white p-2 rounded-none transition-all border border-lavrs-red/20 shadow-sm">
                         <ArrowUpRight size={18} />
@@ -40,42 +60,52 @@ const Billing: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100">
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Doklad</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Akce / Položka</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Stav</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Částka</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Akce</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {invoices.map((inv) => (
-                            <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors group">
-                                <td className="px-6 py-4">
-                                    <span className="font-bold text-lavrs-dark block">{inv.id}</span>
-                                    <span className="text-[10px] text-gray-400">{inv.date}</span>
-                                </td>
-                                <td className="px-6 py-4 font-medium text-gray-600">{inv.event}</td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className={`text-[10px] font-bold px-3 py-1 rounded-none ${inv.status === 'PAID' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
-                                        }`}>
-                                        {inv.status === 'PAID' ? 'ZAPLACENO' : 'NEZAPLACENO'}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right font-bold text-lavrs-dark">{inv.amount}</td>
-                                <td className="px-6 py-4 text-right">
-                                    <button className="inline-flex items-center gap-2 text-lavrs-red font-bold text-xs hover:underline">
-                                        <Download size={14} /> PDF
-                                    </button>
-                                </td>
+            {paidInvoices.length === 0 ? (
+                <div className="bg-white border-2 border-dashed border-gray-100 p-20 text-center space-y-4">
+                    <div className="w-16 h-16 bg-gray-50 text-gray-300 flex items-center justify-center mx-auto">
+                        <FileText size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-lavrs-dark">Zatím žádné faktury</h3>
+                    <p className="text-gray-400 max-w-sm mx-auto">Zde se objeví vaše faktury a daňové doklady po schválení přihlášky a provedení platby.</p>
+                </div>
+            ) : (
+                <div className="bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Doklad</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Akce / Položka</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Stav</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Částka</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Akce</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {paidInvoices.map((inv) => (
+                                <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors group">
+                                    <td className="px-6 py-4">
+                                        <span className="font-bold text-lavrs-dark block">{inv.id}</span>
+                                        <span className="text-[10px] text-gray-400">{inv.date}</span>
+                                    </td>
+                                    <td className="px-6 py-4 font-medium text-gray-600">{inv.event}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={`text-[10px] font-bold px-3 py-1 rounded-none ${inv.status === 'PAID' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                                            }`}>
+                                            {inv.status === 'PAID' ? 'ZAPLACENO' : 'NEZAPLACENO'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right font-bold text-lavrs-dark">{inv.amount}</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button className="inline-flex items-center gap-2 text-lavrs-red font-bold text-xs hover:underline">
+                                            <Download size={14} /> PDF
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
         </div>
     );
 };

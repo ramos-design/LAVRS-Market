@@ -9,7 +9,9 @@ import {
     ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { MarketEvent, Zone, Stand, SpotSize, ZoneCategory, Application, AppStatus, EventPlan, Category } from '../types';
-import { EVENTS, MOCK_APPLICATIONS, MOCK_EVENT_PLANS, ZONE_DETAILS } from '../constants';
+import { ZONE_DETAILS } from '../constants';
+import { useEvents } from '../hooks/useSupabase';
+import { dbEventToApp } from '../lib/mappers';
 
 interface EventLayoutManagerProps {
     eventId: string;
@@ -34,14 +36,17 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     // People who are just APPROVED stay in the Curator (Review) module until paid
     const propApplications = allApplications.filter(app => app.status === AppStatus.PAID);
 
-    const currentEvent = EVENTS.find(e => e.id === eventId);
+    const { events: dbEvents } = useEvents();
+    const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+
+    const currentEvent = events.find(e => e.id === eventId);
     const [plan, setPlan] = useState<EventPlan>(
-        initialPlan || MOCK_EVENT_PLANS[eventId] || {
+        initialPlan || {
             eventId,
             gridSize: { width: 15, height: 10 },
             zones: [],
             stands: [],
-            prices: { 
+            prices: {
                 'Secondhands': '2.500 Kč',
                 'České značky': '3.800 Kč',
                 'Designers': '4.200 Kč',
@@ -550,7 +555,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                     />
                                                 ))}
                                             </div>
-                                            
+
                                             <div className="space-y-3 pt-2">
                                                 <div className="space-y-1">
                                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Název sálu / zóny</label>
@@ -562,7 +567,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                         placeholder="Např. Hlavní sál"
                                                     />
                                                 </div>
-                                                
+
                                                 <div className="space-y-1">
                                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Kategorie značek</label>
                                                     <select
@@ -577,7 +582,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                 </div>
                                             </div>
 
-                                            <button 
+                                            <button
                                                 onClick={() => deleteZone(selectedZoneId)}
                                                 className="w-full py-2 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
                                             >
@@ -593,8 +598,8 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                 onClick={() => setSelectedZoneId(zone.id)}
                                                 className={`
                                                     group relative w-full text-left p-4 border-l-4 transition-all overflow-hidden
-                                                    ${selectedZoneId === zone.id 
-                                                        ? 'bg-white shadow-md border-lavrs-red scale-[1.02] z-10' 
+                                                    ${selectedZoneId === zone.id
+                                                        ? 'bg-white shadow-md border-lavrs-red scale-[1.02] z-10'
                                                         : 'bg-gray-50/50 border-gray-100 hover:bg-white hover:border-gray-300'}
                                                 `}
                                                 style={{ borderLeftColor: zone.color }}
@@ -606,17 +611,17 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                     </div>
                                                     <Layers size={14} className={selectedZoneId === zone.id ? 'text-lavrs-red' : 'text-gray-300'} />
                                                 </div>
-                                                
+
                                                 {/* Mini Stats Bar */}
                                                 <div className="mt-3 flex gap-1 h-1 w-full bg-gray-200">
                                                     {[SpotSize.S, SpotSize.M, SpotSize.L].map(s => {
                                                         const info = getCapacityInfo(zone.id, s);
                                                         const pct = info.total > 0 ? (info.placedStands / info.total) * 100 : 0;
                                                         return (
-                                                            <div 
-                                                                key={s} 
-                                                                className="h-full bg-lavrs-red/30 transition-all" 
-                                                                style={{ width: `${pct/3}%`, backgroundColor: pct >= 100 ? '#EF4444' : zone.color }} 
+                                                            <div
+                                                                key={s}
+                                                                className="h-full bg-lavrs-red/30 transition-all"
+                                                                style={{ width: `${pct / 3}%`, backgroundColor: pct >= 100 ? '#EF4444' : zone.color }}
                                                             />
                                                         );
                                                     })}
@@ -632,7 +637,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                                     <BarChart3 size={80} />
                                 </div>
-                                
+
                                 <header className="flex justify-between items-center border-b border-white/10 pb-4">
                                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 bg-lavrs-red animate-pulse" />
@@ -640,7 +645,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     </h3>
                                     <div className="text-[10px] font-bold text-white/40 uppercase">Live Sync</div>
                                 </header>
-    
+
                                 <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                     {plan.zones.map(zone => (
                                         <div key={zone.id} className="group/zone bg-white/5 border border-white/10 overflow-hidden transition-all hover:border-white/20">
@@ -664,13 +669,13 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                     </p>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="p-4 pt-3">
                                                 <div className="grid grid-cols-3 gap-3">
                                                     {[SpotSize.S, SpotSize.M, SpotSize.L].map(size => {
                                                         const { placedStands, total, free } = getCapacityInfo(zone.id, size);
                                                         const isLow = free <= 1 && total > 0;
-                                                        
+
                                                         return (
                                                             <div key={size} className="space-y-2">
                                                                 <div className="flex justify-between items-end px-1">
@@ -679,7 +684,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                                         {placedStands} /
                                                                     </span>
                                                                 </div>
-                                                                
+
                                                                 <div className="relative group/input">
                                                                     <input
                                                                         type="number"
@@ -699,9 +704,9 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
 
                                                                 <div className="flex justify-between items-center px-1">
                                                                     <div className="flex-1 h-1 bg-white/5 overflow-hidden mr-2">
-                                                                        <div 
-                                                                            className="h-full bg-lavrs-red transition-all duration-500" 
-                                                                            style={{ width: `${total > 0 ? (placedStands/total)*100 : 0}%` }} 
+                                                                        <div
+                                                                            className="h-full bg-lavrs-red transition-all duration-500"
+                                                                            style={{ width: `${total > 0 ? (placedStands / total) * 100 : 0}%` }}
                                                                         />
                                                                     </div>
                                                                     <span className={`text-[8px] font-black ${free > 0 ? 'text-green-400' : 'text-white/20'}`}>
@@ -986,58 +991,58 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     {propApplications
                                         .filter(app => exhibitorFilter === 'ALL' || app.zoneCategory === exhibitorFilter)
                                         .map(app => {
-                                        const stand = plan.stands.find(s => s.occupantId === app.id);
-                                        return (
-                                            <tr key={app.id} className="group hover:bg-lavrs-beige/10 transition-colors">
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400">
-                                                            {app.brandName[0]}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-sm text-lavrs-dark">{app.brandName}</p>
-                                                            <p className="text-[10px] text-gray-400 font-medium">{app.contactPerson}</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <span className="px-2 py-0.5 bg-gray-100 text-[10px] font-black uppercase tracking-wider text-gray-600">
-                                                        {app.zoneCategory}
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-black text-sm text-lavrs-dark">{app.zone}</span>
-                                                        {stand && (
-                                                            <div className="flex items-center gap-1 mt-1">
-                                                                <span className="text-[9px] font-bold text-lavrs-red uppercase bg-lavrs-pink px-1">REAL: {stand.size}</span>
-                                                                <span className="text-[9px] font-medium text-gray-400 truncate max-w-[80px]">
-                                                                    ({getZone(stand.zoneId)?.name})
-                                                                </span>
+                                            const stand = plan.stands.find(s => s.occupantId === app.id);
+                                            return (
+                                                <tr key={app.id} className="group hover:bg-lavrs-beige/10 transition-colors">
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400">
+                                                                {app.brandName[0]}
                                                             </div>
+                                                            <div>
+                                                                <p className="font-bold text-sm text-lavrs-dark">{app.brandName}</p>
+                                                                <p className="text-[10px] text-gray-400 font-medium">{app.contactPerson}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-6">
+                                                        <span className="px-2 py-0.5 bg-gray-100 text-[10px] font-black uppercase tracking-wider text-gray-600">
+                                                            {app.zoneCategory}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-black text-sm text-lavrs-dark">{app.zone}</span>
+                                                            {stand && (
+                                                                <div className="flex items-center gap-1 mt-1">
+                                                                    <span className="text-[9px] font-bold text-lavrs-red uppercase bg-lavrs-pink px-1">REAL: {stand.size}</span>
+                                                                    <span className="text-[9px] font-medium text-gray-400 truncate max-w-[80px]">
+                                                                        ({getZone(stand.zoneId)?.name})
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-6">
+                                                        {stand ? (
+                                                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-600 uppercase">
+                                                                <CheckCircle2 size={12} /> Umístěno
+                                                            </span>
+                                                        ) : (
+                                                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 uppercase">
+                                                                <AlertCircle size={12} /> Neumístěno
+                                                            </span>
                                                         )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    {stand ? (
-                                                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-600 uppercase">
-                                                            <CheckCircle2 size={12} /> Umístěno
-                                                        </span>
-                                                    ) : (
-                                                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 uppercase">
-                                                            <AlertCircle size={12} /> Neumístěno
-                                                        </span>
-                                                    )}
-                                                </td>
+                                                    </td>
 
-                                                <td className="px-8 py-6 text-right">
-                                                    <button className="p-2 text-gray-400 hover:text-lavrs-dark">
-                                                        <Info size={16} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                                    <td className="px-8 py-6 text-right">
+                                                        <button className="p-2 text-gray-400 hover:text-lavrs-dark">
+                                                            <Info size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                 </tbody>
                             </table>
                         </div>
@@ -1359,7 +1364,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     const totalZoneCapacity = zone.capacities.S + zone.capacities.M + zone.capacities.L;
                                     const occupiedStands = plan.stands.filter(s => s.zoneId === zone.id && s.occupantId).length;
                                     const occupancyRate = (occupiedStands / (totalZoneCapacity || 1)) * 100;
-                                    
+
                                     return (
                                         <div key={zone.id} className="p-4 border border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1377,7 +1382,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                 <div className="w-16 h-16 relative">
                                                     <svg className="w-full h-full transform -rotate-90">
                                                         <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-200" />
-                                                        <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" 
+                                                        <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent"
                                                             strokeDasharray={175.9}
                                                             strokeDashoffset={175.9 - (175.9 * Math.min(occupancyRate, 100)) / 100}
                                                             className="text-lavrs-red" />

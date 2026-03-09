@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users, Image as ImageIcon, Tags } from 'lucide-react';
+import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
 import { ViewMode } from '../types';
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
 
@@ -8,9 +8,10 @@ interface MobileHeaderProps {
     role: ViewMode;
     activeItem: string;
     onNavigate: (screen: string) => void;
+    onSignOut: () => void;
 }
 
-const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigate }) => {
+const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigate, onSignOut }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const menuItems = role === 'EXHIBITOR' ? [
@@ -83,8 +84,16 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
                         })}
                     </nav>
 
-                    {/* Quick Profile Info at Bottom */}
-                    <div className="absolute bottom-10 left-6 right-6 pt-6 border-t border-white/10 space-y-2">
+                    {/* Logout and Footer info */}
+                    <div className="absolute bottom-10 left-6 right-6 pt-6 border-t border-white/10 space-y-6">
+                        <button
+                            onClick={onSignOut}
+                            className="flex items-center gap-4 px-6 py-4 w-full text-white/70 hover:text-white transition-colors"
+                        >
+                            <LogOut size={20} />
+                            <span className="text-lg font-bold uppercase tracking-widest">Odhlásit se</span>
+                        </button>
+
                         <div className="grid grid-cols-1 gap-1">
                             <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60">Zpracování osobních údajů</a>
                             <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60">Obchodní podmínky</a>

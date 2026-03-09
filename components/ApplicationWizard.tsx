@@ -1,48 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
 import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
-import { ZONE_DETAILS, EVENTS, MOCK_EVENT_PLANS } from '../constants';
+import { ZONE_DETAILS } from '../constants';
+import { useEvents, useBrandProfiles, useCategories } from '../hooks/useSupabase';
+import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb } from '../lib/mappers';
 
 interface ApplicationWizardProps {
   eventId: string;
   onCancel: () => void;
-  savedBrands: BrandProfile[];
-  onSaveBrand: (brand: BrandProfile) => void;
   onApply: (app: Application) => void;
   eventPlan?: EventPlan;
-  categories: Category[];
 }
 
 const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   eventId,
   onCancel,
-  savedBrands = [],
-  onSaveBrand,
   onApply,
   eventPlan,
-  categories
 }) => {
+  const { profiles: dbProfiles, createProfile } = useBrandProfiles();
+  const savedBrands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
+  const { categories: dbCategories } = useCategories();
+  const categories = React.useMemo(() => dbCategories.map(dbCategoryToApp), [dbCategories]);
+
   const [step, setStep] = useState(1);
   const [totalSteps, setTotalSteps] = useState(6);
   const [saveToProfile, setSaveToProfile] = useState(true);
 
   // Form State
-  const [currentBrandId, setCurrentBrandId] = useState<string | null>(savedBrands.length > 0 ? savedBrands[0].id : null);
-  const [brandName, setBrandName] = useState(savedBrands.length > 0 ? savedBrands[0].brandName : '');
-  const [brandDescription, setBrandDescription] = useState(savedBrands.length > 0 ? savedBrands[0].brandDescription || '' : '');
-  const [instagram, setInstagram] = useState(savedBrands.length > 0 ? savedBrands[0].instagram || '' : '');
-  const [website, setWebsite] = useState(savedBrands.length > 0 ? savedBrands[0].website || '' : '');
-  const [contactPerson, setContactPerson] = useState(savedBrands.length > 0 ? savedBrands[0].contactPerson || '' : '');
-  const [phone, setPhone] = useState(savedBrands.length > 0 ? savedBrands[0].phone || '' : '');
-  const [email, setEmail] = useState(savedBrands.length > 0 ? savedBrands[0].email || '' : '');
+  const [currentBrandId, setCurrentBrandId] = useState<string | null>(null);
+  const [brandName, setBrandName] = useState('');
+  const [brandDescription, setBrandDescription] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [website, setWebsite] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+
   const [selectedZone, setSelectedZone] = useState<SpotSize | null>(null); // Spot size (S/M/L)
   const [selectedZoneCategory, setSelectedZoneCategory] = useState<ZoneCategory | null>(null); // Brand category
 
-  const [billingName, setBillingName] = useState(savedBrands.length > 0 ? savedBrands[0].billingName || '' : '');
-  const [ic, setIc] = useState(savedBrands.length > 0 ? savedBrands[0].ic || '' : '');
-  const [dic, setDic] = useState(savedBrands.length > 0 ? savedBrands[0].dic || '' : '');
-  const [billingAddress, setBillingAddress] = useState(savedBrands.length > 0 ? savedBrands[0].billingAddress || '' : '');
-  const [billingEmail, setBillingEmail] = useState(savedBrands.length > 0 ? savedBrands[0].billingEmail || '' : '');
+  const [billingName, setBillingName] = useState('');
+  const [ic, setIc] = useState('');
+  const [dic, setDic] = useState('');
+  const [billingAddress, setBillingAddress] = useState('');
+  const [billingEmail, setBillingEmail] = useState('');
+
+  // Effect to initialize with first brand if available
+  useEffect(() => {
+    if (savedBrands.length > 0 && !currentBrandId && !brandName) {
+      handleBrandSelect(savedBrands[0].id);
+    }
+  }, [savedBrands]);
 
   const [extras, setExtras] = useState<{ [key: string]: number }>({});
   const [extraNote, setExtraNote] = useState('');
@@ -54,9 +63,12 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const [consentNewsletter, setConsentNewsletter] = useState(false);
   const [showCatError, setShowCatError] = useState(false);
 
-  const event = EVENTS.find(e => e.id === eventId) || EVENTS[0];
-  const isWaitlist = event.status === 'closed';
-  
+  const { events: dbEvents } = useEvents();
+  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+
+  const event = events.find(e => e.id === eventId);
+  const isWaitlist = event?.status === 'closed';
+
   useEffect(() => {
     setTotalSteps(isWaitlist ? 1 : 5);
   }, [isWaitlist]);
@@ -70,7 +82,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
   const getCategoryPrice = (cat: ZoneCategory | null) => {
     if (!cat) return 0;
-    
+
     // Use price from eventPlan if available
     if (eventPlan?.prices?.[cat]) {
       return parseInt(eventPlan.prices[cat].replace(/[^\d]/g, '')) || 0;
@@ -155,7 +167,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     };
 
     if (saveToProfile) {
-      onSaveBrand(brandData);
+      // We'll let handleSaveBrand handle existing check or just use createProfile if new
+      createProfile(appBrandProfileToDb(brandData));
     }
 
     // Create the application
@@ -189,7 +202,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   };
 
   const checkIsFull = (size: SpotSize, category: ZoneCategory | null) => {
-    const plan = eventPlan || MOCK_EVENT_PLANS[eventId];
+    const plan = eventPlan;
     if (!plan || !category) return false;
 
     const zone = plan.zones.find((z: any) => z.category === category);
@@ -247,9 +260,9 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
           <div className="mb-2 flex gap-2">
             <span className="text-white bg-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
-              {event.id.includes('mini') ? 'Event' : 'Velký market'}
+              {event?.id.includes('mini') ? 'Event' : 'Velký market'}
             </span>
-            {event.status === 'closed' && (
+            {event?.status === 'closed' && (
               <span className="bg-white text-lavrs-red border border-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
                 Waitlist režim
               </span>
@@ -312,21 +325,31 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               <>
                 <div className="p-4 bg-white/50 rounded-none border border-lavrs-pink/30">
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Vybraná akce</p>
-                  <p className="font-bold text-lavrs-dark">{event.title}</p>
-                  <p className="text-xs text-gray-500">{event.date} — {event.location}</p>
-                  {event.description && (
+                  <p className="font-bold text-lavrs-dark">{event?.title}</p>
+                  <p className="text-xs text-gray-500">{event?.date} — {event?.location}</p>
+                  {event?.description && (
                     <p className="mt-2 text-[10px] text-lavrs-red font-bold">{event.description}</p>
                   )}
                 </div>
 
-                {(step === totalSteps && selectedZoneCategory) && (
-                  <div className="space-y-4 animate-fadeIn">
+                {(step >= 3 && selectedZoneCategory) && (
+                  <div className="space-y-4 animate-fadeIn mt-6">
+                    {/* Base Category Price */}
+                    <div className="p-4 bg-white rounded-none border border-lavrs-pink/30 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-2 opacity-5">
+                        <Sparkles size={40} />
+                      </div>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Cena za kategorii ({selectedZoneCategory})</p>
+                      <p className="text-lg font-bold text-lavrs-dark">{getCategoryPrice(selectedZoneCategory).toLocaleString('cs-CZ')} Kč</p>
+                    </div>
+
+                    {/* Total including extras */}
                     <div className="p-4 bg-lavrs-red text-white rounded-none shadow-lg border border-lavrs-red">
-                      <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mb-1">Předpokládaná cena</p>
+                      <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mb-1">Předpokládaná celková cena</p>
                       <p className="text-2xl font-bold">{calculateTotal().toLocaleString('cs-CZ')} Kč</p>
                       <p className="text-[10px] opacity-80">včetně doplňků a vybavení</p>
                     </div>
-                
+
                     {selectedExtras.length > 0 && (
                       <div className="p-4 bg-white rounded-none shadow-sm border border-lavrs-red/30">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Zvolené doplňky</p>
@@ -364,7 +387,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
         <div className="flex-1">
 
           {/* Step 2+ or Right Panel in Waitlist */}
-          {(step === 1 && isWaitlist) ? (
+          {(step === 1 && isWaitlist && event) ? (
             <div className="animate-fadeIn h-full flex flex-col">
               <div className="relative h-[300px] w-full overflow-hidden shrink-0">
                 <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
@@ -389,7 +412,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
           ) : (
             <>
               {/* Step 1: O akci (Normal) */}
-              {step === 1 && (
+              {step === 1 && event && (
                 <div className="animate-fadeIn">
                   <div className="relative h-[400px] w-full overflow-hidden">
                     <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
@@ -460,7 +483,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                     </button>
                   ))}
                 </div>
-                
+
                 {showCatError && !selectedZoneCategory && (
                   <p className="text-center text-sm text-lavrs-red font-bold animate-bounce pt-12">
                     Vyberte prosím kategorii zóny pro pokračování.
@@ -479,7 +502,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Doplňky k místu (Extra)</h3>
                     <p className="text-sm text-gray-500">Můžete si doobjednat vybavení nad rámec standardního balíčku.</p>
                   </header>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {extrasList.map(extra => (
                       <button

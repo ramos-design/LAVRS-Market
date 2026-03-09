@@ -2,7 +2,8 @@
 import React from 'react';
 import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles } from 'lucide-react';
 import { MarketEvent, User, AppStatus, Application, BrandProfile, Banner } from '../types';
-import { EVENTS } from '../constants';
+import { useEvents } from '../hooks/useSupabase';
+import { dbEventToApp } from '../lib/mappers';
 
 interface ExhibitorDashboardProps {
   user: User;
@@ -16,10 +17,12 @@ interface ExhibitorDashboardProps {
 
 const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applications, brands, onApply, onPayment, onNavigate, banners }) => {
 
+  const { events: dbEvents } = useEvents();
+  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
   const [currentSlide, setCurrentSlide] = React.useState(0);
   const [now, setNow] = React.useState(Date.now());
   const activeApp = applications.find(app => app.status === AppStatus.APPROVED);
-  const activeEvent = activeApp ? EVENTS.find(e => e.id === activeApp.eventId) : null;
+  const activeEvent = activeApp ? events.find(e => e.id === activeApp.eventId) : null;
 
   const slides = banners;
 
@@ -148,7 +151,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {EVENTS.map(event => (
+            {events.map(event => (
               <div key={event.id} className="group glass-card overflow-hidden">
                 <div className="relative h-64 overflow-hidden">
                   <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -211,7 +214,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
                         </span>
                       </div>
                       <p className="text-[11px] text-gray-500 mb-2 truncate">
-                        {EVENTS.find(e => e.id === app.eventId)?.title}
+                        {events.find(e => e.id === app.eventId)?.title}
                       </p>
                       <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${app.status === AppStatus.APPROVED ? 'bg-green-100 text-green-700' :
                         app.status === AppStatus.PENDING ? 'bg-amber-100 text-amber-700' :

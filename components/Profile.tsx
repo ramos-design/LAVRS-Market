@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info } from 'lucide-react';
 import { BrandProfile, ZoneType } from '../types';
+import { useBrandProfiles } from '../hooks/useSupabase';
+import { useAuth } from '../hooks/useAuth';
+import { dbBrandProfileToApp, appBrandProfileToDb } from '../lib/mappers';
 
 interface ProfileProps {
     initialBrands: BrandProfile[];
@@ -176,8 +179,10 @@ const BrandEditForm: React.FC<{
     </div>
 );
 
-const Profile: React.FC<ProfileProps> = ({ initialBrands }) => {
-    const [brands, setBrands] = useState(initialBrands);
+const Profile: React.FC<ProfileProps> = () => {
+    const { profiles: dbProfiles, createProfile, updateProfile, deleteProfile, loading } = useBrandProfiles();
+    const brands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
+
     const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
     const [brandToDeleteId, setBrandToDeleteId] = useState<string | null>(null);
 
@@ -213,22 +218,22 @@ const Profile: React.FC<ProfileProps> = ({ initialBrands }) => {
         startEditing(newBrand);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (editForm) {
-            setBrands(prev => {
-                const exists = prev.find(b => b.id === editForm.id);
-                if (exists) {
-                    return prev.map(b => b.id === editForm.id ? editForm : b);
-                }
-                return [...prev, editForm];
-            });
+            const dbBrand = appBrandProfileToDb(editForm);
+            const exists = brands.find(b => b.id === editForm.id);
+            if (exists) {
+                await updateProfile(editForm.id, dbBrand);
+            } else {
+                await createProfile(dbBrand);
+            }
             cancelEditing();
         }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (brandToDeleteId) {
-            setBrands(prev => prev.filter(b => b.id !== brandToDeleteId));
+            await deleteProfile(brandToDeleteId);
             setBrandToDeleteId(null);
             if (editingBrandId === brandToDeleteId) {
                 cancelEditing();
@@ -241,6 +246,8 @@ const Profile: React.FC<ProfileProps> = ({ initialBrands }) => {
             setEditForm({ ...editForm, [field]: value });
         }
     };
+
+    const { user: authUser } = useAuth();
 
     return (
         <div className="space-y-12 animate-fadeIn pb-40">
@@ -280,6 +287,22 @@ const Profile: React.FC<ProfileProps> = ({ initialBrands }) => {
                                 handleSave={handleSave}
                                 setBrandToDeleteId={setBrandToDeleteId}
                             />
+                        </div>
+                    )}
+
+                    {!loading && brands.length === 0 && !editingBrandId && (
+                        <div className="bg-white border-2 border-dashed border-gray-200 p-12 text-center">
+                            <div className="w-16 h-16 bg-gray-50 text-gray-300 flex items-center justify-center mx-auto mb-4">
+                                <Sparkles size={32} />
+                            </div>
+                            <h3 className="text-lg font-bold text-lavrs-dark mb-2">Zatím zde nemáte žádnou značku</h3>
+                            <p className="text-sm text-gray-400 mb-6">Vytvořte si svůj první profil, který pak snadno nahrajete do přihlášky.</p>
+                            <button
+                                onClick={handleAddNewBrand}
+                                className="inline-flex items-center gap-2 bg-lavrs-dark text-white px-8 py-3 rounded-none font-bold hover:bg-lavrs-red transition-all"
+                            >
+                                <Plus size={18} /> Vytvořit první značku
+                            </button>
                         </div>
                     )}
 
@@ -336,15 +359,26 @@ const Profile: React.FC<ProfileProps> = ({ initialBrands }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Vaše jméno</label>
-                        <input defaultValue="Tereza Nováková" className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all" />
+                        <input
+                            readOnly
+                            value={authUser?.fullName || ''}
+                            className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:outline-none font-medium text-gray-500"
+                        />
                     </div>
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Přihlašovací e-mail</label>
-                        <input defaultValue="tereza@vintagesoul.cz" className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all" />
+                        <input
+                            readOnly
+                            value={authUser?.email || ''}
+                            className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:outline-none font-medium text-gray-500"
+                        />
                     </div>
                     <div className="flex items-end">
-                        <button className="w-full bg-white border-2 border-gray-100 text-gray-600 px-6 py-4 rounded-none text-xs font-bold hover:border-lavrs-red hover:text-lavrs-red transition-all">
-                            Změnit heslo
+                        <button
+                            disabled
+                            className="w-full bg-gray-50 border-2 border-gray-100 text-gray-300 px-6 py-4 rounded-none text-xs font-bold cursor-not-allowed"
+                        >
+                            Změnit heslo (připravujeme)
                         </button>
                     </div>
                 </div>

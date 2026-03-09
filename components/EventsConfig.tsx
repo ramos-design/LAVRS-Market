@@ -1,25 +1,40 @@
 import React from 'react';
 import { Settings, Plus, Edit, Trash2, Calendar, MapPin, Users } from 'lucide-react';
-import { EVENTS, MOCK_EVENT_PLANS } from '../constants';
+import { useEvents } from '../hooks/useSupabase';
+import { dbEventToApp } from '../lib/mappers';
+import { eventPlansDb } from '../lib/database';
 
 interface EventsConfigProps {
     onManageEvent?: (eventId: string) => void;
 }
 
 const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
-    const getEventOccupancy = (eventId: string) => {
-        const plan = MOCK_EVENT_PLANS[eventId];
-        if (!plan) return 0;
-        
-        let totalCapacity = 0;
-        plan.zones.forEach((z: any) => {
-            totalCapacity += (z.capacities.S + z.capacities.M + z.capacities.L);
-        });
-        
-        const occupied = plan.stands.filter((s: any) => s.occupantId).length;
-        
-        return totalCapacity > 0 ? Math.round((occupied / totalCapacity) * 100) : 0;
-    };
+    const { events: dbEvents } = useEvents();
+    const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+    const [occupancies, setOccupancies] = React.useState<Record<string, number>>({});
+
+    React.useEffect(() => {
+        const loadOccupancies = async () => {
+            const result: Record<string, number> = {};
+            for (const event of events) {
+                try {
+                    const { plan, zones, stands } = await eventPlansDb.getByEventId(event.id);
+                    if (!plan || zones.length === 0) { result[event.id] = 0; continue; }
+                    let totalCapacity = 0;
+                    zones.forEach(z => {
+                        const caps = z.capacities as any;
+                        totalCapacity += ((caps.S || 0) + (caps.M || 0) + (caps.L || 0));
+                    });
+                    const occupied = stands.filter(s => s.occupant_id).length;
+                    result[event.id] = totalCapacity > 0 ? Math.round((occupied / totalCapacity) * 100) : 0;
+                } catch { result[event.id] = 0; }
+            }
+            setOccupancies(result);
+        };
+        if (events.length > 0) loadOccupancies();
+    }, [events]);
+
+    const getEventOccupancy = (eventId: string) => occupancies[eventId] || 0;
 
     return (
         <div className="space-y-8">
@@ -35,7 +50,7 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
 
             {/* Events Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {EVENTS.map((event) => (
+                {events.map((event) => (
                     <div key={event.id} className="bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden group hover:shadow-lg transition-all">
                         <div className="relative h-48 overflow-hidden">
                             <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />

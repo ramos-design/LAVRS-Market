@@ -2,7 +2,9 @@
 import React from 'react';
 import { Plus, Users, ShoppingBag, LayoutGrid, List, MoreVertical, TrendingUp, Calendar } from 'lucide-react';
 import { User } from '../types';
-import { EVENTS, MOCK_EVENT_PLANS } from '../constants';
+import { useEvents, useApplications, useBrandProfiles } from '../hooks/useSupabase';
+import { dbEventToApp } from '../lib/mappers';
+import { eventPlansDb } from '../lib/database';
 
 interface AdminDashboardProps {
   user: User;
@@ -11,19 +13,54 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, onManageEvent }) => {
-  const getEventOccupancy = (eventId: string) => {
-    const plan = MOCK_EVENT_PLANS[eventId];
-    if (!plan) return 0;
-    
-    let totalCapacity = 0;
-    plan.zones.forEach((z: any) => {
-        totalCapacity += (z.capacities.S + z.capacities.M + z.capacities.L);
-    });
-    
-    const occupied = plan.stands.filter((s: any) => s.occupantId).length;
-    
-    return totalCapacity > 0 ? Math.round((occupied / totalCapacity) * 100) : 0;
-  };
+  const { events: dbEvents } = useEvents();
+  const { applications } = useApplications();
+  const { profiles } = useBrandProfiles();
+
+  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+  const [occupancies, setOccupancies] = React.useState<Record<string, number>>({});
+
+  React.useEffect(() => {
+    // Load occupancies for all events
+    const loadOccupancies = async () => {
+      const result: Record<string, number> = {};
+      for (const event of events) {
+        try {
+          const { plan, zones, stands } = await eventPlansDb.getByEventId(event.id);
+          if (!plan || zones.length === 0) { result[event.id] = 0; continue; }
+          let totalCapacity = 0;
+          zones.forEach(z => {
+            const caps = z.capacities as any;
+            totalCapacity += ((caps.S || 0) + (caps.M || 0) + (caps.L || 0));
+          });
+          const occupied = stands.filter(s => s.occupant_id).length;
+          result[event.id] = totalCapacity > 0 ? Math.round((occupied / totalCapacity) * 100) : 0;
+        } catch { result[event.id] = 0; }
+      }
+      setOccupancies(result);
+    };
+    if (events.length > 0) loadOccupancies();
+  }, [events]);
+
+  const getEventOccupancy = (eventId: string) => occupancies[eventId] || 0;
+
+  const avgOccupancy = React.useMemo(() => {
+    const values = Object.values(occupancies);
+    if (values.length === 0) return 0;
+    return Math.round(values.reduce((a: number, b: number) => a + b, 0) / values.length);
+  }, [occupancies]);
+
+  const recentAppsCount = applications.filter(a => {
+    const d = new Date(a.submitted_at);
+    return Date.now() - d.getTime() < 30 * 24 * 60 * 60 * 1000;
+  }).length;
+
+  const stats = [
+    { label: 'Celkový obrat', value: '0 Kč', trend: '+0%', icon: TrendingUp, color: 'text-green-600' },
+    { label: 'Aktivní přihlášky', value: applications.length.toString(), trend: `${recentAppsCount} nových`, icon: List, color: 'text-lavrs-red' },
+    { label: 'Průměrná obsazenost', value: `${avgOccupancy}%`, trend: avgOccupancy >= 90 ? 'Vysoká' : 'V normě', icon: Users, color: 'text-blue-600' },
+    { label: 'Aktivní značky', value: profiles.length.toString(), trend: 'Registrované v DB', icon: ShoppingBag, color: 'text-purple-600' }
+  ];
 
   return (
     <div className="space-y-12">
@@ -39,12 +76,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Celkový obrat', value: '4.82M Kč', trend: '+12%', icon: TrendingUp, color: 'text-green-600' },
-          { label: 'Aktivní přihlášky', value: '156', trend: '42 nových', icon: List, color: 'text-lavrs-red' },
-          { label: 'Průměrná obsazenost', value: '94%', trend: 'Maximalizováno', icon: Users, color: 'text-blue-600' },
-          { label: 'Aktivní značky', value: '412', trend: '+14 v srpnu', icon: ShoppingBag, color: 'text-purple-600' }
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-none border border-gray-100 shadow-sm transition-all hover:shadow-md">
             <div className="flex justify-between items-start mb-6">
               <div className={`p-3 bg-gray-50 rounded-none ${stat.color}`}>
@@ -82,7 +114,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {EVENTS.map(event => {
+                {events.map(event => {
                   const occupancy = getEventOccupancy(event.id);
                   return (
                     <tr key={event.id} className="group hover:bg-lavrs-beige/30 transition-colors">
@@ -130,32 +162,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
 
         {/* Action Sidebar */}
         <div className="space-y-8">
-
           <div className="bg-white rounded-none p-8 border border-gray-100 shadow-sm space-y-6">
             <h4 className="text-lg font-bold text-lavrs-dark">Nedávné aktivity</h4>
+            {/* Real activities would be fetched from a logs/audit table - showing placeholder for now */}
             <div className="space-y-6">
-              {[
-                { user: 'Admin J.', action: 'Schválil značku Vintage Soul', time: '12m' },
-                { user: 'Systém', action: 'Nová platba: 4.200 Kč', time: '1h' },
-                { user: 'Admin K.', action: 'Změnil kapacitu LAVRS', time: '3h' },
-              ].map((activity, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-8 h-8 rounded-none bg-lavrs-pink flex items-center justify-center text-[10px] font-bold text-lavrs-red">
-                    {activity.user[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-lavrs-dark">{activity.action}</p>
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">{activity.user} — {activity.time}</p>
-                  </div>
-                </div>
-              ))}
+              <div className="py-12 text-center">
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Zatím žádná aktivita</p>
+              </div>
             </div>
           </div>
         </div>
 
       </div>
     </div>
-
   );
 };
 

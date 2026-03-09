@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, Maximize2, CheckCircle, XCircle, Clock, CreditCard } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory } from '../types';
-import { EVENTS, ZONE_DETAILS } from '../constants';
+import { ZONE_DETAILS } from '../constants';
+import { useEvents } from '../hooks/useSupabase';
+import { dbEventToApp } from '../lib/mappers';
 
 interface CuratorModuleProps {
   onBack: () => void;
@@ -16,6 +18,9 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   const [selectedAppId, setSelectedAppId] = useState<string | null>(activeApplications.length > 0 ? activeApplications[0].id : null);
 
   const selectedApp = activeApplications.find(a => a.id === selectedAppId) || (activeApplications.length > 0 ? activeApplications[0] : null);
+
+  const { events: dbEvents } = useEvents();
+  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
 
   const handleAction = (id: string, newStatus: AppStatus) => {
     onUpdateStatus(id, newStatus);
@@ -40,7 +45,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   };
 
   const getEventDetails = (eventId: string) => {
-    return EVENTS.find(e => e.id === eventId);
+    return events.find(e => e.id === eventId);
   };
 
   const getZoneCategoryLabel = (category?: ZoneCategory) => {

@@ -1,12 +1,10 @@
 import React from 'react';
 import { Search } from 'lucide-react';
-import { Application, BrandProfile, ZoneCategory } from '../types';
-import { EVENTS } from '../constants';
+import { ZoneCategory } from '../types';
+import { useApplications, useBrandProfiles, useEvents } from '../hooks/useSupabase';
+import { dbApplicationToApp, dbBrandProfileToApp, dbEventToApp } from '../lib/mappers';
 
-interface BrandsListProps {
-  applications: Application[];
-  brands: BrandProfile[];
-}
+interface BrandsListProps { }
 
 const zoneCategoryTabs: { id: 'ALL' | string; label: string }[] = [
   { id: 'ALL', label: 'Vše' },
@@ -38,8 +36,19 @@ const getZoneCategoryLabel = (category?: ZoneCategory) => {
   }
 };
 
-const BrandsList: React.FC<BrandsListProps> = ({ applications, brands }) => {
-  const [tab, setTab] = React.useState<'ALL' | ZoneCategory>('ALL');
+const BrandsList: React.FC<BrandsListProps> = () => {
+  const { applications: dbApps, loading: loadingApps } = useApplications();
+  const applications = React.useMemo(() => dbApps.map(dbApplicationToApp), [dbApps]);
+
+  const { profiles: dbProfiles, loading: loadingProfiles } = useBrandProfiles();
+  const brands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
+
+  const { events: dbEvents, loading: loadingEvents } = useEvents();
+  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+
+  const loading = loadingApps || loadingProfiles || loadingEvents;
+
+  const [tab, setTab] = React.useState<'ALL' | string>('ALL');
   const [query, setQuery] = React.useState('');
 
   const rows = React.useMemo(() => {
@@ -66,8 +75,8 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands }) => {
         instagram: app.instagram,
         website: app.website,
         zoneCategory: app.zoneCategory,
-          zone: app.zone,
-        lastEventTitle: EVENTS.find(e => e.id === app.eventId)?.title,
+        zone: app.zone,
+        lastEventTitle: events.find(e => e.id === app.eventId)?.title,
         statusLabel: app.status,
         source: 'APP'
       });
@@ -94,7 +103,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands }) => {
     });
 
     return Array.from(byName.values());
-  }, [applications, brands]);
+  }, [applications, brands, events]);
 
   const filtered = rows.filter(row => {
     if (tab !== 'ALL' && row.zoneCategory !== tab) return false;
@@ -153,7 +162,13 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands }) => {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading && filtered.length === 0 ? (
+              <tr>
+                <td className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={5}>
+                  Načítám data...
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td className="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={5}>
                   Nic nenalezeno

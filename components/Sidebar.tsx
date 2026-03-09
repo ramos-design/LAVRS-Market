@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users, Image as ImageIcon, Tags } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
 import { ViewMode } from '../types';
 
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
@@ -9,9 +9,10 @@ interface SidebarProps {
   role: ViewMode;
   activeItem: string;
   onNavigate: (screen: string) => void;
+  onSignOut: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate }) => {
+const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignOut }) => {
   const menuItems = role === 'EXHIBITOR' ? [
     { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
     { id: 'APPLICATIONS', label: 'Moje Přihlášky', icon: FileText },
@@ -56,15 +57,23 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate }) => {
 
       {role === 'EXHIBITOR' && (
         <div className="mt-auto mb-6 flex justify-center pointer-events-none select-none overflow-visible px-2 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          <img 
-            src="/media/leopard.png" 
-            alt="Mascot" 
-            className="w-full max-w-[240px] h-auto object-contain" 
+          <img
+            src="/media/leopard.png"
+            alt="Mascot"
+            className="w-full max-w-[240px] h-auto object-contain"
           />
         </div>
       )}
 
-      <div className="pt-8 border-t border-white/10 space-y-4">
+      <div className="pt-8 border-t border-white/10 space-y-6">
+        <button
+          onClick={onSignOut}
+          className="flex items-center gap-3 w-full text-white/70 hover:text-white transition-colors group"
+        >
+          <LogOut size={18} className="group-hover:translate-x-1 transition-transform" />
+          <span className="text-[11px] font-black uppercase tracking-widest">Odhlásit se</span>
+        </button>
+
         <div className="grid grid-cols-1 gap-2">
           <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</a>
           <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</a>
