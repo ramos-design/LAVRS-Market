@@ -51,11 +51,15 @@ export function useAuth() {
                     fullName: data.full_name || email.split('@')[0],
                 });
                 setError(null);
+            } else {
+                // POKUD PROFIL NENÍ V DATABÁZI (Byl smazán nebo nikdy neexistoval)
+                // Pokud uživatel už v aplikaci je (není to úplně první load bez session),
+                // tak ho odhlásíme, protože jeho účet už v DB neexistuje.
+                console.warn('Profil nenalezen v DB, odhlašuji uživatele.');
+                signOut();
             }
         } catch (e: any) {
             console.error('Tichá chyba při načítání profilu:', e);
-            // Neukazujeme chybu hned, protože uživatel je v aplikaci jako EXHIBITOR.
-            // Zobrazíme upozornění v error state, který App.tsx ukáže jako žlutý pruh.
             setError(`Omezený režim: Nepodařilo se ověřit všechna práva (${e.message}).`);
         }
     };
@@ -64,9 +68,6 @@ export function useAuth() {
         let mounted = true;
 
         const initAuth = async () => {
-            if (hasInit.current) return;
-            hasInit.current = true;
-
             try {
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -103,9 +104,32 @@ export function useAuth() {
             }
         });
 
+        // REÁLNÝ ČAS: Sledujeme, zda admin nesmazal náš profil
+        let profileChannel: any = null;
+        
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session && mounted) {
+                profileChannel = supabase
+                    .channel('profile_sync')
+                    .on('postgres_changes', {
+                        event: 'DELETE',
+                        schema: 'public',
+                        table: 'profiles',
+                        filter: `id=eq.${session.user.id}`
+                    }, () => {
+                        console.log('Profil smazán z DB, odhlašuji...');
+                        signOut();
+                    })
+                    .subscribe();
+            }
+        });
+
         return () => {
             mounted = false;
             subscription.unsubscribe();
+            if (profileChannel) {
+                supabase.removeChannel(profileChannel);
+            }
         };
     }, []);
 

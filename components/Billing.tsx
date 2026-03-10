@@ -11,14 +11,15 @@ const Billing: React.FC = () => {
     const profiles = dbProfiles.map(dbBrandProfileToApp);
     const applications = (dbApplications || []).map(dbApplicationToApp);
 
-    // Filter for paid applications for the billing history
-    const paidInvoices = applications
-        .filter(app => app.status === AppStatus.PAID)
+    // Filter for applications in billing process
+    const invoices = applications
+        .filter(app => [AppStatus.PAID, AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(app.status))
         .map(app => ({
             id: `INV-${new Date(app.submittedAt).getFullYear()}-${app.id.slice(0, 4).toUpperCase()}`,
-            date: new Date(app.submittedAt).toLocaleDateString('cs-CZ'),
-            amount: 'TBD', // Amount would come from event prices/zones
-            status: 'PAID', // This would depend on payment_status in application
+            date: app.approvedAt ? new Date(app.approvedAt).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : new Date(app.submittedAt).toLocaleDateString('cs-CZ'),
+            deadline: app.paymentDeadline ? new Date(app.paymentDeadline).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null,
+            amount: 'TBD', 
+            status: app.status,
             event: app.brandName
         }));
 
@@ -61,7 +62,7 @@ const Billing: React.FC = () => {
                 </div>
             </div>
 
-            {paidInvoices.length === 0 ? (
+            {invoices.length === 0 ? (
                 <div className="bg-white border-2 border-dashed border-gray-100 p-20 text-center space-y-4">
                     <div className="w-16 h-16 bg-gray-50 text-gray-300 flex items-center justify-center mx-auto">
                         <FileText size={32} />
@@ -74,26 +75,35 @@ const Billing: React.FC = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-100">
-                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Doklad</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Doklad / Datum schválení</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Akce / Položka</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Stav</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Stav / Splatnost</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Částka</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Akce</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {paidInvoices.map((inv) => (
+                            {invoices.map((inv) => (
                                 <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <span className="font-bold text-lavrs-dark block">{inv.id}</span>
-                                        <span className="text-[10px] text-gray-400">{inv.date}</span>
+                                        <span className="text-[10px] text-gray-400">Schváleno: {inv.date}</span>
                                     </td>
                                     <td className="px-6 py-4 font-medium text-gray-600">{inv.event}</td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className={`text-[10px] font-bold px-3 py-1 rounded-none ${inv.status === 'PAID' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                                        <div className="space-y-1">
+                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-none ${
+                                                inv.status === AppStatus.PAID ? 'bg-green-100 text-green-700' : 
+                                                inv.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-100 text-blue-700' :
+                                                'bg-orange-100 text-orange-700'
                                             }`}>
-                                            {inv.status === 'PAID' ? 'ZAPLACENO' : 'NEZAPLACENO'}
-                                        </span>
+                                                {inv.status === AppStatus.PAID ? 'ZAPLACENO' : 
+                                                 inv.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'V OVĚŘENÍ' : 'ČEKÁ NA PLATBU'}
+                                            </span>
+                                            {inv.status !== AppStatus.PAID && inv.deadline && (
+                                                <p className="text-[9px] font-bold text-lavrs-red">Splatnost: {inv.deadline}</p>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-right font-bold text-lavrs-dark">{inv.amount}</td>
                                     <td className="px-6 py-4 text-right">

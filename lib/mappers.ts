@@ -5,6 +5,25 @@
 import { Application, AppStatus, BrandProfile, MarketEvent, Banner, Category, Zone, Stand, EventPlan, SpotSize, ExtraItem } from '../types';
 import { DbEvent, DbApplication, DbBrandProfile, DbBanner, DbCategory, DbZone, DbStand, DbEventPlan } from '../lib/database';
 
+export function formatEventDate(dateStr: string): string {
+    if (!dateStr) return '';
+    
+    // Handle specific range format if it exists (like 25.–26. 09. 2026)
+    // If it's not a standard ISO, we might need more logic, but for now let's try to parse it.
+    const date = new Date(dateStr);
+    
+    // If it's an invalid date (might happen with ranges), return as is or handle
+    if (isNaN(date.getTime())) {
+        return dateStr;
+    }
+
+    return new Intl.DateTimeFormat('cs-CZ', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    }).format(date);
+}
+
 /* ─── Events ─────────────────────────────────────────────── */
 
 export function dbEventToApp(e: DbEvent): MarketEvent {
@@ -16,6 +35,7 @@ export function dbEventToApp(e: DbEvent): MarketEvent {
         status: e.status,
         image: e.image || '',
         description: e.description || undefined,
+        capacity: e.capacity || undefined,
     };
 }
 
@@ -28,6 +48,7 @@ export function appEventToDb(e: MarketEvent): Omit<DbEvent, 'created_at'> {
         status: e.status,
         image: e.image,
         description: e.description || null,
+        capacity: e.capacity || null,
     };
 }
 
@@ -61,12 +82,14 @@ export function dbApplicationToApp(a: DbApplication): Application {
         curatorNote: a.curator_note || undefined,
         extraNote: a.extra_note || undefined,
         paymentDeadline: a.payment_deadline || undefined,
+        approvedAt: a.approved_at || undefined,
     };
 }
 
-export function appApplicationToDb(a: Application): Omit<DbApplication, 'created_at'> {
+export function appApplicationToDb(a: Application, userId?: string | null): Omit<DbApplication, 'created_at'> {
     return {
         id: a.id,
+        user_id: userId || null,
         brand_name: a.brandName,
         brand_description: a.brandDescription || null,
         instagram: a.instagram || null,
@@ -91,7 +114,6 @@ export function appApplicationToDb(a: Application): Omit<DbApplication, 'created
         consent_newsletter: a.consentNewsletter,
         curator_note: a.curatorNote || null,
         extra_note: a.extraNote || null,
-        payment_deadline: a.paymentDeadline || null,
         brand_profile_id: null,
     };
 }
@@ -117,9 +139,10 @@ export function dbBrandProfileToApp(p: DbBrandProfile): BrandProfile {
     };
 }
 
-export function appBrandProfileToDb(p: BrandProfile): Omit<DbBrandProfile, 'created_at'> {
+export function appBrandProfileToDb(p: BrandProfile, userId?: string | null): Omit<DbBrandProfile, 'created_at'> {
     return {
         id: p.id,
+        user_id: userId || null,
         brand_name: p.brandName,
         brand_description: p.brandDescription || null,
         instagram: p.instagram || null,

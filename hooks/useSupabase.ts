@@ -63,6 +63,11 @@ export function useEvents() {
             await eventsDb.update(id, updates);
             query.refetch();
         },
+        uploadEventImage: async (file: File, eventId: string) => {
+            const result = await eventsDb.uploadImage(file, eventId);
+            query.refetch();
+            return result;
+        },
         deleteEvent: async (id: string) => {
             await eventsDb.delete(id);
             query.refetch();
@@ -128,16 +133,17 @@ export function useApplications() {
             await applicationsDb.create(app);
             query.refetch();
         },
-        updateStatus: async (id: string, status: string, paymentDeadline?: string) => {
-            await applicationsDb.updateStatus(id, status, paymentDeadline);
-            query.refetch();
+        updateStatus: async (id: string, status: string, paymentDeadline?: string, approvedAt?: string) => {
+            const result = await applicationsDb.updateStatus(id, status, paymentDeadline, approvedAt);
+            await query.refetch();
+            return result;
         },
         updateApplication: async (id: string, updates: Partial<DbApplication>) => {
             await applicationsDb.update(id, updates);
             query.refetch();
         },
         deleteApplication: async (id: string) => {
-            await applicationsDb.delete(id);
+            await applicationsDb.update(id, { status: 'DELETED' });
             query.refetch();
         },
     };

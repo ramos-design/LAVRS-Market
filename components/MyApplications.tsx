@@ -1,12 +1,17 @@
 import React from 'react';
 import { FileText, Clock, CheckCircle2, AlertCircle, ChevronRight, Search } from 'lucide-react';
 import { AppStatus, Application } from '../types';
+import { useEvents } from '../hooks/useSupabase';
+import { dbEventToApp } from '../lib/mappers';
 
 interface MyApplicationsProps {
     applications: Application[];
 }
 
 const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
+    const { events: dbEvents } = useEvents();
+    const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+    const getEventTitle = (eventId: string) => events.find(e => e.id === eventId)?.title || 'Neznámý event';
     const getStatusStyle = (status: AppStatus) => {
         switch (status) {
             case AppStatus.APPROVED:
@@ -23,6 +28,8 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
                 return 'bg-green-100 text-green-800 border-green-200';
             case AppStatus.EXPIRED:
                 return 'bg-gray-100 text-gray-500 border-gray-200';
+            case AppStatus.PAYMENT_UNDER_REVIEW:
+                return 'bg-blue-50 text-blue-700 border-blue-100';
             default:
                 return 'bg-gray-50 text-gray-700 border-gray-100';
         }
@@ -38,14 +45,8 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
     // "only those that are approved (přijaté), rejected (zamítnuté), or waiting list (waitlist)"
     // We also include PENDING because users need to see their active submissions.
     // PAID, EXPIRED, or deleted (no longer in DB) should not be in this specific view.
-    const visibleApplications = applications.filter(app =>
-        app.status === AppStatus.PENDING ||
-        app.status === AppStatus.APPROVED ||
-        app.status === AppStatus.REJECTED ||
-        app.status === AppStatus.WAITLIST ||
-        app.status === AppStatus.PAYMENT_REMINDER ||
-        app.status === AppStatus.PAYMENT_LAST_CALL
-    );
+    // Show all applications to the user so they have a full history
+    const visibleApplications = applications;
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -88,11 +89,13 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
                                                     app.status === AppStatus.REJECTED ? 'Zamítnuto' :
                                                         app.status === AppStatus.WAITLIST ? 'Na waitlistu' :
                                                             app.status === AppStatus.PAID ? 'Zaplaceno' :
-                                                                app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
+                                                                app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
+                                                                    app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
                                         </span>
                                     </div>
                                     <div className="flex gap-4 text-xs text-gray-400">
                                         <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
+                                        <span className="font-medium text-gray-500">{getEventTitle(app.eventId)}</span>
                                         <span className="font-medium text-gray-500">ID: {app.id}</span>
                                     </div>
                                     {app.status === AppStatus.APPROVED && app.paymentDeadline && (

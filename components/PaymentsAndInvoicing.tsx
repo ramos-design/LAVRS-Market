@@ -1,9 +1,45 @@
 import React from 'react';
 import { DollarSign, Search, Download, Filter, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { AppStatus } from '../types';
+import { useApplications, useEvents } from '../hooks/useSupabase';
+import { dbApplicationToApp, dbEventToApp } from '../lib/mappers';
 
 const PaymentsAndInvoicing: React.FC = () => {
-    // In a real scenario, we would fetch these from Supabase (e.g. applications with payment status)
-    const payments: any[] = [];
+    const { applications: dbApps } = useApplications();
+    const { events: dbEvents } = useEvents();
+    const applications = React.useMemo(() => dbApps.map(dbApplicationToApp), [dbApps]);
+    const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+
+    const payments = React.useMemo(() => {
+        return applications
+            .filter(app => {
+                const normalized = (app.status || '').toString().toUpperCase();
+                return [
+                    AppStatus.APPROVED,
+                    AppStatus.PAYMENT_REMINDER,
+                    AppStatus.PAYMENT_LAST_CALL,
+                    AppStatus.PAYMENT_UNDER_REVIEW,
+                    AppStatus.PAID,
+                    AppStatus.EXPIRED,
+                ].includes(normalized as AppStatus);
+            })
+            .map(app => {
+                const normalized = (app.status || '').toString().toUpperCase();
+                const isPaid = normalized === AppStatus.PAID;
+                const isOverdue = normalized === AppStatus.EXPIRED || (app.paymentDeadline ? new Date(app.paymentDeadline) < new Date() : false);
+                const status = isPaid ? 'paid' : isOverdue ? 'overdue' : 'pending';
+                const eventTitle = events.find(e => e.id === app.eventId)?.title || '—';
+                return {
+                    id: app.id,
+                    brand: app.brandName,
+                    event: eventTitle,
+                    amount: '—',
+                    date: app.submittedAt,
+                    status,
+                    invoice: '—',
+                };
+            });
+    }, [applications, events]);
 
     const getStatusStyle = (status: string) => {
         switch (status) {

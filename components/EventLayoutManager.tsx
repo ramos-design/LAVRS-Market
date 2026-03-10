@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Plus, Trash2, Users, Map, MousePointer2,
     Grid3X3, Layers, CheckCircle2, AlertCircle,
@@ -36,7 +36,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     // People who are just APPROVED stay in the Curator (Review) module until paid
     const propApplications = allApplications.filter(app => app.status === AppStatus.PAID);
 
-    const { events: dbEvents } = useEvents();
+    const { events: dbEvents, updateEvent, uploadEventImage } = useEvents();
     const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
 
     const currentEvent = events.find(e => e.id === eventId);
@@ -81,7 +81,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         location: currentEvent?.location || '',
         description: currentEvent?.description || 'LAVRS market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
         image: currentEvent?.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
-        status: currentEvent?.status || 'draft'
+        status: currentEvent?.status === 'closed' ? 'waitlist' : (currentEvent?.status || 'draft')
     });
     const [selectedZoneId, setSelectedZoneId] = useState<string | null>(plan.zones[0]?.id || null);
     const [activeTool, setActiveTool] = useState<'select' | 'place-s' | 'place-m' | 'place-l' | 'erase'>('select');
@@ -90,6 +90,45 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [isSaved, setIsSaved] = useState(false);
     const [exhibitorFilter, setExhibitorFilter] = useState<string>('ALL');
+    const [dateInput, setDateInput] = useState<string>('');
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const formatEventDateLong = (dateStr?: string) => {
+        if (!dateStr) return '';
+        const parsed = new Date(dateStr);
+        if (isNaN(parsed.getTime())) return dateStr;
+        return parsed.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
+    const toDateInputValue = (dateStr?: string) => {
+        if (!dateStr) return '';
+        const parsed = new Date(dateStr);
+        if (isNaN(parsed.getTime())) return '';
+        const yyyy = parsed.getFullYear();
+        const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+        const dd = String(parsed.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    useEffect(() => {
+        if (!currentEvent) return;
+        const nextDateInput = toDateInputValue(currentEvent.date);
+        setDateInput(nextDateInput);
+        setEventDetails({
+            title: currentEvent.title || '',
+            date: formatEventDateLong(currentEvent.date || ''),
+            location: currentEvent.location || '',
+            description: currentEvent.description || 'LAVRS market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
+            image: currentEvent.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
+            status: currentEvent.status === 'closed' ? 'waitlist' : (currentEvent.status || 'draft')
+        });
+    }, [currentEvent]);
+
+    const previewImage =
+        eventDetails.image ||
+        currentEvent?.image ||
+        'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80';
 
     const formatPriceInput = (value: string) => {
         // Remove everything except digits
@@ -245,27 +284,27 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                         key={`${x}-${y}`}
                         onClick={() => handleCellClick(x, y)}
                         className={`
-              relative aspect-square border border-gray-100 flex items-center justify-center transition-all cursor-crosshair
-              ${!stand && activeTool.startsWith('place') ? 'hover:bg-lavrs-beige/50' : 'hover:bg-gray-50'}
+              relative aspect-square border border-gray-200 flex items-center justify-center transition-all cursor-pointer
+              ${!stand && activeTool.startsWith('place') ? 'hover:bg-lavrs-beige/40' : 'hover:bg-gray-50'}
               ${stand && selectedStandId === stand.id ? 'ring-2 ring-lavrs-red ring-inset z-10' : ''}
-              ${stand ? 'bg-white shadow-sm' : 'bg-transparent'}
+              ${stand ? 'bg-white' : 'bg-transparent'}
             `}
                     >
                         {stand && (
                             <div
-                                className="w-full h-full p-1 flex flex-col justify-between overflow-hidden"
+                                className="w-full h-full p-0.5 flex flex-col justify-between overflow-hidden"
                                 style={{ borderTop: `4px solid ${zone?.color || '#333'}` }}
                             >
                                 <div className="flex justify-between items-start">
-                                    <span className="text-[8px] font-black text-gray-400 uppercase">{stand.size}</span>
-                                    {occupant && <CheckCircle2 size={10} className="text-green-500" />}
+                                    <span className="text-[7px] font-black text-gray-400 uppercase">{stand.size}</span>
+                                    {occupant && <CheckCircle2 size={9} className="text-green-500" />}
                                 </div>
 
                                 <div className="flex-1 flex flex-col justify-center items-center text-center px-1">
                                     {occupant ? (
                                         <>
-                                            <p className="text-[10px] font-bold leading-tight line-clamp-2 text-lavrs-dark">{occupant.brandName}</p>
-                                            <p className="text-[8px] text-gray-400 font-medium truncate w-full">{occupant.zoneCategory}</p>
+                                            <p className="text-[9px] font-bold leading-tight line-clamp-2 text-lavrs-dark">{occupant.brandName}</p>
+                                            <p className="text-[7px] text-gray-400 font-medium truncate w-full">{occupant.zoneCategory}</p>
                                         </>
                                     ) : (
                                         <div className="w-1.5 h-1.5 rounded-full bg-gray-200" />
@@ -273,11 +312,6 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                 </div>
                             </div>
                         )}
-
-                        {/* Grid Coordinates (optional/subtle) */}
-                        <span className="absolute bottom-0 right-0 text-[6px] text-gray-200 px-0.5 pointer-events-none">
-                            {x},{y}
-                        </span>
                     </div>
                 );
             }
@@ -309,7 +343,15 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                 </div>
 
                 <button
-                    onClick={() => {
+                    onClick={async () => {
+                        await updateEvent(eventId, {
+                            title: eventDetails.title,
+                            date: eventDetails.date,
+                            location: eventDetails.location,
+                            description: eventDetails.description,
+                            image: eventDetails.image,
+                            status: eventDetails.status as any
+                        });
                         onSavePlan && onSavePlan(plan);
                         setIsSaved(true);
                         setTimeout(() => setIsSaved(false), 2000);
@@ -381,7 +423,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                             {[
                                                 { id: 'draft', label: 'Nezveřejněno', icon: XCircle },
                                                 { id: 'open', label: 'Otevřeno', icon: CheckCircle2 },
-                                                { id: 'waitlist', label: 'Připravuje se', icon: Clock }
+                                                { id: 'waitlist', label: 'Waitlist', icon: Clock }
                                             ].map((status) => (
                                                 <button
                                                     key={status.id}
@@ -405,12 +447,16 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                         <div className="lg:col-span-4 space-y-3">
                                             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block">Náhledové foto (16:9)</label>
                                             <div className="aspect-video bg-gray-50 border border-gray-100 flex flex-col items-center justify-center relative group overflow-hidden">
-                                                {eventDetails.image ? (
+                                                {previewImage ? (
                                                     <>
-                                                        <img src={eventDetails.image} alt="Preview" className="w-full h-full object-cover" />
+                                                        <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
                                                         <div className="absolute inset-0 bg-lavrs-dark/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <button className="bg-white text-lavrs-dark px-3 py-1.5 font-bold text-[9px] uppercase tracking-widest flex items-center gap-2">
-                                                                <Camera size={12} /> Změnit
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => fileInputRef.current?.click()}
+                                                                className="bg-white text-lavrs-dark px-3 py-1.5 font-bold text-[9px] uppercase tracking-widest flex items-center gap-2"
+                                                            >
+                                                                <Camera size={12} /> {isUploadingImage ? 'Nahrávám...' : 'Změnit'}
                                                             </button>
                                                         </div>
                                                     </>
@@ -420,6 +466,28 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                         <p className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Nahrát (16:9)</p>
                                                     </div>
                                                 )}
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        setIsUploadingImage(true);
+                                                        try {
+                                                            const { url } = await uploadEventImage(file, eventId);
+                                                            setEventDetails(prev => ({ ...prev, image: url }));
+                                                            await updateEvent(eventId, { image: url });
+                                                        } catch (err) {
+                                                            console.error('Image upload failed', err);
+                                                            alert('Nahrání obrázku se nezdařilo.');
+                                                        } finally {
+                                                            setIsUploadingImage(false);
+                                                            e.currentTarget.value = '';
+                                                        }
+                                                    }}
+                                                />
                                             </div>
                                         </div>
 
@@ -443,9 +511,14 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                 <div className="relative">
                                                     <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
                                                     <input
-                                                        type="text"
-                                                        value={eventDetails.date}
-                                                        onChange={(e) => setEventDetails(prev => ({ ...prev, date: e.target.value }))}
+                                                        type="date"
+                                                        value={dateInput}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            setDateInput(value);
+                                                            const formatted = formatEventDateLong(value);
+                                                            setEventDetails(prev => ({ ...prev, date: formatted }));
+                                                        }}
                                                         className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 focus:border-lavrs-red outline-none font-bold text-lavrs-dark transition-all text-sm"
                                                     />
                                                 </div>
@@ -754,9 +827,34 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
 
                         {/* Main Grid Area */}
                         <div className="lg:col-span-9 space-y-6">
-                            <div className="bg-white border border-gray-100 p-1 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
+                            <div className="bg-white border border-gray-100 p-4 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
+                                {/* Quick Tools */}
+                                <div className="flex flex-wrap items-center gap-2 pb-4 border-b border-gray-100">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mr-2">Rychlé nástroje</span>
+                                    {[
+                                        { id: 'select', label: 'Výběr', icon: MousePointer2 },
+                                        { id: 'place-s', label: 'Stánek S', icon: Plus },
+                                        { id: 'place-m', label: 'Stánek M', icon: Plus },
+                                        { id: 'place-l', label: 'Stánek L', icon: Plus },
+                                        { id: 'erase', label: 'Smazat', icon: Trash2 },
+                                    ].map(tool => (
+                                        <button
+                                            key={tool.id}
+                                            onClick={() => setActiveTool(tool.id as any)}
+                                            className={`px-3 py-2 text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${
+                                                activeTool === tool.id
+                                                    ? 'bg-lavrs-dark text-white border-lavrs-dark'
+                                                    : 'bg-white text-gray-500 border-gray-200 hover:border-lavrs-red hover:text-lavrs-red'
+                                            }`}
+                                        >
+                                            <tool.icon size={14} />
+                                            {tool.label}
+                                        </button>
+                                    ))}
+                                </div>
+
                                 {/* Grid Header */}
-                                <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+                                <div className="p-3 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -774,11 +872,11 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                 </div>
 
                                 {/* The Grid */}
-                                <div className="flex-1 p-8 bg-gray-100/30 overflow-auto">
+                                <div className="flex-1 p-4 bg-gray-100/30 overflow-auto">
                                     <div
-                                        className="grid mx-auto bg-white border border-gray-200 shadow-2xl transition-all"
+                                        className="grid mx-auto bg-white border border-gray-200 shadow-lg transition-all"
                                         style={{
-                                            gridTemplateColumns: `repeat(${plan.gridSize.width}, minmax(40px, 1fr))`,
+                                            gridTemplateColumns: `repeat(${plan.gridSize.width}, minmax(28px, 1fr))`,
                                             width: 'fit-content',
                                             minWidth: '100%'
                                         }}

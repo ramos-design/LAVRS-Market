@@ -35,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignO
         <img src={logo} alt="LAVRS market" className="h-10 w-auto object-contain" />
       </div>
 
-      <nav className="flex-1 space-y-4">
+      <nav className="flex-1 space-y-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeItem === item.id;
@@ -53,32 +53,40 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignO
             </button>
           );
         })}
+
+        <div className="pt-4 mt-4 border-t border-white/10">
+          <button
+            onClick={onSignOut}
+            className="w-full flex items-center gap-4 px-6 py-4 rounded-none text-base font-bold text-white/70 hover:text-white hover:bg-white/10 transition-all group"
+          >
+            <LogOut size={18} className="group-hover:translate-x-1 transition-transform" />
+            Odhlásit se
+          </button>
+        </div>
       </nav>
 
       {role === 'EXHIBITOR' && (
-        <div className="mt-auto mb-6 flex justify-center pointer-events-none select-none overflow-visible px-2 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="mt-auto mb-4 flex justify-center pointer-events-none select-none overflow-visible px-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 shrink min-h-0">
           <img
             src="/media/leopard.png"
             alt="Mascot"
-            className="w-full max-w-[240px] h-auto object-contain"
+            className="w-full max-w-[220px] h-auto max-h-[150px] lg:max-h-[220px] xl:max-h-[280px] object-contain transition-all duration-500"
           />
         </div>
       )}
 
-      <div className="pt-8 border-t border-white/10 space-y-6">
-        <button
-          onClick={onSignOut}
-          className="flex items-center gap-3 w-full text-white/70 hover:text-white transition-colors group"
-        >
-          <LogOut size={18} className="group-hover:translate-x-1 transition-transform" />
-          <span className="text-[11px] font-black uppercase tracking-widest">Odhlásit se</span>
-        </button>
+      <div className="pt-8 border-t border-white/10">
 
         <div className="grid grid-cols-1 gap-2">
           <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</a>
           <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</a>
           <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Storno podmínky</a>
-          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Kontaktujte nás</a>
+          <button 
+            onClick={() => onNavigate('CONTACT')}
+            className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors"
+          >
+            Kontaktujte nás
+          </button>
         </div>
       </div>
     </aside>

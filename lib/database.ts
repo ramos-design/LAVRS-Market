@@ -14,6 +14,7 @@ export interface DbEvent {
     status: 'open' | 'closed' | 'waitlist' | 'draft';
     image: string | null;
     description: string | null;
+    capacity: number | null;
     created_at?: string;
 }
 
@@ -70,7 +71,8 @@ export interface DbApplication {
     consent_newsletter: boolean;
     curator_note: string | null;
     extra_note: string | null;
-    payment_deadline: string | null;
+    payment_deadline?: string | null;
+    approved_at?: string | null;
     brand_profile_id: string | null;
     created_at?: string;
 }
@@ -168,6 +170,18 @@ export const eventsDb = {
         return data;
     },
 
+    async uploadImage(file: File, eventId: string): Promise<{ path: string; url: string }> {
+        const filePath = `event-images/${eventId}/${Date.now()}-${file.name}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('event-images')
+            .upload(filePath, file, { upsert: true });
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('event-images').getPublicUrl(filePath);
+        return { path: filePath, url: urlData.publicUrl };
+    },
+
     async delete(id: string): Promise<void> {
         const { error } = await supabase.from('events').delete().eq('id', id);
         if (error) throw error;
@@ -228,7 +242,8 @@ export const brandProfilesDb = {
     async create(profile: Omit<DbBrandProfile, 'created_at'>): Promise<DbBrandProfile> {
         const { data: { user } } = await supabase.auth.getUser();
         const profileWithUser = { ...profile, user_id: user?.id || null };
-        const { data, error } = await supabase.from('brand_profiles').insert(profileWithUser).select().single();
+        // Použijeme upsert, aby se při stejném ID (třeba při refreshu) značka neduplikovala
+        const { data, error } = await supabase.from('brand_profiles').upsert(profileWithUser).select().single();
         if (error) throw error;
         return data;
     },
@@ -259,7 +274,7 @@ export const applicationsDb = {
 
         let query = supabase.from('applications').select('*');
         if (!isAdmin) {
-            query = query.eq('user_id', user.id);
+            query = query.eq('user_id', user.id).neq('status', 'DELETED');
         }
 
         const { data, error } = await query.order('submitted_at', { ascending: false });
@@ -281,9 +296,15 @@ export const applicationsDb = {
         return data;
     },
 
-    async updateStatus(id: string, status: string, paymentDeadline?: string): Promise<DbApplication> {
-        const updates: Partial<DbApplication> = { status };
+    async updateStatus(id: string, status: string, paymentDeadline?: string, approvedAt?: string): Promise<DbApplication> {
+        const updates: any = { status };
+        // DOČASNĚ ZAKÁZÁNO: Tyto sloupce v DB pravděpodobně chybí a způsobují chybu při schvalování.
+        // TODO: Až budou sloupce v DB existovat, odkomentujte řádky níže.
+        /*
         if (paymentDeadline !== undefined) updates.payment_deadline = paymentDeadline;
+        if (approvedAt !== undefined) updates.approved_at = approvedAt;
+        */
+        
         const { data, error } = await supabase.from('applications').update(updates).eq('id', id).select().single();
         if (error) throw error;
         return data;

@@ -1,28 +1,77 @@
 
-import React from 'react';
-import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles, MapPin } from 'lucide-react';
 import { MarketEvent, User, AppStatus, Application, BrandProfile, Banner } from '../types';
 import { useEvents } from '../hooks/useSupabase';
-import { dbEventToApp } from '../lib/mappers';
+import { dbEventToApp, formatEventDate } from '../lib/mappers';
 
 interface ExhibitorDashboardProps {
   user: User;
   applications: Application[];
   brands: BrandProfile[];
   onApply: (eventId: string) => void;
-  onPayment: () => void;
+  onPayment: (appId: string) => void;
+  onDismissApp: (appId: string) => void;
   onNavigate: (screen: string) => void;
   banners: Banner[];
 }
 
-const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applications, brands, onApply, onPayment, onNavigate, banners }) => {
-
+const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applications, brands, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
   const { events: dbEvents } = useEvents();
-  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+  const events = React.useMemo(() => {
+    const parsed = dbEvents.map(dbEventToApp);
+    const parseDate = (dateStr: string) => {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) return d.getTime();
+      const trimmed = dateStr.replace(/\s+/g, ' ').trim();
+      const numeric = trimmed.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+      if (numeric) {
+        const day = parseInt(numeric[1], 10);
+        const month = parseInt(numeric[2], 10);
+        const year = parseInt(numeric[3], 10);
+        return new Date(year, month - 1, day).getTime();
+      }
+      const range = trimmed.match(/(\d{1,2})\.\s*[–-]\s*(\d{1,2})\.\s*(\d{1,2})\.?\s*(\d{4})/);
+      if (range) {
+        const day = parseInt(range[1], 10);
+        const month = parseInt(range[3], 10);
+        const year = parseInt(range[4], 10);
+        return new Date(year, month - 1, day).getTime();
+      }
+      const monthMap: Record<string, number> = {
+        ledna: 1, února: 2, března: 3, dubna: 4, května: 5, června: 6,
+        července: 7, srpna: 8, září: 9, října: 10, listopadu: 11, prosince: 12
+      };
+      const named = trimmed.match(/(\d{1,2})\.\s*([a-zá-ž]+)\s*(\d{4})/i);
+      if (named) {
+        const day = parseInt(named[1], 10);
+        const monthName = named[2].toLowerCase();
+        const year = parseInt(named[3], 10);
+        const month = monthMap[monthName];
+        if (month) return new Date(year, month - 1, day).getTime();
+      }
+      return Number.NEGATIVE_INFINITY;
+    };
+    return parsed.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+  }, [dbEvents]);
+  const visibleEvents = React.useMemo(
+    () => events.filter(event => event.status !== 'draft'),
+    [events]
+  );
   const [currentSlide, setCurrentSlide] = React.useState(0);
   const [now, setNow] = React.useState(Date.now());
-  const activeApp = applications.find(app => app.status === AppStatus.APPROVED);
-  const activeEvent = activeApp ? events.find(e => e.id === activeApp.eventId) : null;
+  const activeApps = applications.filter(app => 
+    [AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(app.status)
+  );
+  const reviewApps = applications.filter(app => app.status === AppStatus.PAYMENT_UNDER_REVIEW);
+  
+  // Combine all payment-relevant apps for unified logic
+  const paymentRequestedApps = applications.filter(app => 
+    [AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(app.status)
+  );
+
+  const displayApp = paymentRequestedApps[0];
+  const activeEvent = displayApp ? events.find(e => e.id === displayApp.eventId) : null;
 
   const slides = banners;
 
@@ -36,7 +85,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
   }, [slides.length]);
 
   React.useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -53,7 +102,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
     return { overdue: false, days, hours, minutes };
   };
 
-  const remaining = getRemaining(activeApp?.paymentDeadline);
+  const remaining = getRemaining(displayApp?.paymentDeadline);
 
 
   return (
@@ -99,45 +148,72 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
           </div>
         </div>
       )}
+      {/* Action Required Widgets */}
+      <div className="space-y-4">
+        {paymentRequestedApps.map((app) => {
+          const event = events.find(e => e.id === app.eventId);
+          const isReview = app.status === AppStatus.PAYMENT_UNDER_REVIEW;
+          const remaining = getRemaining(app.paymentDeadline);
 
-      {/* Action Required Widget */}
-      {activeApp && (
-        <div className="bg-lavrs-red/5 border border-lavrs-red/20 rounded-none p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex gap-4">
-            <div className="w-12 h-12 bg-lavrs-red rounded-none flex items-center justify-center text-white shrink-0">
-              <Clock size={24} />
+          if (isReview) {
+            return (
+              <div key={app.id} className="bg-blue-50 border border-blue-100 rounded-none p-8 flex flex-col md:flex-row items-center justify-between gap-6 animate-fadeIn transition-all relative group/box">
+                <div className="flex gap-4">
+                  <div className="w-12 h-12 bg-blue-500 rounded-none flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-200">
+                    <Clock size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl text-lavrs-dark">
+                      Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDate(event.date) : ''}</span>
+                    </h3>
+                    <p className="text-blue-700 font-bold text-sm mt-1">Nyní čekáme na přijetí vaší platby. Jakmile ji zpracujeme, budeme vás informovat e-mailem a zašleme vám fakturu.</p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => onDismissApp(app.id)}
+                  className="absolute top-4 right-4 p-2 text-blue-300 hover:text-blue-600 hover:bg-blue-100 transition-all rounded-full"
+                  title="Zavřít informaci"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div key={app.id} className="bg-lavrs-red/5 border border-lavrs-red/20 rounded-none p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex gap-4">
+                <div className="w-12 h-12 bg-lavrs-red rounded-none flex items-center justify-center text-white shrink-0">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl text-lavrs-dark">
+                    Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDate(event.date) : ''}</span>
+                  </h3>
+                  <p className="text-gray-600">Tvoje přihláška byla schválena! Proveď platbu pro potvrzení místa.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-8">
+                {remaining && (
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Zbývá času</p>
+                    <p className={`text-xl font-black tracking-wider ${remaining.overdue ? 'text-lavrs-red' : 'text-lavrs-red'}`}>
+                      {remaining.overdue ? 'PO SPLATNOSTI' : `${remaining.days}d : ${remaining.hours}h : ${remaining.minutes}m`}
+                    </p>
+                  </div>
+                )}
+                <button 
+                  onClick={() => onPayment(app.id)}
+                  className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-bold uppercase tracking-widest text-xs hover:bg-lavrs-red transition-all flex items-center gap-2 group shadow-xl"
+                >
+                  Zaplatit nyní <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-semibold text-lavrs-dark">
-                Platba za {activeEvent?.title || 'LAVRS market'} {activeEvent?.date || ''}
-              </h3>
-              <p className="text-gray-600">Tvoje přihláška byla schválena! Proveď platbu pro potvrzení místa.</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-8">
-            <div className="text-center">
-              <p className="text-xs uppercase tracking-widest text-gray-400 font-bold mb-1">Zbývá času</p>
-              {remaining ? (
-                remaining.overdue ? (
-                  <p className="text-2xl font-bold text-red-600">Po splatnosti</p>
-                ) : (
-                  <p className="text-2xl font-bold text-lavrs-red">
-                    {remaining.days}d : {remaining.hours}h : {remaining.minutes}m
-                  </p>
-                )
-              ) : (
-                <p className="text-2xl font-bold text-gray-400">—</p>
-              )}
-            </div>
-            <button
-              onClick={onPayment}
-              className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all active:scale-95 flex items-center gap-2"
-            >
-              Zaplatit nyní <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -151,7 +227,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {events.map(event => (
+            {visibleEvents.map(event => (
               <div key={event.id} className="group glass-card overflow-hidden">
                 <div className="relative h-64 overflow-hidden">
                   <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -159,11 +235,19 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
                     className="absolute top-4 right-4 px-3 py-1 rounded-none text-[10px] font-black uppercase tracking-widest shadow-lg text-white"
                     style={{ backgroundColor: event.status === 'open' ? '#22C55E' : '#3B82F6' }}
                   >
-                    {event.status === 'open' ? 'Přihlašování otevřeno' : 'PŘIPRAVUJE SE'}
+                    {event.status === 'open' ? 'Přihlašování otevřeno' : 'WAITLIST'}
                   </div>
                 </div>
                 <div className="pt-8 pb-10 px-8">
-                  <p className="text-xs text-lavrs-red font-bold uppercase tracking-wider mb-2">{event.date} — {event.location}</p>
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <span className="bg-lavrs-red text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest leading-none">
+                      {formatEventDate(event.date)}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-lavrs-dark text-[10px] font-bold uppercase tracking-widest">
+                      <MapPin size={12} className="text-lavrs-dark" />
+                      {event.location}
+                    </span>
+                  </div>
                   <h4 className="text-xl font-bold mb-6 text-lavrs-dark">{event.title}</h4>
                   <button
                     onClick={() => onApply(event.id)}
@@ -199,7 +283,8 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
                   app.status === AppStatus.REJECTED ||
                   app.status === AppStatus.WAITLIST ||
                   app.status === AppStatus.PAYMENT_REMINDER ||
-                  app.status === AppStatus.PAYMENT_LAST_CALL
+                  app.status === AppStatus.PAYMENT_LAST_CALL ||
+                  app.status === AppStatus.PAYMENT_UNDER_REVIEW
                 );
 
                 if (visibleApps.length === 0) {
@@ -212,15 +297,20 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
 
                 return visibleApps.map((app, idx) => (
                   <div key={app.id} className="relative flex gap-6 pl-2 group">
-                    <div className={`z-10 w-10 h-10 rounded-none flex items-center justify-center border-4 border-white shadow-sm transition-transform duration-300 group-hover:scale-110 ${app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-500' :
+                    <div className={`z-10 w-10 h-10 rounded-none flex items-center justify-center border-4 border-white shadow-sm transition-transform duration-300 group-hover:scale-110 ${
+                        app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-500' :
+                        app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-500' :
                         app.status === AppStatus.PENDING ? 'bg-amber-400' :
-                          app.status === AppStatus.WAITLIST ? 'bg-blue-500' :
-                            app.status === AppStatus.PAID ? 'bg-green-600' : 'bg-gray-300'
+                        app.status === AppStatus.WAITLIST ? 'bg-blue-500' :
+                        app.status === AppStatus.PAID ? 'bg-green-600' : 
+                        app.status === AppStatus.EXPIRED ? 'bg-gray-400' : 'bg-red-500'
                       }`}>
                       {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? <CheckCircle2 size={18} className="text-white" /> :
+                        app.status === AppStatus.PAYMENT_UNDER_REVIEW ? <Clock size={18} className="text-white" /> :
                         app.status === AppStatus.PENDING ? <Clock size={18} className="text-white" /> :
-                          app.status === AppStatus.WAITLIST ? <Clock size={18} className="text-white" /> :
-                            app.status === AppStatus.PAID ? <CheckCircle2 size={18} className="text-white" /> : <XCircle size={18} className="text-white" />}
+                        app.status === AppStatus.WAITLIST ? <Clock size={18} className="text-white" /> :
+                        app.status === AppStatus.PAID ? <CheckCircle2 size={18} className="text-white" /> : 
+                        app.status === AppStatus.EXPIRED ? <Clock size={18} className="text-white" /> : <XCircle size={18} className="text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
@@ -232,15 +322,20 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
                       <p className="text-[11px] text-gray-500 mb-2 truncate">
                         {events.find(e => e.id === app.eventId)?.title}
                       </p>
-                      <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-100 text-green-700' :
+                      <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${
+                          app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-100 text-green-700' :
+                          app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-100 text-blue-700' :
                           app.status === AppStatus.PENDING ? 'bg-amber-100 text-amber-700' :
-                            app.status === AppStatus.WAITLIST ? 'bg-blue-100 text-blue-700' :
-                              app.status === AppStatus.PAID ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'
+                          app.status === AppStatus.WAITLIST ? 'bg-blue-100 text-blue-700' :
+                          app.status === AppStatus.PAID ? 'bg-green-100 text-green-800' : 
+                          app.status === AppStatus.EXPIRED ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-700'
                         }`}>
                         {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
+                          app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
                           app.status === AppStatus.PENDING ? 'V posouzení' :
-                            app.status === AppStatus.WAITLIST ? 'Waitlist' :
-                              app.status === AppStatus.PAID ? 'Zaplaceno' : 'Zamítnuto'}
+                          app.status === AppStatus.WAITLIST ? 'Waitlist' :
+                          app.status === AppStatus.PAID ? 'Zaplaceno' : 
+                          app.status === AppStatus.EXPIRED ? 'Expirováno' : 'Zamítnuto'}
                       </span>
                     </div>
                   </div>

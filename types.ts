@@ -7,7 +7,9 @@ export enum AppStatus {
   PAID = 'PAID',
   PAYMENT_REMINDER = 'PAYMENT_REMINDER',
   PAYMENT_LAST_CALL = 'PAYMENT_LAST_CALL',
-  EXPIRED = 'EXPIRED'
+  EXPIRED = 'EXPIRED',
+  PAYMENT_UNDER_REVIEW = 'PAYMENT_UNDER_REVIEW',
+  DELETED = 'DELETED'
 }
 
 export enum SpotSize {
@@ -37,6 +39,7 @@ export interface MarketEvent {
   status: 'open' | 'closed' | 'waitlist' | 'draft';
   image: string;
   description?: string;
+  capacity?: number;
 }
 
 export interface Application {
@@ -73,6 +76,7 @@ export interface Application {
   curatorNote?: string;
   extraNote?: string;
   paymentDeadline?: string;
+  approvedAt?: string | null;
 }
 
 export interface Stand {
@@ -149,4 +153,3 @@ export interface Banner {
   image: string;
   tag: string;
 }
-

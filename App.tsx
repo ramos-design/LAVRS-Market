@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ViewMode, User as UserType, BrandProfile, Application, AppStatus, Category, Banner } from './types';
 import Sidebar from './components/Sidebar';
 import ExhibitorDashboard from './components/ExhibitorDashboard';
@@ -10,6 +10,7 @@ import CuratorModule from './components/CuratorModule';
 import MyApplications from './components/MyApplications';
 import Billing from './components/Billing';
 import Profile from './components/Profile';
+import Contact from './components/Contact';
 import PaymentsAndInvoicing from './components/PaymentsAndInvoicing';
 import EventsConfig from './components/EventsConfig';
 import AutomatedEmails from './components/AutomatedEmails';
@@ -33,6 +34,15 @@ const App: React.FC = () => {
   const { user, loading: authLoading, error: authError, signOut, refetch } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<string>('DASHBOARD');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedPaymentAppId, setSelectedPaymentAppId] = useState<string | null>(null);
+  const [locallyUnderReview, setLocallyUnderReview] = useState<string[]>(() => {
+    const saved = localStorage.getItem('lavrs_locally_under_review');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [dismissedReviewAppIds, setDismissedReviewAppIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('lavrs_dismissed_review_apps');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // Derived role from user
   const userRole = user?.role;
@@ -46,8 +56,32 @@ const App: React.FC = () => {
   } = useApplications();
   const {
     profiles: dbProfiles, loading: profilesLoading,
-    createProfile, updateProfile,
+    createProfile, updateProfile, deleteProfile,
   } = useBrandProfiles();
+
+  // DOČASNÝ ÚKLID DUPLICIT: Pokud najdeme více značek se stejným jménem, necháme jen tu první.
+  useEffect(() => {
+    if (!profilesLoading && dbProfiles.length > 0) {
+      const seen = new Set<string>();
+      const toDelete: string[] = [];
+      
+      dbProfiles.forEach(b => {
+        const nameKey = (b.brand_name || '').trim().toLowerCase();
+        if (!nameKey) return;
+        if (seen.has(nameKey)) {
+          toDelete.push(b.id);
+        } else {
+          seen.add(nameKey);
+        }
+      });
+
+      if (toDelete.length > 0) {
+        console.warn(`Nalezeno ${toDelete.length} duplicitních značek. Odstraňuji...`);
+        toDelete.forEach(id => deleteProfile(id));
+      }
+    }
+  }, [dbProfiles, profilesLoading, deleteProfile]);
+
   const {
     banners: dbBanners, loading: bannersLoading,
     replaceAllBanners,
@@ -63,14 +97,39 @@ const App: React.FC = () => {
 
   // ─── Map DB data to app types ─────────────────────────────
   const events = useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
-  const applications = useMemo(() => dbApplications.map(dbApplicationToApp), [dbApplications]);
   const brandProfiles = useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
+  const applications = useMemo(() => {
+    return dbApplications.map(dbApplicationToApp).map(app => {
+      if (locallyUnderReview.includes(app.id) && app.status !== AppStatus.PAID) {
+        return { ...app, status: AppStatus.PAYMENT_UNDER_REVIEW };
+      }
+      return app;
+    }).filter(app => {
+      // Hide review apps that have been dismissed by the user
+      if (app.status === AppStatus.PAYMENT_UNDER_REVIEW && dismissedReviewAppIds.includes(app.id)) {
+        return false;
+      }
+      return true;
+    });
+  }, [dbApplications, locallyUnderReview, dismissedReviewAppIds]);
   const banners = useMemo(() => dbBanners.map(dbBannerToApp), [dbBanners]);
   const categories = useMemo(() => dbCategories.map(dbCategoryToApp), [dbCategories]);
   const currentEventPlan = useMemo(() => {
     if (!dbPlan) return undefined;
     return dbEventPlanToApp(dbPlan, dbZones, dbStands);
   }, [dbPlan, dbZones, dbStands]);
+
+  const activeAppForExhibitor = useMemo(() => {
+    if (userRole !== 'EXHIBITOR') return null;
+    if (selectedPaymentAppId) {
+      return applications.find(a => a.id === selectedPaymentAppId);
+    }
+    return applications.find(a => [AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(a.status));
+  }, [applications, userRole, selectedPaymentAppId]);
+
+  const activeEventForExhibitor = useMemo(() => {
+    return activeAppForExhibitor ? events.find(e => e.id === activeAppForExhibitor.eventId) : null;
+  }, [activeAppForExhibitor, events]);
 
   // ─── Handlers (now write to Supabase) ─────────────────────
 
@@ -110,30 +169,57 @@ const App: React.FC = () => {
   };
 
   const handleAddApplication = async (newApp: Application) => {
-    const dbApp = appApplicationToDb(newApp);
-    await createApplication(dbApp);
-    setCurrentScreen('APPLICATIONS');
+    try {
+      const dbApp = appApplicationToDb(newApp, user?.id);
+      await createApplication(dbApp);
+      setCurrentScreen('APPLICATIONS');
+    } catch (err: any) {
+      console.error("Submission failed:", err);
+      alert(`Odeslání přihlášky selhalo: ${err.message || "Zkuste to prosím znovu."}`);
+    }
   };
 
   const handleUpdateApplicationStatus = async (id: string, newStatus: AppStatus) => {
     let paymentDeadline: string | undefined;
+    let approvedAt: string | undefined;
     if (newStatus === AppStatus.APPROVED) {
+      const now = new Date();
+      approvedAt = now.toISOString();
       const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
-      paymentDeadline = new Date(Date.now() + fiveDaysMs).toISOString();
+      paymentDeadline = new Date(now.getTime() + fiveDaysMs).toISOString();
     }
-    await updateAppStatus(id, newStatus, paymentDeadline);
+    return await updateAppStatus(id, newStatus, paymentDeadline, approvedAt);
+  };
+
+  const handleLocalConfirmPayment = (appId: string) => {
+    setLocallyUnderReview(prev => {
+      const next = [...prev, appId];
+      localStorage.setItem('lavrs_locally_under_review', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleDismissReviewApp = (appId: string) => {
+    setDismissedReviewAppIds(prev => {
+      const next = [...prev, appId];
+      localStorage.setItem('lavrs_dismissed_review_apps', JSON.stringify(next));
+      return next;
+    });
   };
 
   const handleDeleteApplication = async (id: string) => {
-    if (window.confirm('Opravdu chcete tuto přihlášku smazat? Tato akce je nevratná.')) {
+    if (window.confirm('Opravdu chcete tuto přihlášku přesunout do koše?')) {
       await deleteApplication(id);
     }
   };
 
+  const handleRestoreApplication = async (id: string) => {
+    await updateAppStatus(id, AppStatus.PENDING);
+  };
+
   const handleSaveBrand = async (brand: BrandProfile) => {
-    const dbBrand = appBrandProfileToDb(brand);
-    const exists = dbProfiles.find(b => b.id === brand.id);
-    if (exists) {
+    const dbBrand = appBrandProfileToDb(brand, user?.id);
+    if (brandProfiles.some(b => b.id === brand.id)) {
       await updateProfile(brand.id, dbBrand);
     } else {
       await createProfile(dbBrand);
@@ -170,11 +256,8 @@ const App: React.FC = () => {
 
       <MobileHeader
         role={userRole as ViewMode}
-        activeItem={currentScreen}
-        onNavigate={(screen) => setCurrentScreen(screen)}
-        onSignOut={signOut}
       />
-
+      
       <Sidebar
         role={userRole as ViewMode}
         activeItem={currentScreen}
@@ -219,7 +302,8 @@ const App: React.FC = () => {
                 applications={applications}
                 brands={brandProfiles}
                 onApply={(id) => { setSelectedEventId(id); setCurrentScreen('APPLY'); }}
-                onPayment={() => setCurrentScreen('PAYMENT')}
+                onPayment={(appId) => { setSelectedPaymentAppId(appId); setCurrentScreen('PAYMENT'); }}
+                onDismissApp={handleDismissReviewApp}
                 onNavigate={setCurrentScreen}
                 banners={banners}
               />
@@ -228,6 +312,7 @@ const App: React.FC = () => {
                 user={currentUser}
                 onOpenCurator={() => setCurrentScreen('CURATOR')}
                 onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
+                onOpenEventsConfig={() => setCurrentScreen('EVENTS_CONFIG')}
               />
             )
           )}
@@ -235,6 +320,7 @@ const App: React.FC = () => {
           {currentScreen === 'APPLY' && selectedEventId && (
             <ApplicationWizard
               eventId={selectedEventId}
+              userId={user?.id}
               onCancel={() => setCurrentScreen('DASHBOARD')}
               onApply={handleAddApplication}
               eventPlan={currentEventPlan}
@@ -249,6 +335,10 @@ const App: React.FC = () => {
             <Billing />
           )}
 
+          {currentScreen === 'CONTACT' && (
+            <Contact />
+          )}
+
           {currentScreen === 'PROFILE' && (
             <Profile initialBrands={brandProfiles} />
           )}
@@ -259,6 +349,7 @@ const App: React.FC = () => {
               applications={applications}
               onUpdateStatus={handleUpdateApplicationStatus}
               onDeleteApplication={handleDeleteApplication}
+              onRestoreApplication={handleRestoreApplication}
             />
           )}
 
@@ -280,8 +371,19 @@ const App: React.FC = () => {
 
           {currentScreen === 'PAYMENT' && (
             <PaymentPage
-              onBack={() => setCurrentScreen('DASHBOARD')}
+              onBack={() => { setSelectedPaymentAppId(null); setCurrentScreen('DASHBOARD'); }}
               initialBillingDetails={brandProfiles[0]}
+              activeApp={activeAppForExhibitor}
+              activeEvent={activeEventForExhibitor}
+              categories={categories}
+              onUpdateStatus={async (id, status) => {
+                // Bypass DB for this status as it's purely informative and constrained in DB
+                if (status === AppStatus.PAYMENT_UNDER_REVIEW || status === 'PAYMENT_UNDER_REVIEW') {
+                  handleLocalConfirmPayment(id);
+                  return Promise.resolve();
+                }
+                return handleUpdateApplicationStatus(id, status);
+              }}
               onSaveBilling={async (details) => {
                 if (brandProfiles.length > 0) {
                   await handleSaveBrand({ ...brandProfiles[0], ...details });
@@ -307,7 +409,7 @@ const App: React.FC = () => {
           {currentScreen === 'EVENT_PLAN' && selectedEventId && (
             <EventLayoutManager
               eventId={selectedEventId}
-              onBack={() => setCurrentScreen('DASHBOARD')}
+              onBack={() => setCurrentScreen('EVENTS_CONFIG')}
               applications={applications}
               initialPlan={currentEventPlan}
               onSavePlan={(newPlan) => handleUpdateEventPlan(selectedEventId, newPlan)}

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Search } from 'lucide-react';
-import { ZoneCategory } from '../types';
+import { Heart, Search } from 'lucide-react';
+import { AppStatus, ZoneCategory } from '../types';
 import { useApplications, useBrandProfiles, useEvents } from '../hooks/useSupabase';
 import { dbApplicationToApp, dbBrandProfileToApp, dbEventToApp } from '../lib/mappers';
 
@@ -63,11 +63,24 @@ const BrandsList: React.FC<BrandsListProps> = () => {
       zone?: string;
       lastEventTitle?: string;
       statusLabel?: string;
+      isApproved?: boolean;
       source: 'APP' | 'PROFILE';
     }>();
 
+    const isApprovedStatus = (status?: string) => {
+      const normalized = (status || '').toString().toUpperCase();
+      return (
+        normalized === AppStatus.APPROVED ||
+        normalized === AppStatus.PAID ||
+        normalized === AppStatus.PAYMENT_REMINDER ||
+        normalized === AppStatus.PAYMENT_LAST_CALL
+      );
+    };
+
     applications.forEach(app => {
-      byName.set(app.brandName.toLowerCase(), {
+      const key = app.brandName.toLowerCase();
+      const existing = byName.get(key);
+      byName.set(key, {
         id: app.id,
         brandName: app.brandName,
         contactPerson: app.contactPerson,
@@ -78,6 +91,7 @@ const BrandsList: React.FC<BrandsListProps> = () => {
         zone: app.zone,
         lastEventTitle: events.find(e => e.id === app.eventId)?.title,
         statusLabel: app.status,
+        isApproved: Boolean(existing?.isApproved) || isApprovedStatus(app.status),
         source: 'APP'
       });
     });
@@ -97,6 +111,7 @@ const BrandsList: React.FC<BrandsListProps> = () => {
           zone: brand.zone,
           lastEventTitle: 'Historie',
           statusLabel: 'Profil',
+          isApproved: false,
           source: 'PROFILE'
         });
       }
@@ -178,7 +193,12 @@ const BrandsList: React.FC<BrandsListProps> = () => {
               filtered.map((row) => (
                 <tr key={`${row.source}-${row.id}`} className="border-t border-gray-50 hover:bg-lavrs-beige/20 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-lavrs-dark">{row.brandName}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-bold text-lavrs-dark">{row.brandName}</div>
+                      {row.isApproved && (
+                        <Heart size={14} className="text-lavrs-red fill-lavrs-red" />
+                      )}
+                    </div>
                     <div className="text-[11px] text-gray-400">{row.instagram || row.website || '—'}</div>
                   </td>
                   <td className="px-6 py-4">

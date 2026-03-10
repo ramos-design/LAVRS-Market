@@ -3,13 +3,14 @@ import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User,
 import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
 import { ZONE_DETAILS } from '../constants';
 import { useEvents, useBrandProfiles, useCategories } from '../hooks/useSupabase';
-import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb } from '../lib/mappers';
+import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb, formatEventDate } from '../lib/mappers';
 
 interface ApplicationWizardProps {
   eventId: string;
   onCancel: () => void;
   onApply: (app: Application) => void;
   eventPlan?: EventPlan;
+  userId?: string;
 }
 
 const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
@@ -17,6 +18,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   onCancel,
   onApply,
   eventPlan,
+  userId,
 }) => {
   const { profiles: dbProfiles, createProfile } = useBrandProfiles();
   const savedBrands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
@@ -26,6 +28,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const [step, setStep] = useState(1);
   const [totalSteps, setTotalSteps] = useState(6);
   const [saveToProfile, setSaveToProfile] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [currentBrandId, setCurrentBrandId] = useState<string | null>(null);
@@ -67,7 +70,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
 
   const event = events.find(e => e.id === eventId);
-  const isWaitlist = event?.status === 'closed';
+  const isWaitlist = event?.status === 'waitlist' || event?.status === 'closed';
 
   useEffect(() => {
     setTotalSteps(isWaitlist ? 1 : 5);
@@ -148,57 +151,71 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     }
   };
 
-  const handleFinalSubmit = () => {
-    const brandData: BrandProfile = {
-      id: currentBrandId || `brand-${Date.now()}`,
-      brandName,
-      brandDescription,
-      instagram,
-      website,
-      contactPerson,
-      phone,
-      email,
-      zone: selectedZone || undefined,
-      billingName,
-      ic,
-      dic,
-      billingAddress,
-      billingEmail
-    };
+  const handleFinalSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      // 1. Generate a stable ID for new brands or use existing
+      const brandId = currentBrandId || `brand-${userId || 'anon'}-${Date.now()}`;
+      
+      const brandData: BrandProfile = {
+        id: brandId,
+        brandName,
+        brandDescription,
+        instagram,
+        website,
+        contactPerson,
+        phone,
+        email,
+        zone: selectedZone || undefined,
+        billingName,
+        ic,
+        dic,
+        billingAddress,
+        billingEmail
+      };
 
-    if (saveToProfile) {
-      // We'll let handleSaveBrand handle existing check or just use createProfile if new
-      createProfile(appBrandProfileToDb(brandData));
+      // 2. Only save to profile if requested AND it's new or modified
+      if (saveToProfile) {
+        await createProfile(appBrandProfileToDb(brandData, userId));
+        // Update local state so if they somehow submit again, it's an update
+        if (!currentBrandId) setCurrentBrandId(brandId);
+      }
+
+      // 3. Create the application
+      const newApp: Application = {
+        ...brandData,
+        id: `APP-${Date.now()}`,
+        brandDescription: brandDescription || '',
+        instagram: instagram || '',
+        website: website || '',
+        contactPerson: contactPerson || '',
+        phone: phone || '',
+        email: email || '',
+        billingName: billingName || '',
+        ic: ic || '',
+        billingAddress: billingAddress || '',
+        billingEmail: billingEmail || '',
+        zone: selectedZone || SpotSize.S,
+        zoneCategory: selectedZoneCategory || undefined,
+        status: isWaitlist ? AppStatus.WAITLIST : AppStatus.PENDING,
+        submittedAt: new Date().toISOString(),
+        images: ['https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=400'],
+        eventId,
+        consentGDPR,
+        consentOrg,
+        consentStorno,
+        consentNewsletter,
+        extraNote
+      };
+
+      await onApply(newApp);
+    } catch (err) {
+      console.error("Final submit failed:", err);
+      alert("Nepodařilo se odeslat přihlášku. Zkuste to prosím znovu.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Create the application
-    const newApp: Application = {
-      ...brandData,
-      id: `APP-${Date.now()}`,
-      brandDescription: brandDescription || '',
-      instagram: instagram || '',
-      website: website || '',
-      contactPerson: contactPerson || '',
-      phone: phone || '',
-      email: email || '',
-      billingName: billingName || '',
-      ic: ic || '',
-      billingAddress: billingAddress || '',
-      billingEmail: billingEmail || '',
-      zone: selectedZone || SpotSize.S,
-      zoneCategory: selectedZoneCategory || undefined,
-      status: isWaitlist ? AppStatus.WAITLIST : AppStatus.PENDING,
-      submittedAt: new Date().toISOString(),
-      images: ['https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=400'],
-      eventId,
-      consentGDPR,
-      consentOrg,
-      consentStorno,
-      consentNewsletter,
-      extraNote
-    };
-
-    onApply(newApp);
   };
 
   const checkIsFull = (size: SpotSize, category: ZoneCategory | null) => {
@@ -262,7 +279,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             <span className="text-white bg-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
               {event?.id.includes('mini') ? 'Event' : 'Velký market'}
             </span>
-            {event?.status === 'closed' && (
+            {isWaitlist && (
               <span className="bg-white text-lavrs-red border border-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
                 Waitlist režim
               </span>
@@ -273,16 +290,11 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
           <h2 className="text-4xl font-bold leading-tight text-lavrs-dark mb-8">
             {isWaitlist ? "Chci na Waitlist" : (step === 1 ? "O akci" : "")}
             {!isWaitlist && step === 2 && "Kategorie zóny"}
-            {!isWaitlist && step === 3 && "Doplňky a vybavení"}
+            {!isWaitlist && step === 3 && "Cena a vybavení"}
             {!isWaitlist && step === 4 && "Informace o značce"}
             {!isWaitlist && step === 5 && "Vizuály a souhlasy"}
           </h2>
 
-          {isZoneFull && step >= 3 && (
-            <div className="p-4 bg-amber-50 border-l-4 border-amber-500 text-amber-900 text-xs font-bold animate-fadeIn mb-8">
-              Kapacita pro {selectedZoneCategory} ve velikosti {selectedZone} je momentálně plná. Vaše přihláška bude zařazena na waiting list.
-            </div>
-          )}
 
           <div className="space-y-6">
             {isWaitlist ? (
@@ -323,47 +335,28 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               </div>
             ) : (
               <>
-                <div className="p-4 bg-white/50 rounded-none border border-lavrs-pink/30">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Vybraná akce</p>
-                  <p className="font-bold text-lavrs-dark">{event?.title}</p>
-                  <p className="text-xs text-gray-500">{event?.date} — {event?.location}</p>
+                <div className="p-8 bg-white rounded-none border-2 border-lavrs-pink/20 shadow-md">
+                  <p className="text-[11px] text-lavrs-red font-black uppercase tracking-[0.3em] mb-4">VYBRANÁ AKCE</p>
+                  <h3 className="text-3xl font-black text-lavrs-dark leading-tight mb-6">{event?.title}</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-lavrs-red text-white px-3 py-1 text-[11px] font-black uppercase tracking-widest leading-none">
+                        {event ? formatEventDate(event.date) : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-lavrs-dark font-black uppercase tracking-widest text-xs">
+                      <MapPin size={14} className="text-lavrs-dark" />
+                      {event?.location}
+                    </div>
+                  </div>
+
                   {event?.description && (
-                    <p className="mt-2 text-[10px] text-lavrs-red font-bold">{event.description}</p>
+                    <div className="mt-8 pt-6 border-t border-gray-100">
+                      <p className="text-xs text-gray-400 font-medium italic leading-relaxed">{event.description}</p>
+                    </div>
                   )}
                 </div>
-
-                {(step >= 3 && selectedZoneCategory) && (
-                  <div className="space-y-4 animate-fadeIn mt-6">
-                    {/* Base Category Price */}
-                    <div className="p-4 bg-white rounded-none border border-lavrs-pink/30 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-2 opacity-5">
-                        <Sparkles size={40} />
-                      </div>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Cena za kategorii ({selectedZoneCategory})</p>
-                      <p className="text-lg font-bold text-lavrs-dark">{getCategoryPrice(selectedZoneCategory).toLocaleString('cs-CZ')} Kč</p>
-                    </div>
-
-                    {/* Total including extras */}
-                    <div className="p-4 bg-lavrs-red text-white rounded-none shadow-lg border border-lavrs-red">
-                      <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mb-1">Předpokládaná celková cena</p>
-                      <p className="text-2xl font-bold">{calculateTotal().toLocaleString('cs-CZ')} Kč</p>
-                      <p className="text-[10px] opacity-80">včetně doplňků a vybavení</p>
-                    </div>
-
-                    {selectedExtras.length > 0 && (
-                      <div className="p-4 bg-white rounded-none shadow-sm border border-lavrs-red/30">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Zvolené doplňky</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedExtras.map(extra => (
-                            <span key={extra.id} className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-none border border-lavrs-red/20 text-lavrs-dark bg-lavrs-red/5">
-                              {extra.label} +{extra.price}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -378,7 +371,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               );
             })}
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">LAVRS Application Protocol 2026</p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">KROK {step} Z {totalSteps}</p>
         </div>
       </div>
 
@@ -493,57 +486,49 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             </div>
           )}
 
-          {/* Step 3: Doplňky k místu */}
+          {/* Step 3: Cena a informace */}
           {!isWaitlist && step === 3 && (
             <div className="max-w-xl mx-auto py-20 px-8">
               <div className="space-y-12 animate-fadeIn">
                 <section className="space-y-6">
                   <header>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Doplňky k místu (Extra)</h3>
-                    <p className="text-sm text-gray-500">Můžete si doobjednat vybavení nad rámec standardního balíčku.</p>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Cena a podmínky</h3>
+                    <p className="text-sm text-gray-500">Základní cena vaší účasti v kategorii <span className="text-lavrs-dark font-bold">{selectedZoneCategory}</span>.</p>
                   </header>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {extrasList.map(extra => (
-                      <button
-                        key={extra.id}
-                        onClick={() => {
-                          setExtras(prev => ({
-                            ...prev,
-                            [extra.id]: prev[extra.id] ? 0 : 1
-                          }));
-                        }}
-                        className={`p-6 rounded-none border-2 flex justify-between items-center transition-all ${extras[extra.id]
-                          ? 'border-lavrs-red bg-white shadow-md'
-                          : 'border-gray-50 bg-white hover:border-gray-200'
-                          }`}
-                      >
-                        <span className="text-sm font-bold text-lavrs-dark">{extra.label}</span>
-                        <span className="text-xs font-bold text-lavrs-red">+{extra.price}</span>
-                      </button>
-                    ))}
+                  <div className="p-10 bg-white border-2 border-lavrs-red/10 rounded-none shadow-sm text-center">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Předpokládaná cena</p>
+                    <p className="text-5xl font-black text-lavrs-dark mb-2">
+                      {getCategoryPrice(selectedZoneCategory).toLocaleString('cs-CZ')} Kč
+                    </p>
+                    <p className="text-xs text-gray-500 font-medium italic">Včetně základního vybavení dle kategorie</p>
                   </div>
                 </section>
 
-                <section className="space-y-4">
-                  <header>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Vlastní doplňků nebo poznámka</h3>
-                    <p className="text-sm text-gray-500">Pokud potřebujete něco, co v seznamu chybí, napište nám to zde.</p>
-                  </header>
-                  <textarea
-                    rows={4}
-                    value={extraNote}
-                    onChange={(e) => setExtraNote(e.target.value)}
-                    placeholder="Mám vlastní věšáky, potřebuji více místa pro převlékárnu..."
-                    className="w-full p-6 rounded-none bg-white border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red resize-none text-sm transition-all"
-                  />
-                </section>
+                <div className="bg-lavrs-beige/50 p-8 rounded-none border border-lavrs-pink/20 space-y-4">
+                  <div className="flex gap-4">
+                    <Info size={24} className="text-lavrs-red shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-lavrs-dark text-sm mb-2">Extra vybavení a speciální požadavky</h4>
+                      <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                        Jakékoli další doplňky nebo speciální technické požadavky se budou řešit individuálně s možným doplatkem přímo na místě konání akce.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-lavrs-pink/20">
+                    <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                      Máte-li specifický požadavek již nyní, zašlete nám jej prosím e-mailem na <a href="mailto:info@lavrs.cz" className="text-lavrs-red font-bold hover:underline">info@lavrs.cz</a> s uvedením názvu vaší značky.
+                    </p>
+                  </div>
+                </div>
 
-                <div className="flex gap-4 p-6 bg-lavrs-beige/50 rounded-none border border-lavrs-pink/20 relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-lavrs-red/30" />
-                  <Info size={20} className="text-lavrs-red shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-gray-600 leading-relaxed font-medium">
-                    <strong>Vybavení v ceně:</strong> Každé místo obsahuje základní balíček (stůl/židle) dle vybrané kategorie. Konkrétní seznam obdržíte v potvrzovacím e-mailu.
+                <div className="p-6 bg-white border border-gray-100 rounded-none shadow-sm flex gap-4 items-center">
+                  <div className="w-10 h-10 bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                    <Check size={20} strokeWidth={3} />
+                  </div>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    Základní balíček (stůl/židle) je automaticky zahrnut v ceně vaší vybrané kategorie.
                   </p>
                 </div>
               </div>
@@ -674,21 +659,21 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             <div className="max-w-xl mx-auto py-20 px-8">
               <div className="space-y-10 animate-fadeIn">
                 {/* Price Confirmation Note */}
-                <div className="p-8 bg-lavrs-beige border-2 border-lavrs-red/10 rounded-none relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <CreditCard size={120} />
-                  </div>
-                  <h4 className="text-[10px] font-bold text-lavrs-red uppercase tracking-widest mb-4">REKAPITULACE</h4>
-                  <div className="space-y-2 relative z-10">
-                    <p className="text-sm text-gray-600 font-medium leading-relaxed">
-                      Pokud bude vaše přihláška schválena kurátorským týmem, bude vám zaslána výzva k platbě ve výši:
+                <div className="p-10 bg-lavrs-dark text-white rounded-none border-l-8 border-lavrs-red shadow-2xl relative overflow-hidden animate-fadeIn">
+                  <h4 className="text-[11px] font-black text-lavrs-pink uppercase tracking-[0.3em] mb-6">REKAPITULACE PLATBY</h4>
+                  <div className="space-y-4">
+                    <p className="text-sm opacity-80 leading-relaxed max-w-sm">
+                      Pokud bude vaše přihláška schválena kurátorským týmem, vystavíme vám výzvu k platbě ve výši:
                     </p>
-                    <p className="text-4xl font-black text-lavrs-dark">
+                    <p className="text-5xl font-black text-white tracking-tighter">
                       {calculateTotal().toLocaleString('cs-CZ')} Kč
                     </p>
-                    <p className="text-[11px] text-gray-400 italic">
-                      (Základní balíček {selectedZoneCategory} + zvolené doplňky)
-                    </p>
+                    <div className="pt-4 flex items-center gap-2 border-t border-white/10">
+                      <div className="w-1.5 h-1.5 bg-lavrs-red rounded-full" />
+                      <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest leading-none">
+                        Zahrnuje základní balíček kategorie {selectedZoneCategory}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -779,14 +764,23 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               <button
                 onClick={step === totalSteps ? handleFinalSubmit : nextStep}
                 disabled={
-                  (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
+                  isSubmitting || (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
                 }
-                className={`px-12 py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl ${(step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
+                className={`px-12 py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl ${(isSubmitting || (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno)))
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-lavrs-dark text-white hover:bg-lavrs-red hover:translate-y-[-2px] active:translate-y-[0px]'
                   }`}
               >
-                {step === totalSteps ? "Odeslat přihlášku" : "Pokračovat"} <ChevronRight size={18} />
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Odesílám...
+                  </>
+                ) : (
+                  <>
+                    {step === totalSteps ? "Odeslat přihlášku" : "Pokračovat"} <ChevronRight size={18} />
+                  </>
+                )}
               </button>
             </div>
           )}

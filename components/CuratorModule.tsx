@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, Maximize2, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle } from 'lucide-react';
+import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory } from '../types';
-import { ZONE_DETAILS } from '../constants';
 import { useEvents } from '../hooks/useSupabase';
 import { dbEventToApp } from '../lib/mappers';
 
@@ -10,16 +9,27 @@ interface CuratorModuleProps {
   applications: Application[];
   onUpdateStatus: (id: string, status: AppStatus) => void;
   onDeleteApplication: (id: string) => void;
+  onRestoreApplication: (id: string) => void;
 }
 
-const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onUpdateStatus, onDeleteApplication }) => {
+const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
+  const deletedApplications = applications.filter(a => a.status === AppStatus.DELETED);
   // Filter out applications that are already paid (those move to the event manager)
-  const activeApplications = applications.filter(a => a.status !== AppStatus.PAID);
+  const activeApplications = applications.filter(a => a.status !== AppStatus.PAID && a.status !== AppStatus.DELETED);
 
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(activeApplications.length > 0 ? activeApplications[0].id : null);
+  const [viewMode, setViewMode] = useState<'ACTIVE' | 'TRASH'>('ACTIVE');
+  const displayedApplications = viewMode === 'TRASH' ? deletedApplications : activeApplications;
+  const displayedIds = React.useMemo(() => displayedApplications.map(app => app.id).join('|'), [displayedApplications]);
+
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(displayedApplications.length > 0 ? displayedApplications[0].id : null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const selectedApp = activeApplications.find(a => a.id === selectedAppId) || (activeApplications.length > 0 ? activeApplications[0] : null);
+  React.useEffect(() => {
+    if (selectedAppId && displayedApplications.find(a => a.id === selectedAppId)) return;
+    setSelectedAppId(displayedApplications.length > 0 ? displayedApplications[0].id : null);
+  }, [viewMode, displayedIds, selectedAppId, displayedApplications]);
+
+  const selectedApp = displayedApplications.find(a => a.id === selectedAppId) || (displayedApplications.length > 0 ? displayedApplications[0] : null);
 
   const { events: dbEvents } = useEvents();
   const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
@@ -58,28 +68,12 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
     return events.find(e => e.id === eventId);
   };
 
-  const getZoneCategoryLabel = (category?: ZoneCategory) => {
-    if (!category) return 'Neuvedeno';
-    switch (category) {
-      case 'Secondhands':
-        return 'Secondhands – Vintage a second-hand móda';
-      case 'České značky':
-        return 'České značky – Lokální české značky';
-      case 'Designers':
-        return 'Designers – Designérské kousky';
-      case 'Beauty ZONE':
-        return 'Beauty ZONE – Kosmetika a péče';
-      case 'TATTOO':
-        return 'TATTOO – Tetování a body art';
-      case 'Reuse':
-        return 'Reuse zone – Udržitelná a kreativní tvorba';
-      default:
-        return category;
-    }
-  };
+  const getZoneCategoryLabel = (category?: ZoneCategory) => category || 'Neuvedeno';
 
   const getStatusBadge = (status: AppStatus) => {
     switch (status) {
+      case AppStatus.DELETED:
+        return { bg: 'bg-gray-200', text: 'text-gray-600', label: 'V koši' };
       case AppStatus.APPROVED:
         return { bg: 'bg-green-100', text: 'text-green-700', label: 'Schváleno (Čeká na platbu)' };
       case AppStatus.PAID:
@@ -88,6 +82,10 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
         return { bg: 'bg-amber-500', text: 'text-white', label: 'Upomínka odeslána' };
       case AppStatus.PAYMENT_LAST_CALL:
         return { bg: 'bg-red-500', text: 'text-white', label: 'Last Call odeslán' };
+      case AppStatus.PAYMENT_UNDER_REVIEW:
+        return { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Platba se zpracovává' };
+      case AppStatus.EXPIRED:
+        return { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Expirováno' };
       case AppStatus.REJECTED:
         return { bg: 'bg-red-100', text: 'text-red-700', label: 'Zamítnuto' };
       case AppStatus.WAITLIST:
@@ -98,6 +96,12 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   };
 
   const formatDate = (iso: string) => new Date(iso).toLocaleDateString('cs-CZ');
+  const formatEventDateLong = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const parsed = new Date(dateStr);
+    if (isNaN(parsed.getTime())) return dateStr;
+    return parsed.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
   const getDaysLeft = (iso: string) => {
     const diffMs = new Date(iso).getTime() - Date.now();
     return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
@@ -106,6 +110,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   const pendingCount = applications.filter(a => a.status === AppStatus.PENDING).length;
   const rejectedCount = applications.filter(a => a.status === AppStatus.REJECTED).length;
   const waitlistCount = applications.filter(a => a.status === AppStatus.WAITLIST).length;
+  const trashCount = deletedApplications.length;
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
@@ -143,24 +148,56 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setViewMode(viewMode === 'TRASH' ? 'ACTIVE' : 'TRASH')}
+            className={`px-6 py-3 rounded-none border shadow-sm transition-all text-left ${viewMode === 'TRASH'
+              ? 'bg-lavrs-pink/40 border-lavrs-red/20'
+              : 'bg-white border-gray-100 hover:border-lavrs-red/20 hover:bg-lavrs-pink/20'}`}
+          >
+            <div className="flex items-center gap-3">
+              <Trash2 size={18} className="text-lavrs-red" />
+              <div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Koš</p>
+                <p className="text-2xl font-extrabold text-lavrs-dark">{trashCount}</p>
+              </div>
+            </div>
+          </button>
         </div>
       </header>
 
       <div className="flex gap-8 flex-1 overflow-hidden">
         {/* Left: Applications List */}
         <div className="w-96 bg-white rounded-none border border-gray-100 flex flex-col overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-gray-50">
-            <h3 className="font-bold text-lavrs-dark">Přihlášky k posouzení</h3>
-            <p className="text-xs text-gray-500 mt-1">Klikněte na přihlášku pro zobrazení detailu</p>
+          <div className="p-6 border-b border-gray-50 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-lavrs-dark">
+                {viewMode === 'TRASH' ? 'Koš přihlášek' : 'Přihlášky k posouzení'}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">Klikněte na přihlášku pro zobrazení detailu</p>
+            </div>
+            {viewMode === 'TRASH' && (
+              <button
+                type="button"
+                onClick={() => setViewMode('ACTIVE')}
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-gray-200 text-gray-600 hover:border-lavrs-red hover:text-lavrs-red transition-colors"
+              >
+                Zpět
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {activeApplications.length === 0 ? (
+            {displayedApplications.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">Žádné aktivní přihlášky</p>
-                <p className="text-[10px] text-gray-400 mt-2">Vše je posouzeno nebo zaplaceno</p>
+                <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">
+                  {viewMode === 'TRASH' ? 'Koš je prázdný' : 'Žádné aktivní přihlášky'}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-2">
+                  {viewMode === 'TRASH' ? 'Zatím jste nic nepřesunuli do koše' : 'Vše je posouzeno nebo zaplaceno'}
+                </p>
               </div>
             ) : (
-              activeApplications.map(app => {
+              displayedApplications.map(app => {
                 const statusInfo = getStatusBadge(app.status);
                 const event = getEventDetails(app.eventId);
                 return (
@@ -168,21 +205,28 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                     key={app.id}
                     onClick={() => setSelectedAppId(app.id)}
                     className={`w-full text-left p-4 rounded-none transition-all border-2 ${selectedApp?.id === app.id
-                      ? 'bg-lavrs-red text-white border-lavrs-red shadow-lg'
-                      : 'hover:bg-lavrs-beige/50 border-transparent'
+                      ? 'bg-lavrs-pink/60 text-lavrs-dark border-lavrs-pink shadow-sm'
+                      : 'bg-white hover:bg-lavrs-beige/50 border-transparent'
                       }`}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-bold text-sm truncate pr-2">{app.brandName}</h4>
-                      <span className="text-[8px] font-bold px-2 py-0.5 rounded uppercase bg-lavrs-red text-white">
-                        {app.zone}
-                      </span>
+                      <div className="flex items-center gap-2 pr-2 min-w-0">
+                        <h4 className="font-bold text-sm truncate">{app.brandName}</h4>
+                        {app.status === AppStatus.APPROVED && (
+                          <Heart size={14} className="text-lavrs-red fill-lavrs-red shrink-0" />
+                        )}
+                      </div>
                     </div>
-                    <p className={`text-xs mb-2 truncate ${selectedApp?.id === app.id ? 'opacity-80' : 'text-gray-500'}`}>
-                      {event?.title}
-                    </p>
+                    <div className={`inline-flex items-center gap-2 text-xs mb-2 px-2 py-1 rounded-none border ${selectedApp?.id === app.id ? 'bg-lavrs-pink/60 border-lavrs-red/10 text-lavrs-red' : 'bg-lavrs-pink/40 border-lavrs-red/10 text-lavrs-red/80'}`}>
+                      <span className="truncate">{event?.title}</span>
+                      {event?.date && (
+                        <span className="text-[10px] font-bold uppercase whitespace-nowrap">
+                          {formatEventDateLong(event.date)}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center justify-between">
-                      <span className={`text-[10px] ${selectedApp?.id === app.id ? 'opacity-60' : 'text-gray-400'}`}>
+                      <span className={`text-[10px] ${selectedApp?.id === app.id ? 'text-gray-500' : 'text-gray-400'}`}>
                         {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}
                       </span>
                       <span className={`px-2 py-0.5 rounded-none text-[9px] font-bold uppercase ${statusInfo.bg} ${statusInfo.text}`}>
@@ -254,7 +298,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                         <Calendar size={16} className="text-lavrs-red" />
                         <p className="text-[10px] text-gray-400 uppercase font-bold">Datum</p>
                       </div>
-                      <p className="text-base font-bold text-lavrs-dark">{getEventDetails(selectedApp.eventId)?.date}</p>
+                      <p className="text-base font-bold text-lavrs-dark">{formatEventDateLong(getEventDetails(selectedApp.eventId)?.date)}</p>
                     </div>
                     <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
@@ -269,26 +313,6 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                         <p className="text-[10px] text-gray-400 uppercase font-bold">Kategorie zóny</p>
                       </div>
                       <p className="text-base font-bold text-lavrs-dark">{getZoneCategoryLabel(selectedApp.zoneCategory)}</p>
-                    </div>
-                    <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Maximize2 size={16} className="text-lavrs-red" />
-                        <p className="text-[10px] text-gray-400 uppercase font-bold">Velikost místa</p>
-                      </div>
-                      <p className="text-base font-bold text-lavrs-dark">
-                        {ZONE_DETAILS[selectedApp.zone]?.label || `Zóna ${selectedApp.zone}`}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {ZONE_DETAILS[selectedApp.zone]?.dimensions || ''}
-                      </p>
-                    </div>
-                    <div className="bg-lavrs-beige/30 p-5 rounded-none border border-gray-100">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Package size={16} className="text-lavrs-red" />
-                        <p className="text-[10px] text-gray-400 uppercase font-bold">Požadavky na místo</p>
-                      </div>
-                      <p className="text-sm font-medium text-lavrs-dark">Standardní setup (Stůl + Stojan)</p>
-                      <p className="text-xs text-gray-500 mt-1">Žádné speciální požadavky</p>
                     </div>
                   </div>
                 </section>
@@ -414,75 +438,95 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
               {/* Action Buttons */}
               <div className="p-8 border-t border-gray-100 bg-lavrs-beige/20">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <button
-                    onClick={() => handleAction(selectedApp.id, AppStatus.APPROVED)}
-                    disabled={isProcessing || selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAID}
-                    className="bg-green-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Check size={18} /> SCHVÁLIT
-                  </button>
+                {selectedApp.status === AppStatus.DELETED ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <button
+                      onClick={async () => {
+                        setIsProcessing(true);
+                        try {
+                          await onRestoreApplication(selectedApp.id);
+                          setViewMode('ACTIVE');
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      disabled={isProcessing}
+                      className="bg-lavrs-dark text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-black transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+                    >
+                      <Check size={18} /> OBNOVIT
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <button
+                      onClick={() => handleAction(selectedApp.id, AppStatus.APPROVED)}
+                      disabled={isProcessing || selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAID}
+                      className="bg-green-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Check size={18} /> SCHVÁLIT
+                    </button>
 
-                  <button
-                    onClick={() => handleAction(selectedApp.id, AppStatus.PAID)}
-                    disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER && selectedApp.status !== AppStatus.PAYMENT_LAST_CALL)}
-                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status.includes('PAYMENT_')
-                      ? 'bg-lavrs-dark text-white hover:bg-black'
-                      : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
-                      }`}
-                  >
-                    <CreditCard size={18} /> POTVRDIT PLATBU
-                  </button>
+                    <button
+                      onClick={() => handleAction(selectedApp.id, AppStatus.PAID)}
+                      disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER && selectedApp.status !== AppStatus.PAYMENT_LAST_CALL)}
+                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status.includes('PAYMENT_')
+                        ? 'bg-lavrs-dark text-white hover:bg-black'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
+                        }`}
+                    >
+                      <CreditCard size={18} /> POTVRDIT PLATBU
+                    </button>
 
-                  <button
-                    onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
-                    disabled={isProcessing || selectedApp.status !== AppStatus.APPROVED}
-                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED
-                      ? 'bg-amber-500 text-white hover:bg-amber-600'
-                      : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
-                      }`}
-                  >
-                    <Mail size={18} /> ODESLAT UPOMÍNKU
-                  </button>
+                    <button
+                      onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
+                      disabled={isProcessing || selectedApp.status !== AppStatus.APPROVED}
+                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED
+                        ? 'bg-amber-500 text-white hover:bg-amber-600'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
+                        }`}
+                    >
+                      <Mail size={18} /> ODESLAT UPOMÍNKU
+                    </button>
 
-                  <button
-                    onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
-                    disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER)}
-                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAYMENT_REMINDER
-                      ? 'bg-orange-600 text-white hover:bg-orange-700'
-                      : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
-                      }`}
-                  >
-                    <AlertCircle size={18} /> ODESLAT LAST CALL
-                  </button>
+                    <button
+                      onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
+                      disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER)}
+                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAYMENT_REMINDER
+                        ? 'bg-orange-600 text-white hover:bg-orange-700'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
+                        }`}
+                    >
+                      <AlertCircle size={18} /> ODESLAT LAST CALL
+                    </button>
 
-                  <button
-                    onClick={() => handleAction(selectedApp.id, AppStatus.REJECTED)}
-                    disabled={isProcessing || selectedApp.status === AppStatus.REJECTED}
-                    className="bg-white text-red-600 border-2 border-red-200 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <X size={18} /> ZAMÍTNOUT
-                  </button>
-                  <button
-                    onClick={() => handleAction(selectedApp.id, AppStatus.WAITLIST)}
-                    disabled={isProcessing || selectedApp.status === AppStatus.WAITLIST}
-                    className="bg-blue-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Clock size={18} /> WAITLIST
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Opravdu chcete tuto přihlášku smazat?')) {
-                        onDeleteApplication(selectedApp.id);
-                        setSelectedAppId(null);
-                      }
-                    }}
-                    disabled={isProcessing}
-                    className="bg-white text-red-600 border-2 border-red-600 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50"
-                  >
-                    <Trash2 size={18} /> SMAZAT
-                  </button>
-                </div>
+                    <button
+                      onClick={() => handleAction(selectedApp.id, AppStatus.REJECTED)}
+                      disabled={isProcessing || selectedApp.status === AppStatus.REJECTED}
+                      className="bg-white text-red-600 border-2 border-red-200 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <X size={18} /> ZAMÍTNOUT
+                    </button>
+                    <button
+                      onClick={() => handleAction(selectedApp.id, AppStatus.WAITLIST)}
+                      disabled={isProcessing || selectedApp.status === AppStatus.WAITLIST}
+                      className="bg-blue-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Clock size={18} /> WAITLIST
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Opravdu chcete tuto přihlášku přesunout do koše?')) {
+                          onDeleteApplication(selectedApp.id);
+                          setSelectedAppId(null);
+                        }
+                      }}
+                      disabled={isProcessing}
+                      className="bg-white text-red-600 border-2 border-red-600 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50"
+                    >
+                      <Trash2 size={18} /> SMAZAT
+                    </button>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <button className="py-3 bg-white text-gray-600 border border-gray-200 rounded-none font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
                     <Mail size={18} /> Odeslat email
