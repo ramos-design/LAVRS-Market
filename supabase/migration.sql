@@ -3,19 +3,27 @@
 -- Run this in Supabase SQL Editor
 -- ============================================
 
--- 1. Events
+-- 1. Profiles (Linked to Supabase Auth)
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT,
+  role TEXT DEFAULT 'EXHIBITOR' CHECK (role IN ('EXHIBITOR', 'ADMIN')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. Events
 CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   date TEXT NOT NULL,
   location TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('open','closed','waitlist','draft')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('open', 'closed', 'waitlist', 'draft')),
   image TEXT,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. Categories
+-- 3. Categories
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -23,9 +31,10 @@ CREATE TABLE IF NOT EXISTS categories (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. Brand Profiles
+-- 4. Brand Profiles
 CREATE TABLE IF NOT EXISTS brand_profiles (
   id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   brand_name TEXT NOT NULL,
   brand_description TEXT,
   instagram TEXT,
@@ -42,9 +51,10 @@ CREATE TABLE IF NOT EXISTS brand_profiles (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 4. Applications
+-- 5. Applications
 CREATE TABLE IF NOT EXISTS applications (
   id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   brand_name TEXT NOT NULL,
   brand_description TEXT,
   instagram TEXT,
@@ -59,7 +69,7 @@ CREATE TABLE IF NOT EXISTS applications (
   billing_email TEXT,
   zone TEXT NOT NULL DEFAULT 'M',
   zone_category TEXT,
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED','WAITLIST','PAID')),
+  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'WAITLIST', 'PAID', 'EXPIRED')),
   submitted_at TIMESTAMPTZ DEFAULT now(),
   images TEXT[] DEFAULT '{}',
   event_id TEXT REFERENCES events(id) ON DELETE SET NULL,
@@ -73,6 +83,7 @@ CREATE TABLE IF NOT EXISTS applications (
   brand_profile_id TEXT REFERENCES brand_profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
 
 -- 5. Event Plans
 CREATE TABLE IF NOT EXISTS event_plans (
@@ -146,8 +157,9 @@ CREATE TABLE IF NOT EXISTS email_attachments (
 );
 
 -- ============================================
--- Row Level Security — open for now (no auth yet)
+-- Row Level Security
 -- ============================================
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE brand_profiles ENABLE ROW LEVEL SECURITY;
@@ -159,17 +171,81 @@ ALTER TABLE banners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_attachments ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for now (we'll tighten this with auth later)
+-- Policies
+DROP POLICY IF EXISTS "Public profiles are visible by everyone." ON profiles;
+CREATE POLICY "Public profiles are visible by everyone." ON profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can edit own profile." ON profiles;
+CREATE POLICY "Users can edit own profile." ON profiles FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Allow all" ON events;
 CREATE POLICY "Allow all" ON events FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON categories;
 CREATE POLICY "Allow all" ON categories FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all" ON brand_profiles FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all" ON applications FOR ALL USING (true) WITH CHECK (true);
+
+-- Applications policies
+DROP POLICY IF EXISTS "Individuals can view their own applications." ON applications;
+CREATE POLICY "Individuals can view their own applications." ON applications FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Individuals can insert their own applications." ON applications;
+CREATE POLICY "Individuals can insert their own applications." ON applications FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can view all applications." ON applications;
+CREATE POLICY "Admins can view all applications." ON applications FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+-- Brand profiles policies
+DROP POLICY IF EXISTS "Individuals can view their own brand profiles." ON brand_profiles;
+CREATE POLICY "Individuals can view their own brand profiles." ON brand_profiles FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Individuals can insert their own brand profiles." ON brand_profiles;
+CREATE POLICY "Individuals can insert their own brand profiles." ON brand_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can view all brand profiles." ON brand_profiles;
+CREATE POLICY "Admins can view all brand profiles." ON brand_profiles FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+-- Fallback policies for other tables (admin or public)
+DROP POLICY IF EXISTS "Allow all" ON event_plans;
 CREATE POLICY "Allow all" ON event_plans FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON zones;
 CREATE POLICY "Allow all" ON zones FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON stands;
 CREATE POLICY "Allow all" ON stands FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON banners;
 CREATE POLICY "Allow all" ON banners FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON email_templates;
 CREATE POLICY "Allow all" ON email_templates FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all" ON email_attachments;
 CREATE POLICY "Allow all" ON email_attachments FOR ALL USING (true) WITH CHECK (true);
+
+
+-- ============================================
+-- Trigger for automatic profile creation
+-- ============================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, role)
+  VALUES (new.id, new.raw_user_meta_data->>'full_name', 'EXHIBITOR');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
 
 
 -- ============================================

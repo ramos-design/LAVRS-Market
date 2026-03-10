@@ -22,8 +22,8 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
 
         const timeout = setTimeout(() => {
             setLoading(false);
-            setError('Server Supabase neodpovídá včas. Zkuste to prosím znovu nebo obnovte stránku.');
-        }, 15000);
+            setError('Server Supabase neodpovídá včas. To se může stát při prvním spuštění po delší době. Zkuste to prosím znovu za malou chvíli.');
+        }, 30000);
 
         try {
             if (isLogin) {
@@ -32,7 +32,8 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                 if (!data.user) throw new Error('Uživatel nebyl nalezen.');
                 onSuccess?.();
             } else {
-                const { error } = await supabase.auth.signUp({
+                console.log('Attempting registration for:', email);
+                const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
                     options: {
@@ -41,16 +42,27 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                         },
                     },
                 });
-                if (error) throw error;
+
+                if (error) {
+                    console.error('Supabase SignUp Error:', error);
+                    throw error;
+                }
+
+                if (data.user && data.user.identities?.length === 0) {
+                    throw new Error('Tento e-mail je již zaregistrován. Zkuste se přihlásit.');
+                }
+
                 setShowSuccess(true);
             }
         } catch (err: any) {
-            setError(err.message || 'Akce se nezdařila');
+            console.error('Auth error detail:', err);
+            setError(err.message || 'Akce se nezdařila. Zkontrolujte připojení k internetu.');
         } finally {
             clearTimeout(timeout);
             setLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center p-6 relative overflow-hidden">

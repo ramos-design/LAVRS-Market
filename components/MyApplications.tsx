@@ -9,11 +9,22 @@ interface MyApplicationsProps {
 const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
     const getStatusStyle = (status: AppStatus) => {
         switch (status) {
-            case AppStatus.APPROVED: return 'bg-green-50 text-green-700 border-green-100';
-            case AppStatus.PENDING: return 'bg-orange-50 text-orange-700 border-orange-100';
-            case AppStatus.REJECTED: return 'bg-red-50 text-red-700 border-red-100';
-            case AppStatus.WAITLIST: return 'bg-blue-50 text-blue-700 border-blue-100 text-blue-500';
-            default: return 'bg-gray-50 text-gray-700 border-gray-100';
+            case AppStatus.APPROVED:
+            case AppStatus.PAYMENT_REMINDER:
+            case AppStatus.PAYMENT_LAST_CALL:
+                return 'bg-green-50 text-green-700 border-green-100';
+            case AppStatus.PENDING:
+                return 'bg-orange-50 text-orange-700 border-orange-100';
+            case AppStatus.REJECTED:
+                return 'bg-red-50 text-red-700 border-red-100';
+            case AppStatus.WAITLIST:
+                return 'bg-blue-50 text-blue-700 border-blue-100';
+            case AppStatus.PAID:
+                return 'bg-green-100 text-green-800 border-green-200';
+            case AppStatus.EXPIRED:
+                return 'bg-gray-100 text-gray-500 border-gray-200';
+            default:
+                return 'bg-gray-50 text-gray-700 border-gray-100';
         }
     };
 
@@ -22,6 +33,19 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
         const diffMs = new Date(iso).getTime() - Date.now();
         return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     };
+
+    // Filter applications according to user guidelines:
+    // "only those that are approved (přijaté), rejected (zamítnuté), or waiting list (waitlist)"
+    // We also include PENDING because users need to see their active submissions.
+    // PAID, EXPIRED, or deleted (no longer in DB) should not be in this specific view.
+    const visibleApplications = applications.filter(app =>
+        app.status === AppStatus.PENDING ||
+        app.status === AppStatus.APPROVED ||
+        app.status === AppStatus.REJECTED ||
+        app.status === AppStatus.WAITLIST ||
+        app.status === AppStatus.PAYMENT_REMINDER ||
+        app.status === AppStatus.PAYMENT_LAST_CALL
+    );
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -41,51 +65,59 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
             </header>
 
             <div className="grid grid-cols-1 gap-4">
-                {applications.map((app) => {
+                {visibleApplications.length === 0 ? (
+                    <div className="bg-white border-2 border-dashed border-gray-100 p-20 text-center space-y-4">
+                        <FileText className="w-16 h-16 text-gray-200 mx-auto" />
+                        <h3 className="text-xl font-bold text-lavrs-dark">Zatím žádné přihlášky</h3>
+                        <p className="text-gray-400 max-w-sm mx-auto">Zde se objeví vaše přihlášky na eventy po jejich odeslání.</p>
+                    </div>
+                ) : visibleApplications.map((app) => {
                     const daysLeft = app.paymentDeadline ? getDaysLeft(app.paymentDeadline) : null;
                     return (
                         <div key={app.id} className="bg-white p-6 rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
-                        <div className="flex items-center gap-6">
-                            <div className="w-12 h-12 bg-lavrs-beige rounded-none flex items-center justify-center text-lavrs-red group-hover:scale-110 transition-transform">
-                                <FileText size={24} />
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-3 mb-1">
-                                    <h3 className="font-bold text-lavrs-dark">{app.brandName}</h3>
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border ${getStatusStyle(app.status)}`}>
-                                        {app.status === AppStatus.APPROVED ? 'Schváleno' :
-                                            app.status === AppStatus.PENDING ? 'Čeká na posouzení' :
-                                                app.status === AppStatus.REJECTED ? 'Zamítnuto' :
-                                                    app.status === AppStatus.WAITLIST ? 'Na waitlistu' : 'Neznámý stav'}
-                                    </span>
+                            <div className="flex items-center gap-6">
+                                <div className="w-12 h-12 bg-lavrs-beige rounded-none flex items-center justify-center text-lavrs-red group-hover:scale-110 transition-transform">
+                                    <FileText size={24} />
                                 </div>
-                                <div className="flex gap-4 text-xs text-gray-400">
-                                    <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
-                                    <span className="font-medium text-gray-500">ID: {app.id}</span>
-                                </div>
-                                {app.status === AppStatus.APPROVED && app.paymentDeadline && (
-                                    <div className="mt-2 text-xs text-lavrs-dark">
-                                        <span className="font-bold">Splatnost faktury:</span> {formatDate(app.paymentDeadline)}
-                                        {' '}
-                                        {daysLeft !== null && daysLeft >= 0 ? (
-                                            <span className="text-gray-500">(zbývá {daysLeft} dní)</span>
-                                        ) : (
-                                            <span className="text-red-600 font-bold">Po splatnosti</span>
-                                        )}
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h3 className="font-bold text-lavrs-dark">{app.brandName}</h3>
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border ${getStatusStyle(app.status)}`}>
+                                            {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
+                                                app.status === AppStatus.PENDING ? 'Čeká na posouzení' :
+                                                    app.status === AppStatus.REJECTED ? 'Zamítnuto' :
+                                                        app.status === AppStatus.WAITLIST ? 'Na waitlistu' :
+                                                            app.status === AppStatus.PAID ? 'Zaplaceno' :
+                                                                app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
+                                        </span>
                                     </div>
-                                )}
+                                    <div className="flex gap-4 text-xs text-gray-400">
+                                        <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
+                                        <span className="font-medium text-gray-500">ID: {app.id}</span>
+                                    </div>
+                                    {app.status === AppStatus.APPROVED && app.paymentDeadline && (
+                                        <div className="mt-2 text-xs text-lavrs-dark">
+                                            <span className="font-bold">Splatnost faktury:</span> {formatDate(app.paymentDeadline)}
+                                            {' '}
+                                            {daysLeft !== null && daysLeft >= 0 ? (
+                                                <span className="text-gray-500">(zbývá {daysLeft} dní)</span>
+                                            ) : (
+                                                <span className="text-red-600 font-bold">Po splatnosti</span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex items-center gap-8">
-                            <div className="text-right">
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
-                                <p className="font-bold text-lavrs-dark">4.200 Kč</p>
+                            <div className="flex items-center gap-8">
+                                <div className="text-right">
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
+                                    <p className="font-bold text-lavrs-dark">4.200 Kč</p>
+                                </div>
+                                <button className="p-3 rounded-none bg-gray-50 text-gray-400 hover:bg-lavrs-red hover:text-white transition-all shadow-sm">
+                                    <ChevronRight size={20} />
+                                </button>
                             </div>
-                            <button className="p-3 rounded-none bg-gray-50 text-gray-400 hover:bg-lavrs-red hover:text-white transition-all shadow-sm">
-                                <ChevronRight size={20} />
-                            </button>
-                        </div>
                         </div>
                     );
                 })}

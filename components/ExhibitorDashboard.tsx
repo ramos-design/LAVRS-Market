@@ -191,20 +191,36 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
               {/* Timeline Line */}
               <div className="absolute left-5 top-2 bottom-2 w-px bg-gray-100"></div>
 
-              {applications.length === 0 ? (
-                <div className="relative text-center py-6">
-                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Zatím žádná aktivita</p>
-                </div>
-              ) : (
-                applications.map((app, idx) => (
+              {/* Filter applications for dashboard view */}
+              {(() => {
+                const visibleApps = applications.filter(app =>
+                  app.status === AppStatus.PENDING ||
+                  app.status === AppStatus.APPROVED ||
+                  app.status === AppStatus.REJECTED ||
+                  app.status === AppStatus.WAITLIST ||
+                  app.status === AppStatus.PAYMENT_REMINDER ||
+                  app.status === AppStatus.PAYMENT_LAST_CALL
+                );
+
+                if (visibleApps.length === 0) {
+                  return (
+                    <div className="relative text-center py-6">
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Zatím žádná aktivita</p>
+                    </div>
+                  );
+                }
+
+                return visibleApps.map((app, idx) => (
                   <div key={app.id} className="relative flex gap-6 pl-2 group">
-                    <div className={`z-10 w-10 h-10 rounded-none flex items-center justify-center border-4 border-white shadow-sm transition-transform duration-300 group-hover:scale-110 ${app.status === AppStatus.APPROVED ? 'bg-green-500' :
-                      app.status === AppStatus.PENDING ? 'bg-amber-400' :
-                        app.status === AppStatus.WAITLIST ? 'bg-blue-500' : 'bg-gray-300'
+                    <div className={`z-10 w-10 h-10 rounded-none flex items-center justify-center border-4 border-white shadow-sm transition-transform duration-300 group-hover:scale-110 ${app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-500' :
+                        app.status === AppStatus.PENDING ? 'bg-amber-400' :
+                          app.status === AppStatus.WAITLIST ? 'bg-blue-500' :
+                            app.status === AppStatus.PAID ? 'bg-green-600' : 'bg-gray-300'
                       }`}>
-                      {app.status === AppStatus.APPROVED ? <CheckCircle2 size={18} className="text-white" /> :
+                      {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? <CheckCircle2 size={18} className="text-white" /> :
                         app.status === AppStatus.PENDING ? <Clock size={18} className="text-white" /> :
-                          app.status === AppStatus.WAITLIST ? <Clock size={18} className="text-white" /> : <XCircle size={18} className="text-white" />}
+                          app.status === AppStatus.WAITLIST ? <Clock size={18} className="text-white" /> :
+                            app.status === AppStatus.PAID ? <CheckCircle2 size={18} className="text-white" /> : <XCircle size={18} className="text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
@@ -216,18 +232,20 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
                       <p className="text-[11px] text-gray-500 mb-2 truncate">
                         {events.find(e => e.id === app.eventId)?.title}
                       </p>
-                      <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${app.status === AppStatus.APPROVED ? 'bg-green-100 text-green-700' :
-                        app.status === AppStatus.PENDING ? 'bg-amber-100 text-amber-700' :
-                          app.status === AppStatus.WAITLIST ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                      <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-100 text-green-700' :
+                          app.status === AppStatus.PENDING ? 'bg-amber-100 text-amber-700' :
+                            app.status === AppStatus.WAITLIST ? 'bg-blue-100 text-blue-700' :
+                              app.status === AppStatus.PAID ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'
                         }`}>
-                        {app.status === AppStatus.APPROVED ? 'Schváleno' :
+                        {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
                           app.status === AppStatus.PENDING ? 'V posouzení' :
-                            app.status === AppStatus.WAITLIST ? 'Waitlist' : 'Zamítnuto'}
+                            app.status === AppStatus.WAITLIST ? 'Waitlist' :
+                              app.status === AppStatus.PAID ? 'Zaplaceno' : 'Zamítnuto'}
                       </span>
                     </div>
                   </div>
-                ))
-              )}
+                ));
+              })()}
             </div>
           </div>
 

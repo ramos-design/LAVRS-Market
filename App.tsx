@@ -30,25 +30,19 @@ import {
 } from './lib/mappers';
 
 const App: React.FC = () => {
-  const { user, loading: authLoading, signOut } = useAuth();
-  const [viewMode, setViewMode] = useState<ViewMode>('EXHIBITOR');
+  const { user, loading: authLoading, error: authError, signOut, refetch } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<string>('DASHBOARD');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  // Sync viewMode with user role ONLY once when user first loads
-  const hasSyncedRole = React.useRef(false);
-  React.useEffect(() => {
-    if (user && !hasSyncedRole.current) {
-      setViewMode(user.role);
-      hasSyncedRole.current = true;
-    }
-  }, [user]);
+  // Derived role from user
+  const userRole = user?.role;
+
 
   // ─── Supabase data hooks ──────────────────────────────────
   const { events: dbEvents, loading: eventsLoading } = useEvents();
   const {
     applications: dbApplications, loading: appsLoading,
-    createApplication, updateStatus: updateAppStatus,
+    createApplication, updateStatus: updateAppStatus, deleteApplication,
   } = useApplications();
   const {
     profiles: dbProfiles, loading: profilesLoading,
@@ -130,6 +124,12 @@ const App: React.FC = () => {
     await updateAppStatus(id, newStatus, paymentDeadline);
   };
 
+  const handleDeleteApplication = async (id: string) => {
+    if (window.confirm('Opravdu chcete tuto přihlášku smazat? Tato akce je nevratná.')) {
+      await deleteApplication(id);
+    }
+  };
+
   const handleSaveBrand = async (brand: BrandProfile) => {
     const dbBrand = appBrandProfileToDb(brand);
     const exists = dbProfiles.find(b => b.id === brand.id);
@@ -160,39 +160,23 @@ const App: React.FC = () => {
 
   const currentUser: UserType = {
     name: user.fullName || user.email.split('@')[0],
-    role: viewMode,
-    brand: viewMode === 'EXHIBITOR' ? 'Vaše značka' : undefined
+    role: userRole as ViewMode,
+    brand: userRole === 'EXHIBITOR' ? 'Vaše značka' : undefined
   };
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-lavrs-beige/30">
-      {/* Role Switcher (Visible only for ADMINs) */}
-      {user.role === 'ADMIN' && (
-        <div className="fixed bottom-4 right-4 z-50 flex gap-2 bg-white p-2 rounded-none shadow-lg border border-gray-100">
-          <button
-            onClick={() => { setViewMode('EXHIBITOR'); setCurrentScreen('DASHBOARD'); }}
-            className={`px-4 py-1.5 rounded-none text-xs font-semibold transition-all ${viewMode === 'EXHIBITOR' ? 'bg-lavrs-red text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-          >
-            Vystavovatel
-          </button>
-          <button
-            onClick={() => { setViewMode('ADMIN'); setCurrentScreen('DASHBOARD'); }}
-            className={`px-4 py-1.5 rounded-none text-xs font-semibold transition-all ${viewMode === 'ADMIN' ? 'bg-lavrs-dark text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-          >
-            Administrátor
-          </button>
-        </div>
-      )}
+
 
       <MobileHeader
-        role={viewMode}
+        role={userRole as ViewMode}
         activeItem={currentScreen}
         onNavigate={(screen) => setCurrentScreen(screen)}
         onSignOut={signOut}
       />
 
       <Sidebar
-        role={viewMode}
+        role={userRole as ViewMode}
         activeItem={currentScreen}
         onNavigate={(screen) => setCurrentScreen(screen)}
         onSignOut={signOut}
@@ -202,15 +186,34 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto animate-fadeIn">
 
           {/* Global loading indicator */}
-          {isLoading && (
+          {isLoading && !authError && (
             <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-lavrs-dark text-white px-6 py-2 rounded-none shadow-lg text-sm font-bold flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               Načítám data...
             </div>
           )}
 
+          {authError && (
+            <div className="mb-8 bg-amber-50 border-l-4 border-amber-500 p-6 shadow-sm animate-fadeIn flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="text-amber-500 font-bold text-2xl animate-pulse">⚠️</div>
+                <div>
+                  <p className="text-amber-800 font-black text-sm uppercase tracking-wider">Upozornění k profilu</p>
+                  <p className="text-amber-700 text-xs mt-1">{authError}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => refetch()}
+                className="whitespace-nowrap bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center gap-2"
+              >
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin hidden group-disabled:block" />
+                Zkusit znovu načíst
+              </button>
+            </div>
+          )}
+
           {currentScreen === 'DASHBOARD' && (
-            viewMode === 'EXHIBITOR' ? (
+            userRole === 'EXHIBITOR' ? (
               <ExhibitorDashboard
                 user={currentUser}
                 applications={applications}
@@ -255,6 +258,7 @@ const App: React.FC = () => {
               onBack={() => setCurrentScreen('DASHBOARD')}
               applications={applications}
               onUpdateStatus={handleUpdateApplicationStatus}
+              onDeleteApplication={handleDeleteApplication}
             />
           )}
 

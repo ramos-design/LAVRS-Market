@@ -1,24 +1,25 @@
 import React from 'react';
 import { CreditCard, Download, FileText, ExternalLink, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { useApplications, useBrandProfiles } from '../hooks/useSupabase';
-import { dbBrandProfileToApp } from '../lib/mappers';
+import { dbBrandProfileToApp, dbApplicationToApp } from '../lib/mappers';
+import { AppStatus } from '../types';
 
 const Billing: React.FC = () => {
-    const { applications, loading: appsLoading } = useApplications();
+    const { applications: dbApplications = [], loading: appsLoading } = useApplications();
     const { profiles: dbProfiles, loading: profilesLoading } = useBrandProfiles();
 
     const profiles = dbProfiles.map(dbBrandProfileToApp);
+    const applications = (dbApplications || []).map(dbApplicationToApp);
 
-    // In a real scenario, we would fetch actual invoices from a 'payments' or 'invoices' table.
-    // For now, we will show an empty state if no paid applications or invoices exist.
+    // Filter for paid applications for the billing history
     const paidInvoices = applications
-        .filter(app => app.status === 'approved' || app.status === 'confirmed')
+        .filter(app => app.status === AppStatus.PAID)
         .map(app => ({
-            id: `INV-${new Date(app.submitted_at).getFullYear()}-${app.id.slice(0, 4).toUpperCase()}`,
-            date: new Date(app.submitted_at).toLocaleDateString('cs-CZ'),
+            id: `INV-${new Date(app.submittedAt).getFullYear()}-${app.id.slice(0, 4).toUpperCase()}`,
+            date: new Date(app.submittedAt).toLocaleDateString('cs-CZ'),
             amount: 'TBD', // Amount would come from event prices/zones
             status: 'PAID', // This would depend on payment_status in application
-            event: app.brand_name
+            event: app.brandName
         }));
 
     const mainProfile = profiles[0];

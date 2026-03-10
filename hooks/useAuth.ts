@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 export type UserRole = 'EXHIBITOR' | 'ADMIN';
@@ -13,106 +13,114 @@ export interface AuthUser {
 export function useAuth() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const hasInit = useRef(false);
+
+    const fetchProfile = async (userId: string, email: string) => {
+        // 1. OKAMŽITĚ nastavíme provizorního uživatele, aby zmizel spinner!
+        // Toto zajistí, že se uživatel dostane do aplikace hned.
+        const provisionalUser: AuthUser = {
+            id: userId,
+            email: email,
+            role: 'EXHIBITOR',
+            fullName: email.split('@')[0],
+        };
+
+        setUser(prev => prev || provisionalUser);
+
+        // 2. Spinner vypneme hned poté, co máme aspoň provizorní data
+        setLoading(false);
+
+        // 3. Na pozadí (non-blocking) zkusíme dotáhnout skutečnou roli
+        try {
+            const { data, error: dbError } = await supabase
+                .from('profiles')
+                .select('role, full_name')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (dbError) throw dbError;
+
+            if (data) {
+                // Pokud profil existuje, aktualizujeme data
+                const mappedRole = (data.role as string || 'EXHIBITOR').toUpperCase() as UserRole;
+                setUser({
+                    id: userId,
+                    email: email,
+                    role: mappedRole,
+                    fullName: data.full_name || email.split('@')[0],
+                });
+                setError(null);
+            }
+        } catch (e: any) {
+            console.error('Tichá chyba při načítání profilu:', e);
+            // Neukazujeme chybu hned, protože uživatel je v aplikaci jako EXHIBITOR.
+            // Zobrazíme upozornění v error state, který App.tsx ukáže jako žlutý pruh.
+            setError(`Omezený režim: Nepodařilo se ověřit všechna práva (${e.message}).`);
+        }
+    };
 
     useEffect(() => {
         let mounted = true;
 
-        // Safety timeout to prevent infinite spinner
-        const timeout = setTimeout(() => {
-            if (mounted && loading) {
-                console.warn('Auth initialization timed out, forcing loading to false');
-                setLoading(false);
-            }
-        }, 5000);
-
-        const fetchProfile = async (userId: string, email: string) => {
-            // Logic to fetch with a timeout
-            const fetchWithTimeout = async () => {
-                const queryPromise = supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', userId)
-                    .maybeSingle();
-
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
-                );
-
-                return Promise.race([queryPromise, timeoutPromise]) as Promise<any>;
-            };
+        const initAuth = async () => {
+            if (hasInit.current) return;
+            hasInit.current = true;
 
             try {
-                const { data, error } = await fetchWithTimeout();
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
                 if (!mounted) return;
 
-                if (data) {
-                    setUser({
-                        id: userId,
-                        email: email,
-                        role: (data.role as string || 'EXHIBITOR').toUpperCase() as UserRole,
-                        fullName: data.full_name || email.split('@')[0],
-                    });
-                } else {
-                    throw new Error('No profile data');
-                }
-            } catch (e) {
-                console.warn('Profile fetch failed or timed out, using fallback:', e);
-                if (mounted) {
-                    setUser({
-                        id: userId,
-                        email: email,
-                        role: 'EXHIBITOR',
-                        fullName: email.split('@')[0],
-                    });
-                }
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        // Check current session
-        const initAuth = async () => {
-            try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) throw error;
-
                 if (session) {
-                    await fetchProfile(session.user.id, session.user.email!);
+                    // Máme sezení, jdeme načíst profil (nepřidáváme await, ať to neblokuje UI)
+                    fetchProfile(session.user.id, session.user.email!);
                 } else {
-                    if (mounted) setLoading(false);
-                }
-            } catch (e) {
-                console.error('Error in initAuth:', e);
-                if (mounted) setLoading(false);
-            }
-        };
-
-        initAuth();
-
-        // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                await fetchProfile(session.user.id, session.user.email!);
-            } else if (event === 'SIGNED_OUT') {
-                if (mounted) {
-                    setUser(null);
+                    // Nemáme sezení, konec loading
                     setLoading(false);
                 }
+            } catch (e: any) {
+                console.error('Kritická chyba auth:', e);
+                if (mounted) setLoading(false);
+            }
+        };
+
+        // Spustíme inicializaci
+        initAuth();
+
+        // Sledujeme změny stavu (přihlášení/odhlášení)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (!mounted) return;
+
+            if (event === 'SIGNED_IN' && session) {
+                fetchProfile(session.user.id, session.user.email!);
+            } else if (event === 'SIGNED_OUT') {
+                setUser(null);
+                setError(null);
+                setLoading(false);
+            } else if (event === 'USER_UPDATED' && session) {
+                fetchProfile(session.user.id, session.user.email!);
             }
         });
 
         return () => {
             mounted = false;
-            clearTimeout(timeout);
             subscription.unsubscribe();
         };
     }, []);
 
     const signOut = async () => {
+        setLoading(true);
         await supabase.auth.signOut();
         setUser(null);
+        setLoading(false);
     };
 
-    return { user, loading, signOut };
+    return {
+        user,
+        loading,
+        error,
+        signOut,
+        refetch: () => user && fetchProfile(user.id, user.email)
+    };
 }

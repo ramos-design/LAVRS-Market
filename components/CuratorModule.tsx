@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, Maximize2, CheckCircle, XCircle, Clock, CreditCard } from 'lucide-react';
+import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, Maximize2, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory } from '../types';
 import { ZONE_DETAILS } from '../constants';
 import { useEvents } from '../hooks/useSupabase';
@@ -9,38 +9,48 @@ interface CuratorModuleProps {
   onBack: () => void;
   applications: Application[];
   onUpdateStatus: (id: string, status: AppStatus) => void;
+  onDeleteApplication: (id: string) => void;
 }
 
-const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onUpdateStatus }) => {
+const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onUpdateStatus, onDeleteApplication }) => {
   // Filter out applications that are already paid (those move to the event manager)
   const activeApplications = applications.filter(a => a.status !== AppStatus.PAID);
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(activeApplications.length > 0 ? activeApplications[0].id : null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const selectedApp = activeApplications.find(a => a.id === selectedAppId) || (activeApplications.length > 0 ? activeApplications[0] : null);
 
   const { events: dbEvents } = useEvents();
   const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
 
-  const handleAction = (id: string, newStatus: AppStatus) => {
-    onUpdateStatus(id, newStatus);
+  const handleAction = async (id: string, newStatus: AppStatus) => {
+    setIsProcessing(true);
+    try {
+      await onUpdateStatus(id, newStatus);
 
-    // If it becomes PAID, it will be filtered out, so select next one
-    if (newStatus === AppStatus.PAID) {
-      const currentIndex = activeApplications.findIndex(a => a.id === id);
-      if (currentIndex < activeApplications.length - 1) {
-        setSelectedAppId(activeApplications[currentIndex + 1].id);
-      } else if (activeApplications.length > 1) {
-        setSelectedAppId(activeApplications[0].id);
+      // If it becomes PAID, it will be filtered out, so select next one
+      if (newStatus === AppStatus.PAID) {
+        const currentIndex = activeApplications.findIndex(a => a.id === id);
+        if (currentIndex < activeApplications.length - 1) {
+          setSelectedAppId(activeApplications[currentIndex + 1].id);
+        } else if (activeApplications.length > 1) {
+          setSelectedAppId(activeApplications[0].id);
+        } else {
+          setSelectedAppId(null);
+        }
       } else {
-        setSelectedAppId(null);
+        // Just stay or move to next
+        const currentIndex = activeApplications.findIndex(a => a.id === id);
+        if (currentIndex < activeApplications.length - 1) {
+          setSelectedAppId(activeApplications[currentIndex + 1].id);
+        }
       }
-    } else {
-      // Just stay or move to next
-      const currentIndex = activeApplications.findIndex(a => a.id === id);
-      if (currentIndex < activeApplications.length - 1) {
-        setSelectedAppId(activeApplications[currentIndex + 1].id);
-      }
+    } catch (error) {
+      console.error('Update failed:', error);
+      alert('Chyba při aktualizaci stavu. Pravděpodobně nemáte dostatečná oprávnění nebo databáze nezná tento stav.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -74,6 +84,10 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
         return { bg: 'bg-green-100', text: 'text-green-700', label: 'Schváleno (Čeká na platbu)' };
       case AppStatus.PAID:
         return { bg: 'bg-green-600', text: 'text-white', label: 'Zaplaceno' };
+      case AppStatus.PAYMENT_REMINDER:
+        return { bg: 'bg-amber-500', text: 'text-white', label: 'Upomínka odeslána' };
+      case AppStatus.PAYMENT_LAST_CALL:
+        return { bg: 'bg-red-500', text: 'text-white', label: 'Last Call odeslán' };
       case AppStatus.REJECTED:
         return { bg: 'bg-red-100', text: 'text-red-700', label: 'Zamítnuto' };
       case AppStatus.WAITLIST:
@@ -403,7 +417,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <button
                     onClick={() => handleAction(selectedApp.id, AppStatus.APPROVED)}
-                    disabled={selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAID}
+                    disabled={isProcessing || selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAID}
                     className="bg-green-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Check size={18} /> SCHVÁLIT
@@ -411,8 +425,8 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
                   <button
                     onClick={() => handleAction(selectedApp.id, AppStatus.PAID)}
-                    disabled={selectedApp.status !== AppStatus.APPROVED}
-                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED
+                    disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER && selectedApp.status !== AppStatus.PAYMENT_LAST_CALL)}
+                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status.includes('PAYMENT_')
                       ? 'bg-lavrs-dark text-white hover:bg-black'
                       : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                       }`}
@@ -421,18 +435,52 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                   </button>
 
                   <button
+                    onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
+                    disabled={isProcessing || selectedApp.status !== AppStatus.APPROVED}
+                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED
+                      ? 'bg-amber-500 text-white hover:bg-amber-600'
+                      : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
+                      }`}
+                  >
+                    <Mail size={18} /> ODESLAT UPOMÍNKU
+                  </button>
+
+                  <button
+                    onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
+                    disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER)}
+                    className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAYMENT_REMINDER
+                      ? 'bg-orange-600 text-white hover:bg-orange-700'
+                      : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
+                      }`}
+                  >
+                    <AlertCircle size={18} /> ODESLAT LAST CALL
+                  </button>
+
+                  <button
                     onClick={() => handleAction(selectedApp.id, AppStatus.REJECTED)}
-                    disabled={selectedApp.status === AppStatus.REJECTED}
+                    disabled={isProcessing || selectedApp.status === AppStatus.REJECTED}
                     className="bg-white text-red-600 border-2 border-red-200 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <X size={18} /> ZAMÍTNOUT
                   </button>
                   <button
                     onClick={() => handleAction(selectedApp.id, AppStatus.WAITLIST)}
-                    disabled={selectedApp.status === AppStatus.WAITLIST}
+                    disabled={isProcessing || selectedApp.status === AppStatus.WAITLIST}
                     className="bg-blue-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Clock size={18} /> WAITLIST
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Opravdu chcete tuto přihlášku smazat?')) {
+                        onDeleteApplication(selectedApp.id);
+                        setSelectedAppId(null);
+                      }
+                    }}
+                    disabled={isProcessing}
+                    className="bg-white text-red-600 border-2 border-red-600 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
+                    <Trash2 size={18} /> SMAZAT
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
