@@ -171,15 +171,56 @@ export const eventsDb = {
     },
 
     async uploadImage(file: File, eventId: string): Promise<{ path: string; url: string }> {
-        const filePath = `event-images/${eventId}/${Date.now()}-${file.name}`;
+        const toDataUrl = (input: File) =>
+            new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+                reader.readAsDataURL(input);
+            });
 
-        const { error: uploadError } = await supabase.storage
-            .from('event-images')
-            .upload(filePath, file, { upsert: true });
-        if (uploadError) throw uploadError;
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
 
-        const { data: urlData } = supabase.storage.from('event-images').getPublicUrl(filePath);
-        return { path: filePath, url: urlData.publicUrl };
+        const { data, error } = await supabase.functions.invoke('upload-event-image', {
+            body: {
+                eventId,
+                fileName: file.name,
+                fileType: file.type || 'image/jpeg',
+                fileBase64: base64,
+            },
+        });
+
+        if (!error && data?.url) {
+            return { path: data.path || '', url: data.url };
+        }
+
+        // Fallback 1: direct storage upload
+        try {
+            const filePath = `event-images/${eventId}/${Date.now()}-${file.name}`;
+            const { error: uploadError } = await supabase.storage
+                .from('event-images')
+                .upload(filePath, file, { upsert: true, contentType: file.type || 'image/jpeg', cacheControl: '3600' });
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage.from('event-images').getPublicUrl(filePath);
+            if (urlData?.publicUrl) {
+                await eventsDb.update(eventId, { image: urlData.publicUrl });
+                return { path: filePath, url: urlData.publicUrl };
+            }
+        } catch {
+            // Continue to DB-inline fallback.
+        }
+
+        // Fallback 2: always persist directly to DB as data URL.
+        const dataUrl = await toDataUrl(file);
+        await eventsDb.update(eventId, { image: dataUrl });
+        return { path: `inline:${eventId}`, url: dataUrl };
     },
 
     async delete(id: string): Promise<void> {

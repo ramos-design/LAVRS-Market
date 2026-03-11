@@ -237,7 +237,7 @@ export function dbEventPlanToApp(
         gridSize: { width: plan.grid_width, height: plan.grid_height },
         prices: plan.prices,
         equipment: plan.equipment,
-        categorySizes: plan.category_sizes as { [key: string]: SpotSize } | undefined,
+        categorySizes: plan.category_sizes as { [key: string]: string } | undefined,
         extras: plan.extras as ExtraItem[],
         zones: zones.map(dbZoneToApp),
         stands: stands.map(dbStandToApp),

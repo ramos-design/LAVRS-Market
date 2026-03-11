@@ -76,6 +76,12 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     setTotalSteps(isWaitlist ? 1 : 5);
   }, [isWaitlist]);
 
+  useEffect(() => {
+    if (selectedZoneCategory && !selectedZone) {
+      setSelectedZone(SpotSize.M);
+    }
+  }, [selectedZoneCategory, selectedZone]);
+
   const extrasList = eventPlan?.extras || [
     { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
     { id: 'extra-table', label: 'Extra Stůl', price: '400 Kč' },
@@ -218,21 +224,20 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     }
   };
 
-  const checkIsFull = (size: SpotSize, category: ZoneCategory | null) => {
+  const checkIsFull = (category: ZoneCategory | null) => {
     const plan = eventPlan;
     if (!plan || !category) return false;
 
     const zone = plan.zones.find((z: any) => z.category === category);
     if (!zone) return false;
 
-    const total = zone.capacities[size] || 0;
-    // Count both placed stands and apps with same size/category
-    const used = plan.stands.filter((s: any) => s.zoneId === zone.id && s.size === size && s.occupantId).length;
+    const total = (zone.capacities.S || 0) + (zone.capacities.M || 0) + (zone.capacities.L || 0);
+    const used = plan.stands.filter((s: any) => s.zoneId === zone.id && s.occupantId).length;
 
     return used >= total;
   };
 
-  const isZoneFull = selectedZone && selectedZoneCategory ? checkIsFull(selectedZone, selectedZoneCategory) : false;
+  const isZoneFull = selectedZoneCategory ? checkIsFull(selectedZoneCategory) : false;
 
   const isZoneCategoryEmpty = !isWaitlist && step === 2 && !selectedZoneCategory;
   const nextStep = () => {
@@ -449,15 +454,6 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                       type="button"
                       onClick={() => {
                         setSelectedZoneCategory(cat.id);
-                        const configuredSize = eventPlan?.categorySizes?.[cat.id];
-                        if (configuredSize) {
-                          setSelectedZone(configuredSize);
-                        } else {
-                          // Default fallbacks for common categories
-                          if (cat.name === 'Secondhands') setSelectedZone(SpotSize.M);
-                          else if (cat.name === 'České značky') setSelectedZone(SpotSize.L);
-                          else setSelectedZone(SpotSize.S);
-                        }
                       }}
                       className={`p-10 rounded-none border-2 text-left transition-all ${selectedZoneCategory === cat.id
                         ? 'border-lavrs-red bg-white shadow-xl scale-[1.02]'
@@ -476,6 +472,20 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                     </button>
                   ))}
                 </div>
+
+                {selectedZoneCategory && eventPlan?.categorySizes?.[selectedZoneCategory] && (
+                  <div className="mt-6 p-6 bg-lavrs-beige/50 border border-lavrs-pink/20 rounded-none">
+                    <div className="flex items-start gap-3">
+                      <Info size={18} className="text-lavrs-red mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Informace o spotu</p>
+                        <p className="text-sm text-gray-700 font-medium">
+                          {eventPlan.categorySizes[selectedZoneCategory]}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {showCatError && !selectedZoneCategory && (
                   <p className="text-center text-sm text-lavrs-red font-bold animate-bounce pt-12">

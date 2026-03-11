@@ -92,6 +92,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     const [exhibitorFilter, setExhibitorFilter] = useState<string>('ALL');
     const [dateInput, setDateInput] = useState<string>('');
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const formatEventDateLong = (dateStr?: string) => {
@@ -104,11 +105,67 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     const toDateInputValue = (dateStr?: string) => {
         if (!dateStr) return '';
         const parsed = new Date(dateStr);
-        if (isNaN(parsed.getTime())) return '';
+        if (isNaN(parsed.getTime())) {
+            const normalized = parseCzechDateToIso(dateStr);
+            return normalized || '';
+        }
         const yyyy = parsed.getFullYear();
         const mm = String(parsed.getMonth() + 1).padStart(2, '0');
         const dd = String(parsed.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const parseCzechDateToIso = (value: string): string | null => {
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+        const normalized = trimmed
+            .replace(/[–—]/g, '-')
+            .replace(/\s+/g, ' ')
+            .replace(/(\d)\.(\d)/g, '$1. $2')
+            .replace(/(\d{1,2})\.\s*-\s*(\d{1,2})\./g, '$1.');
+
+        const match = normalized.match(/(\d{1,2})\.\s*([^\d]+?)\s+(\d{4})/i);
+        if (match) {
+            const day = parseInt(match[1], 10);
+            const monthStr = match[2].toLowerCase().trim();
+            const year = parseInt(match[3], 10);
+            const monthMap: Record<string, number> = {
+                'leden': 1, 'ledna': 1,
+                'únor': 2, 'února': 2, 'unor': 2, 'unora': 2,
+                'březen': 3, 'března': 3, 'brezen': 3, 'brezna': 3,
+                'duben': 4, 'dubna': 4,
+                'květen': 5, 'května': 5, 'kveten': 5, 'kvetna': 5,
+                'červen': 6, 'června': 6, 'cerven': 6, 'cervna': 6,
+                'červenec': 7, 'července': 7, 'cervenec': 7, 'cervence': 7,
+                'srpen': 8, 'srpna': 8,
+                'září': 9, 'zari': 9,
+                'říjen': 10, 'října': 10, 'rijen': 10, 'rijna': 10,
+                'listopad': 11, 'listopadu': 11,
+                'prosinec': 12, 'prosince': 12,
+            };
+            const month = monthMap[monthStr];
+            if (month && day >= 1 && day <= 31) {
+                const mm = String(month).padStart(2, '0');
+                const dd = String(day).padStart(2, '0');
+                return `${year}-${mm}-${dd}`;
+            }
+        }
+
+        const numericMatch = normalized.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+        if (numericMatch) {
+            const day = parseInt(numericMatch[1], 10);
+            const month = parseInt(numericMatch[2], 10);
+            const year = parseInt(numericMatch[3], 10);
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                const mm = String(month).padStart(2, '0');
+                const dd = String(day).padStart(2, '0');
+                return `${year}-${mm}-${dd}`;
+            }
+        }
+
+        return null;
     };
 
     useEffect(() => {
@@ -117,7 +174,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         setDateInput(nextDateInput);
         setEventDetails({
             title: currentEvent.title || '',
-            date: formatEventDateLong(currentEvent.date || ''),
+            date: nextDateInput || currentEvent.date || '',
             location: currentEvent.location || '',
             description: currentEvent.description || 'LAVRS market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
             image: currentEvent.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
@@ -475,19 +532,26 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                         const file = e.target.files?.[0];
                                                         if (!file) return;
                                                         setIsUploadingImage(true);
+                                                        setUploadError(null);
                                                         try {
                                                             const { url } = await uploadEventImage(file, eventId);
                                                             setEventDetails(prev => ({ ...prev, image: url }));
                                                             await updateEvent(eventId, { image: url });
                                                         } catch (err) {
                                                             console.error('Image upload failed', err);
-                                                            alert('Nahrání obrázku se nezdařilo.');
+                                                            const msg = err instanceof Error ? err.message : 'Nahrání obrázku se nezdařilo.';
+                                                            setUploadError(msg);
                                                         } finally {
                                                             setIsUploadingImage(false);
                                                             e.currentTarget.value = '';
                                                         }
                                                     }}
                                                 />
+                                                {uploadError && (
+                                                    <p className="mt-3 text-[10px] text-red-500 font-semibold">
+                                                        {uploadError}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -516,8 +580,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                         onChange={(e) => {
                                                             const value = e.target.value;
                                                             setDateInput(value);
-                                                            const formatted = formatEventDateLong(value);
-                                                            setEventDetails(prev => ({ ...prev, date: formatted }));
+                                                            setEventDetails(prev => ({ ...prev, date: value }));
                                                         }}
                                                         className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 focus:border-lavrs-red outline-none font-bold text-lavrs-dark transition-all text-sm"
                                                     />
@@ -1211,7 +1274,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                     </div>
 
                                                     <div>
-                                                        <label className="text-[10px] font-black uppercase text-gray-400 block mb-2 tracking-widest">Velikost a info o spotu</label>
+                                                        <label className="text-[10px] font-black uppercase text-gray-400 block mb-2 tracking-widest">Poznámka ke spotu</label>
                                                         <div className="relative">
                                                             <input
                                                                 type="text"
@@ -1223,11 +1286,11 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                                         categorySizes: { ...prev.categorySizes, [category]: val }
                                                                     }));
                                                                 }}
-                                                                className="w-full p-4 border border-gray-200 focus:border-lavrs-red outline-none font-black text-[14px] bg-white uppercase transition-all shadow-sm"
-                                                                placeholder="Napr. Spot M"
+                                                                className="w-full p-4 border border-gray-200 focus:border-lavrs-red outline-none font-semibold text-[14px] bg-white transition-all shadow-sm"
+                                                                placeholder="Např. 2m stůl, 2 židle, prostor 2×1m"
                                                             />
                                                             <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                                                <Maximize2 size={18} className="text-gray-200" />
+                                                                <Info size={18} className="text-gray-200" />
                                                             </div>
                                                         </div>
                                                     </div>

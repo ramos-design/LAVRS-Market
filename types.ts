@@ -116,7 +116,7 @@ export interface EventPlan {
     [key: string]: string[];
   };
   categorySizes?: {
-    [key: string]: SpotSize;
+    [key: string]: string;
   };
   extras: ExtraItem[];
 }
