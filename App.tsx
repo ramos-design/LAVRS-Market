@@ -208,9 +208,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteApplication = async (id: string) => {
-    if (window.confirm('Opravdu chcete tuto přihlášku přesunout do koše?')) {
-      await deleteApplication(id);
-    }
+    await deleteApplication(id);
   };
 
   const handleRestoreApplication = async (id: string) => {

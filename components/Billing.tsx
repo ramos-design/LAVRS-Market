@@ -11,9 +11,17 @@ const Billing: React.FC = () => {
     const profiles = dbProfiles.map(dbBrandProfileToApp);
     const applications = (dbApplications || []).map(dbApplicationToApp);
 
+    const billingEligibleStatuses = [
+        AppStatus.PAID,
+        AppStatus.APPROVED,
+        AppStatus.PAYMENT_REMINDER,
+        AppStatus.PAYMENT_LAST_CALL,
+        AppStatus.PAYMENT_UNDER_REVIEW
+    ];
+
     // Filter for applications in billing process
     const invoices = applications
-        .filter(app => [AppStatus.PAID, AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(app.status))
+        .filter(app => billingEligibleStatuses.includes(app.status))
         .map(app => ({
             id: `INV-${new Date(app.submittedAt).getFullYear()}-${app.id.slice(0, 4).toUpperCase()}`,
             date: app.approvedAt ? new Date(app.approvedAt).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : new Date(app.submittedAt).toLocaleDateString('cs-CZ'),
@@ -24,6 +32,7 @@ const Billing: React.FC = () => {
         }));
 
     const mainProfile = profiles[0];
+    const hasBillingAccess = invoices.length > 0;
 
     if (appsLoading || profilesLoading) {
         return <div className="p-12 text-center text-gray-400">Načítám fakturační údaje...</div>;
@@ -42,27 +51,40 @@ const Billing: React.FC = () => {
                         <TrendingUp size={20} />
                     </div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Celkem zaplaceno</p>
-                    <p className="text-2xl font-bold text-lavrs-dark">0 Kč</p>
+                    <p className="text-2xl font-bold text-lavrs-dark">{hasBillingAccess ? '0 Kč' : '—'}</p>
                 </div>
                 <div className="bg-white p-6 rounded-none border border-gray-100 shadow-sm space-y-2">
                     <div className="w-10 h-10 bg-orange-50 rounded-none flex items-center justify-center text-orange-600 mb-4">
                         <CreditCard size={20} />
                     </div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">K úhradě</p>
-                    <p className="text-2xl font-bold text-orange-600">0 Kč</p>
+                    <p className="text-2xl font-bold text-orange-600">{hasBillingAccess ? '0 Kč' : '—'}</p>
                 </div>
                 <div className="bg-lavrs-beige p-6 rounded-none border border-lavrs-red/10 flex items-center justify-between">
                     <div>
                         <p className="text-sm font-bold text-lavrs-dark mb-1">Fakturační údaje</p>
-                        <p className="text-xs text-gray-500 font-medium">{mainProfile?.billingName || 'Žádné údaje'}</p>
+                        <p className="text-xs text-gray-500 font-medium">
+                            {hasBillingAccess ? (mainProfile?.billingName || 'Žádné údaje') : 'Dostupné po schválení'}
+                        </p>
                     </div>
-                    <button className="text-lavrs-red hover:bg-lavrs-red hover:text-white p-2 rounded-none transition-all border border-lavrs-red/20 shadow-sm">
+                    <button
+                        className="text-lavrs-red hover:bg-lavrs-red hover:text-white p-2 rounded-none transition-all border border-lavrs-red/20 shadow-sm"
+                        disabled={!hasBillingAccess}
+                    >
                         <ArrowUpRight size={18} />
                     </button>
                 </div>
             </div>
 
-            {invoices.length === 0 ? (
+            {!hasBillingAccess ? (
+                <div className="bg-white border-2 border-dashed border-gray-100 p-20 text-center space-y-4">
+                    <div className="w-16 h-16 bg-gray-50 text-gray-300 flex items-center justify-center mx-auto">
+                        <FileText size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-lavrs-dark">Fakturace není zatím dostupná</h3>
+                    <p className="text-gray-400 max-w-sm mx-auto">Fakturace se zobrazí až po schválení vaší přihlášky.</p>
+                </div>
+            ) : invoices.length === 0 ? (
                 <div className="bg-white border-2 border-dashed border-gray-100 p-20 text-center space-y-4">
                     <div className="w-16 h-16 bg-gray-50 text-gray-300 flex items-center justify-center mx-auto">
                         <FileText size={32} />

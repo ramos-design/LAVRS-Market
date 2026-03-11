@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS applications (
   billing_email TEXT,
   zone TEXT NOT NULL DEFAULT 'M',
   zone_category TEXT,
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'WAITLIST', 'PAID', 'EXPIRED')),
+  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'WAITLIST', 'PAID', 'EXPIRED', 'PAYMENT_REMINDER', 'PAYMENT_LAST_CALL', 'PAYMENT_UNDER_REVIEW', 'DELETED')),
   submitted_at TIMESTAMPTZ DEFAULT now(),
   images TEXT[] DEFAULT '{}',
   event_id TEXT REFERENCES events(id) ON DELETE SET NULL,
@@ -80,9 +80,29 @@ CREATE TABLE IF NOT EXISTS applications (
   curator_note TEXT,
   extra_note TEXT,
   payment_deadline TIMESTAMPTZ,
+  approved_at TIMESTAMPTZ,
   brand_profile_id TEXT REFERENCES brand_profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Ensure status constraint includes all app states (for existing DBs)
+ALTER TABLE applications
+  DROP CONSTRAINT IF EXISTS applications_status_check;
+ALTER TABLE applications
+  ADD CONSTRAINT applications_status_check CHECK (
+    status IN (
+      'PENDING',
+      'APPROVED',
+      'REJECTED',
+      'WAITLIST',
+      'PAID',
+      'EXPIRED',
+      'PAYMENT_REMINDER',
+      'PAYMENT_LAST_CALL',
+      'PAYMENT_UNDER_REVIEW',
+      'DELETED'
+    )
+  );
 
 
 -- 5. Event Plans
@@ -193,6 +213,16 @@ CREATE POLICY "Individuals can insert their own applications." ON applications F
 
 DROP POLICY IF EXISTS "Admins can view all applications." ON applications;
 CREATE POLICY "Admins can view all applications." ON applications FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+DROP POLICY IF EXISTS "Admins can update applications." ON applications;
+CREATE POLICY "Admins can update applications." ON applications FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+DROP POLICY IF EXISTS "Admins can delete applications." ON applications;
+CREATE POLICY "Admins can delete applications." ON applications FOR DELETE USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
 );
 

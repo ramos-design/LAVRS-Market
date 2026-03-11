@@ -13,9 +13,13 @@ interface CuratorModuleProps {
 }
 
 const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
-  const deletedApplications = applications.filter(a => a.status === AppStatus.DELETED);
+  const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
+  const deletedApplications = applications.filter(a => normalizeStatus(a.status) === AppStatus.DELETED);
   // Filter out applications that are already paid (those move to the event manager)
-  const activeApplications = applications.filter(a => a.status !== AppStatus.PAID && a.status !== AppStatus.DELETED);
+  const activeApplications = applications.filter(a => {
+    const s = normalizeStatus(a.status);
+    return s !== AppStatus.PAID && s !== AppStatus.DELETED;
+  });
 
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'TRASH'>('ACTIVE');
   const displayedApplications = viewMode === 'TRASH' ? deletedApplications : activeApplications;
@@ -71,7 +75,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   const getZoneCategoryLabel = (category?: ZoneCategory) => category || 'Neuvedeno';
 
   const getStatusBadge = (status: AppStatus) => {
-    switch (status) {
+    switch (normalizeStatus(status)) {
       case AppStatus.DELETED:
         return { bg: 'bg-gray-200', text: 'text-gray-600', label: 'V koši' };
       case AppStatus.APPROVED:
@@ -107,9 +111,9 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
     return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   };
 
-  const pendingCount = applications.filter(a => a.status === AppStatus.PENDING).length;
-  const rejectedCount = applications.filter(a => a.status === AppStatus.REJECTED).length;
-  const waitlistCount = applications.filter(a => a.status === AppStatus.WAITLIST).length;
+  const pendingCount = applications.filter(a => normalizeStatus(a.status) === AppStatus.PENDING).length;
+  const rejectedCount = applications.filter(a => normalizeStatus(a.status) === AppStatus.REJECTED).length;
+  const waitlistCount = applications.filter(a => normalizeStatus(a.status) === AppStatus.WAITLIST).length;
   const trashCount = deletedApplications.length;
 
   return (
@@ -438,7 +442,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
               {/* Action Buttons */}
               <div className="p-8 border-t border-gray-100 bg-lavrs-beige/20">
-                {selectedApp.status === AppStatus.DELETED ? (
+                {normalizeStatus(selectedApp.status) === AppStatus.DELETED ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <button
                       onClick={async () => {
@@ -460,7 +464,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.APPROVED)}
-                      disabled={isProcessing || selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAID}
+                      disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status) === AppStatus.PAID}
                       className="bg-green-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check size={18} /> SCHVÁLIT
@@ -468,8 +472,8 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAID)}
-                      disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER && selectedApp.status !== AppStatus.PAYMENT_LAST_CALL)}
-                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status.includes('PAYMENT_')
+                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status).includes('PAYMENT_')
                         ? 'bg-lavrs-dark text-white hover:bg-black'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
@@ -479,8 +483,8 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
-                      disabled={isProcessing || selectedApp.status !== AppStatus.APPROVED}
-                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED
+                      disabled={isProcessing || normalizeStatus(selectedApp.status) !== AppStatus.APPROVED}
+                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED
                         ? 'bg-amber-500 text-white hover:bg-amber-600'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
@@ -490,8 +494,8 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
-                      disabled={isProcessing || (selectedApp.status !== AppStatus.APPROVED && selectedApp.status !== AppStatus.PAYMENT_REMINDER)}
-                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${selectedApp.status === AppStatus.APPROVED || selectedApp.status === AppStatus.PAYMENT_REMINDER
+                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus)
                         ? 'bg-orange-600 text-white hover:bg-orange-700'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
@@ -501,23 +505,28 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.REJECTED)}
-                      disabled={isProcessing || selectedApp.status === AppStatus.REJECTED}
+                      disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.REJECTED}
                       className="bg-white text-red-600 border-2 border-red-200 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <X size={18} /> ZAMÍTNOUT
                     </button>
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.WAITLIST)}
-                      disabled={isProcessing || selectedApp.status === AppStatus.WAITLIST}
+                      disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.WAITLIST}
                       className="bg-blue-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Clock size={18} /> WAITLIST
                     </button>
                     <button
-                      onClick={() => {
-                        if (window.confirm('Opravdu chcete tuto přihlášku přesunout do koše?')) {
-                          onDeleteApplication(selectedApp.id);
+                      onClick={async () => {
+                        if (!window.confirm('Opravdu chcete tuto přihlášku přesunout do koše?')) return;
+                        setIsProcessing(true);
+                        try {
+                          await onDeleteApplication(selectedApp.id);
                           setSelectedAppId(null);
+                          setViewMode('TRASH');
+                        } finally {
+                          setIsProcessing(false);
                         }
                       }}
                       disabled={isProcessing}
