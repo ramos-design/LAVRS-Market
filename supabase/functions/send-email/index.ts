@@ -10,7 +10,7 @@ const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
 const smtpUsername = Deno.env.get("SMTP_USERNAME")!;
 const smtpPassword = Deno.env.get("SMTP_PASSWORD")!;
 const senderEmail = Deno.env.get("SENDER_EMAIL") || "info@lavrs.cz";
-const senderName = Deno.env.get("SENDER_NAME") || "LAVRS Market";
+const senderName = Deno.env.get("SENDER_NAME") || "LAVRS market";
 
 const getHtmlTemplate = (title: string, bodyText: string) => {
     const formattedBody = bodyText.replace(/\n/g, '<br>');
@@ -43,7 +43,7 @@ const getHtmlTemplate = (title: string, bodyText: string) => {
                 ${formattedBody}
               </div>
               <p style="margin:0; font-size:15px; line-height:1.5; color:#b10014; font-weight:bold; border-top: 1px solid #efb2b7; padding-top: 15px;">
-                Tým LAVRS Market
+                Tým LAVRS market
               </p>
             </td>
           </tr>
@@ -163,7 +163,7 @@ serve(async (req) => {
         let body = template.body || "";
         let subject = template.subject || "";
         const vars: Record<string, string> = {
-            '{{event_name}}': event.title || "LAVRS Market",
+            '{{event_name}}': event.title || "LAVRS market",
             '{{event_date}}': event.date || "",
             '{{event_location}}': event.location || "",
             '{{contact_person}}': app.contact_person || "",

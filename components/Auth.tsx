@@ -40,6 +40,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                         data: {
                             full_name: fullName,
                         },
+                        emailRedirectTo: window.location.origin,
                     },
                 });
 
@@ -74,7 +75,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                 <div className="text-center mb-10">
                     <img
                         src="/media/LAVRSmarket_logo_white_transp1.png"
-                        alt="LAVRS Market"
+                        alt="LAVRS market"
                         className="h-16 mx-auto mb-6 opacity-90"
                     />
                     <p className="text-gray-400 font-medium">Portál pro vystavovatele</p>
@@ -213,7 +214,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                 </div>
 
                 <p className="mt-8 text-center text-gray-600 text-[10px] font-bold uppercase tracking-widest">
-                    © 2026 — LAVRS Market Protocol
+                    © 2026 — LAVRS market Protocol
                 </p>
             </div>
 
