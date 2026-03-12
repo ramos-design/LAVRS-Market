@@ -30,6 +30,34 @@ import {
   appApplicationToDb, appBrandProfileToDb, appBannerToDb, appCategoryToDb,
 } from './lib/mappers';
 
+class EventPlanErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; message: string }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+
+  static getDerivedStateFromError(error: unknown) {
+    return { hasError: true, message: error instanceof Error ? error.message : 'Unknown error' };
+  }
+
+  componentDidCatch(error: unknown, info: unknown) {
+    console.error('Event plan crashed', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-white border border-red-200 p-8 shadow-sm">
+          <h3 className="text-xl font-bold text-red-700 mb-2">Editor eventu spadl</h3>
+          <p className="text-sm text-gray-600">Detail se nepodařilo vykreslit. Vrať se zpět a otevři event znovu.</p>
+          <p className="text-xs text-gray-400 mt-3">Chyba: {this.state.message}</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const App: React.FC = () => {
   const { user, loading: authLoading, error: authError, signOut, refetch } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<string>('DASHBOARD');
@@ -116,7 +144,16 @@ const App: React.FC = () => {
   const categories = useMemo(() => dbCategories.map(dbCategoryToApp), [dbCategories]);
   const currentEventPlan = useMemo(() => {
     if (!dbPlan) return undefined;
-    return dbEventPlanToApp(dbPlan, dbZones, dbStands);
+    try {
+      return dbEventPlanToApp(dbPlan, dbZones, dbStands);
+    } catch (err) {
+      console.error('Failed to map event plan, falling back to empty plan', err, {
+        plan: dbPlan,
+        zones: dbZones,
+        stands: dbStands,
+      });
+      return undefined;
+    }
   }, [dbPlan, dbZones, dbStands]);
 
   const activeAppForExhibitor = useMemo(() => {
@@ -136,6 +173,7 @@ const App: React.FC = () => {
   const handleUpdateEventPlan = async (_eventId: string, newPlan: any) => {
     await saveEventPlan({
       gridSize: newPlan.gridSize,
+      layoutMeta: newPlan.layoutMeta,
       prices: newPlan.prices,
       equipment: newPlan.equipment,
       categorySizes: newPlan.categorySizes,
@@ -154,6 +192,11 @@ const App: React.FC = () => {
         size: s.size,
         zone_id: s.zoneId,
         occupant_id: s.occupantId || null,
+        label: s.label || null,
+        width_cells: s.widthCells ?? 1,
+        height_cells: s.heightCells ?? 1,
+        rotation: s.rotation ?? 0,
+        locked: !!s.locked,
       })),
     });
   };
@@ -405,14 +448,17 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'EVENT_PLAN' && selectedEventId && (
-            <EventLayoutManager
-              eventId={selectedEventId}
-              onBack={() => setCurrentScreen('EVENTS_CONFIG')}
-              applications={applications}
-              initialPlan={currentEventPlan}
-              onSavePlan={(newPlan) => handleUpdateEventPlan(selectedEventId, newPlan)}
-              categories={categories}
-            />
+            <EventPlanErrorBoundary>
+              <EventLayoutManager
+                key={selectedEventId}
+                eventId={selectedEventId}
+                onBack={() => setCurrentScreen('EVENTS_CONFIG')}
+                applications={applications}
+                initialPlan={currentEventPlan}
+                onSavePlan={(newPlan) => handleUpdateEventPlan(selectedEventId, newPlan)}
+                categories={categories}
+              />
+            </EventPlanErrorBoundary>
           )}
         </div>
       </main>

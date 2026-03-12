@@ -86,6 +86,7 @@ export interface DbEventPlan {
     equipment: Record<string, string[]>;
     category_sizes: Record<string, string>;
     extras: Array<{ id: string; label: string; price: string }>;
+    layout_meta?: Record<string, any> | null;
     created_at?: string;
 }
 
@@ -107,6 +108,11 @@ export interface DbStand {
     size: string;
     zone_id: string | null;
     occupant_id: string | null;
+    label?: string | null;
+    width_cells?: number | null;
+    height_cells?: number | null;
+    rotation?: number | null;
+    locked?: boolean | null;
     created_at?: string;
 }
 
@@ -402,6 +408,7 @@ export const eventPlansDb = {
         equipment: Record<string, string[]>;
         categorySizes?: Record<string, string>;
         extras: Array<{ id: string; label: string; price: string }>;
+        layoutMeta?: Record<string, any>;
         zones: DbZone[];
         stands: DbStand[];
     }): Promise<void> {
@@ -416,6 +423,7 @@ export const eventPlansDb = {
             equipment: planData.equipment,
             category_sizes: planData.categorySizes || {},
             extras: planData.extras,
+            layout_meta: planData.layoutMeta || {},
         });
         if (planError) throw planError;
 
@@ -447,6 +455,11 @@ export const eventPlansDb = {
                 size: s.size,
                 zone_id: s.zone_id,
                 occupant_id: s.occupant_id,
+                label: s.label || null,
+                width_cells: s.width_cells ?? 1,
+                height_cells: s.height_cells ?? 1,
+                rotation: s.rotation ?? 0,
+                locked: !!s.locked,
             }));
             const { error: standsError } = await supabase.from('stands').insert(standsToInsert);
             if (standsError) throw standsError;

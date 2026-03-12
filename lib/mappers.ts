@@ -203,12 +203,17 @@ export function appCategoryToDb(c: Category): Omit<DbCategory, 'created_at'> {
 /* ─── Zones ──────────────────────────────────────────────── */
 
 export function dbZoneToApp(z: DbZone): Zone {
+    const rawCaps = z.capacities && typeof z.capacities === 'object' ? z.capacities : {};
     return {
         id: z.id,
         name: z.name,
         color: z.color,
         category: z.category || '',
-        capacities: z.capacities as { [key in SpotSize]?: number },
+        capacities: {
+            S: Number((rawCaps as any).S || 0),
+            M: Number((rawCaps as any).M || 0),
+            L: Number((rawCaps as any).L || 0),
+        },
     };
 }
 
@@ -222,6 +227,11 @@ export function dbStandToApp(s: DbStand): Stand {
         size: s.size as SpotSize,
         zoneId: s.zone_id || '',
         occupantId: s.occupant_id || undefined,
+        label: s.label || undefined,
+        widthCells: s.width_cells || 1,
+        heightCells: s.height_cells || 1,
+        rotation: s.rotation === 90 ? 90 : 0,
+        locked: !!s.locked,
     };
 }
 
@@ -235,6 +245,15 @@ export function dbEventPlanToApp(
     return {
         eventId: plan.event_id,
         gridSize: { width: plan.grid_width, height: plan.grid_height },
+        layoutMeta: {
+            backgroundImageUrl: plan.layout_meta?.backgroundImageUrl || '',
+            backgroundOpacity: typeof plan.layout_meta?.backgroundOpacity === 'number' ? plan.layout_meta.backgroundOpacity : 0.35,
+            cellSize: typeof plan.layout_meta?.cellSize === 'number' ? plan.layout_meta.cellSize : 28,
+            originOffset: {
+                x: typeof plan.layout_meta?.originOffset?.x === 'number' ? plan.layout_meta.originOffset.x : 0,
+                y: typeof plan.layout_meta?.originOffset?.y === 'number' ? plan.layout_meta.originOffset.y : 0,
+            },
+        },
         prices: plan.prices,
         equipment: plan.equipment,
         categorySizes: plan.category_sizes as { [key: string]: string } | undefined,

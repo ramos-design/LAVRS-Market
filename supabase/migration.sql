@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS event_plans (
   prices JSONB DEFAULT '{}',
   equipment JSONB DEFAULT '{}',
   category_sizes JSONB DEFAULT '{}',
+  layout_meta JSONB DEFAULT '{}',
   extras JSONB DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -138,8 +139,20 @@ CREATE TABLE IF NOT EXISTS stands (
   size TEXT NOT NULL CHECK (size IN ('S','M','L')),
   zone_id TEXT,
   occupant_id TEXT,
+  label TEXT,
+  width_cells INT DEFAULT 1,
+  height_cells INT DEFAULT 1,
+  rotation INT DEFAULT 0,
+  locked BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE event_plans ADD COLUMN IF NOT EXISTS layout_meta JSONB DEFAULT '{}';
+ALTER TABLE stands ADD COLUMN IF NOT EXISTS label TEXT;
+ALTER TABLE stands ADD COLUMN IF NOT EXISTS width_cells INT DEFAULT 1;
+ALTER TABLE stands ADD COLUMN IF NOT EXISTS height_cells INT DEFAULT 1;
+ALTER TABLE stands ADD COLUMN IF NOT EXISTS rotation INT DEFAULT 0;
+ALTER TABLE stands ADD COLUMN IF NOT EXISTS locked BOOLEAN DEFAULT false;
 
 -- 8. Banners
 CREATE TABLE IF NOT EXISTS banners (

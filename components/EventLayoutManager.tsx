@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-    Plus, Trash2, Users, Map, MousePointer2,
+    Plus, Trash2, Users, Map as MapIcon, MousePointer2,
     Grid3X3, Layers, CheckCircle2, AlertCircle,
     ChevronLeft, LayoutDashboard, Info, Download,
     Search, Filter, Maximize2, Move, Save,
     Calendar, MapPin, Image as ImageIcon, Type, Camera,
     XCircle, Clock, CreditCard, X, BarChart3, TrendingUp, PieChart,
-    ArrowUpRight, ArrowDownRight
+    ArrowUpRight, ArrowDownRight, Lock, Unlock, Copy, ClipboardPaste,
+    LocateFixed, FileImage, FileText, RotateCw
 } from 'lucide-react';
 import { MarketEvent, Zone, Stand, SpotSize, ZoneCategory, Application, AppStatus, EventPlan, Category } from '../types';
 import { ZONE_DETAILS } from '../constants';
@@ -44,6 +45,12 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         initialPlan || {
             eventId,
             gridSize: { width: 15, height: 10 },
+            layoutMeta: {
+                backgroundImageUrl: '',
+                backgroundOpacity: 0.35,
+                cellSize: 28,
+                originOffset: { x: 0, y: 0 }
+            },
             zones: [],
             stands: [],
             prices: {
@@ -94,6 +101,124 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const floorplanInputRef = useRef<HTMLInputElement | null>(null);
+    const [selectedStandIds, setSelectedStandIds] = useState<string[]>([]);
+    const [standClipboard, setStandClipboard] = useState<Stand[]>([]);
+    const [layoutZoom, setLayoutZoom] = useState(1);
+    const [isPainting, setIsPainting] = useState(false);
+    const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
+    const [draggingExhibitorId, setDraggingExhibitorId] = useState<string | null>(null);
+
+    useEffect(() => {
+        setPlan(prev => ({
+            ...prev,
+            zones: prev.zones.map(z => ({
+                ...z,
+                capacities: {
+                    S: Number(z.capacities?.S || 0),
+                    M: Number(z.capacities?.M || 0),
+                    L: Number(z.capacities?.L || 0),
+                }
+            })),
+            layoutMeta: {
+                backgroundImageUrl: prev.layoutMeta?.backgroundImageUrl || '',
+                backgroundOpacity: typeof prev.layoutMeta?.backgroundOpacity === 'number' ? prev.layoutMeta.backgroundOpacity : 0.35,
+                cellSize: typeof prev.layoutMeta?.cellSize === 'number' ? prev.layoutMeta.cellSize : 28,
+                originOffset: {
+                    x: typeof prev.layoutMeta?.originOffset?.x === 'number' ? prev.layoutMeta.originOffset.x : 0,
+                    y: typeof prev.layoutMeta?.originOffset?.y === 'number' ? prev.layoutMeta.originOffset.y : 0
+                }
+            },
+            stands: prev.stands.map(s => ({
+                ...s,
+                widthCells: s.widthCells || 1,
+                heightCells: s.heightCells || 1,
+                rotation: s.rotation === 90 ? 90 : 0,
+                locked: !!s.locked
+            }))
+        }));
+    }, []);
+
+    const toolSizeConfig: Record<SpotSize, { width: number; height: number }> = {
+        S: { width: 1, height: 1 },
+        M: { width: 2, height: 1 },
+        L: { width: 2, height: 2 }
+    };
+
+    const normalizedLayoutMeta = useMemo(() => ({
+        backgroundImageUrl: plan.layoutMeta?.backgroundImageUrl || '',
+        backgroundOpacity: typeof plan.layoutMeta?.backgroundOpacity === 'number' ? plan.layoutMeta.backgroundOpacity : 0.35,
+        cellSize: typeof plan.layoutMeta?.cellSize === 'number' ? plan.layoutMeta.cellSize : 28,
+        originOffset: {
+            x: typeof plan.layoutMeta?.originOffset?.x === 'number' ? plan.layoutMeta.originOffset.x : 0,
+            y: typeof plan.layoutMeta?.originOffset?.y === 'number' ? plan.layoutMeta.originOffset.y : 0
+        }
+    }), [plan.layoutMeta]);
+
+    const updateLayoutMeta = (updates: Partial<NonNullable<EventPlan['layoutMeta']>>) => {
+        setPlan(prev => ({
+            ...prev,
+            layoutMeta: {
+                ...normalizedLayoutMeta,
+                ...updates,
+                originOffset: {
+                    ...normalizedLayoutMeta.originOffset,
+                    ...(updates.originOffset || {})
+                }
+            }
+        }));
+    };
+
+    const standDims = (stand: Stand) => {
+        const baseWidth = stand.widthCells || 1;
+        const baseHeight = stand.heightCells || 1;
+        if (stand.rotation === 90) {
+            return { width: baseHeight, height: baseWidth };
+        }
+        return { width: baseWidth, height: baseHeight };
+    };
+
+    const standCells = (stand: Stand) => {
+        const dims = standDims(stand);
+        const cells: Array<{ x: number; y: number }> = [];
+        for (let yy = 0; yy < dims.height; yy++) {
+            for (let xx = 0; xx < dims.width; xx++) {
+                cells.push({ x: stand.x + xx, y: stand.y + yy });
+            }
+        }
+        return cells;
+    };
+
+    const isWithinGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < plan.gridSize.width && y < plan.gridSize.height;
+
+    const occupancyMap = useMemo(() => {
+        const map = new Map<string, string>();
+        plan.stands.forEach(stand => {
+            standCells(stand).forEach(cell => {
+                map.set(`${cell.x}-${cell.y}`, stand.id);
+            });
+        });
+        return map;
+    }, [plan.stands, plan.gridSize.width, plan.gridSize.height]);
+
+    const getStandAtCell = (x: number, y: number) => {
+        const id = occupancyMap.get(`${x}-${y}`);
+        return id ? plan.stands.find(s => s.id === id) || null : null;
+    };
+
+    const validateStand = (candidate: Stand, ignoreId?: string) => {
+        const cells = standCells(candidate);
+        if (cells.some(c => !isWithinGrid(c.x, c.y))) {
+            return { valid: false, reason: 'mimo-grid' };
+        }
+        const overlaps = plan.stands.some(s => {
+            if (s.id === ignoreId) return false;
+            const existing = new Set(standCells(s).map(c => `${c.x}-${c.y}`));
+            return cells.some(c => existing.has(`${c.x}-${c.y}`));
+        });
+        if (overlaps) return { valid: false, reason: 'kolize' };
+        return { valid: true, reason: '' };
+    };
 
     const formatEventDateLong = (dateStr?: string) => {
         if (!dateStr) return '';
@@ -208,36 +333,53 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         plan.stands.some(s => s.occupantId === app.id)
     );
 
-    const handleCellClick = (x: number, y: number) => {
-        if (activeTool.startsWith('place-') && selectedZoneId) {
-            const sizeStr = activeTool.split('-')[1].toUpperCase() as SpotSize;
-            const newStand: Stand = {
-                id: `s-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                x,
-                y,
-                size: sizeStr,
-                zoneId: selectedZoneId
-            };
+    const placeStandAt = (x: number, y: number) => {
+        if (!activeTool.startsWith('place-') || !selectedZoneId) return;
+        const sizeStr = activeTool.split('-')[1].toUpperCase() as SpotSize;
+        const dims = toolSizeConfig[sizeStr];
+        const newStand: Stand = {
+            id: `s-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            x,
+            y,
+            size: sizeStr,
+            zoneId: selectedZoneId,
+            widthCells: dims.width,
+            heightCells: dims.height,
+            rotation: 0,
+            locked: false,
+            label: `${sizeStr}-${plan.stands.length + 1}`
+        };
+        const validation = validateStand(newStand);
+        if (!validation.valid) return;
+        setPlan(prev => ({ ...prev, stands: [...prev.stands, newStand] }));
+    };
 
-            // Check if space is occupied
-            if (!plan.stands.some(s => s.x === x && s.y === y)) {
-                setPlan(prev => ({
-                    ...prev,
-                    stands: [...prev.stands, newStand]
-                }));
-            }
-        } else if (activeTool === 'erase') {
-            setPlan(prev => ({
-                ...prev,
-                stands: prev.stands.filter(s => s.x !== x || s.y !== y)
-            }));
-        } else if (activeTool === 'select') {
-            const stand = plan.stands.find(s => s.x === x && s.y === y);
+    const handleCellClick = (x: number, y: number, e?: React.MouseEvent<HTMLDivElement>) => {
+        const stand = getStandAtCell(x, y);
+        if (activeTool.startsWith('place-')) {
+            placeStandAt(x, y);
+            return;
+        }
+        if (activeTool === 'erase') {
+            if (stand?.locked) return;
             if (stand) {
-                setSelectedStandId(stand.id);
-            } else {
-                setSelectedStandId(null);
+                setPlan(prev => ({ ...prev, stands: prev.stands.filter(s => s.id !== stand.id) }));
             }
+            return;
+        }
+        if (activeTool === 'select') {
+            if (!stand) {
+                setSelectedStandId(null);
+                if (!(e?.metaKey || e?.ctrlKey)) setSelectedStandIds([]);
+                return;
+            }
+            const additive = !!(e?.metaKey || e?.ctrlKey || e?.shiftKey);
+            if (!additive) {
+                setSelectedStandIds([stand.id]);
+            } else {
+                setSelectedStandIds(prev => prev.includes(stand.id) ? prev.filter(id => id !== stand.id) : [...prev, stand.id]);
+            }
+            setSelectedStandId(stand.id);
         }
     };
 
@@ -264,9 +406,89 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     const deleteStand = (standId: string) => {
         setPlan(prev => ({
             ...prev,
-            stands: prev.stands.filter(s => s.id !== standId)
+            stands: prev.stands.filter(s => s.id !== standId || s.locked)
         }));
         setSelectedStandId(null);
+    };
+
+    const deleteSelectedStands = () => {
+        setPlan(prev => ({
+            ...prev,
+            stands: prev.stands.filter(s => !selectedStandIds.includes(s.id) || s.locked)
+        }));
+        setSelectedStandIds([]);
+        setSelectedStandId(null);
+    };
+
+    const setLockedForSelected = (locked: boolean) => {
+        if (selectedStandIds.length === 0) return;
+        setPlan(prev => ({
+            ...prev,
+            stands: prev.stands.map(s => selectedStandIds.includes(s.id) ? { ...s, locked } : s)
+        }));
+    };
+
+    const rotateSelected = () => {
+        if (selectedStandIds.length === 0) return;
+        setPlan(prev => {
+            const next = prev.stands.map(s => {
+                if (!selectedStandIds.includes(s.id) || s.locked) return s;
+                const rotated: Stand = { ...s, rotation: s.rotation === 90 ? 0 : 90 };
+                const ok = validateStand(rotated, s.id);
+                return ok.valid ? rotated : s;
+            });
+            return { ...prev, stands: next };
+        });
+    };
+
+    const copySelected = () => {
+        const copied = plan.stands
+            .filter(s => selectedStandIds.includes(s.id))
+            .map(s => ({ ...s, id: '', occupantId: undefined, locked: false }));
+        setStandClipboard(copied);
+    };
+
+    const pasteClipboard = () => {
+        if (standClipboard.length === 0) return;
+        const now = Date.now();
+        const pasted: Stand[] = [];
+        standClipboard.forEach((item, i) => {
+            const clone: Stand = {
+                ...item,
+                id: `s-${now}-${i}`,
+                x: item.x + 1,
+                y: item.y + 1,
+                label: item.label ? `${item.label}-copy` : undefined,
+            };
+            if (validateStand(clone).valid) pasted.push(clone);
+        });
+        if (pasted.length === 0) return;
+        setPlan(prev => ({ ...prev, stands: [...prev.stands, ...pasted] }));
+        setSelectedStandIds(pasted.map(p => p.id));
+    };
+
+    const relabelSelected = () => {
+        if (selectedStandIds.length === 0) return;
+        setPlan(prev => {
+            let serial = 1;
+            return {
+                ...prev,
+                stands: prev.stands.map(s => {
+                    if (!selectedStandIds.includes(s.id)) return s;
+                    const zone = prev.zones.find(z => z.id === s.zoneId);
+                    const prefix = (zone?.name || 'S').trim().charAt(0).toUpperCase();
+                    const next = { ...s, label: `${prefix}${serial}` };
+                    serial += 1;
+                    return next;
+                })
+            };
+        });
+    };
+
+    const assignExhibitorByCell = (x: number, y: number, exhibitorId: string) => {
+        const stand = getStandAtCell(x, y);
+        if (!stand || stand.locked) return;
+        assignExhibitor(stand.id, exhibitorId);
     };
 
     const getOccupant = (stand: Stand) => {
@@ -276,6 +498,18 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
     const getZone = (zoneId: string) => {
         return plan.zones.find(z => z.id === zoneId);
     };
+
+    const focusStandOnMap = (standId: string) => {
+        setActiveTab('layout');
+        setSelectedStandId(standId);
+        setSelectedStandIds([standId]);
+        setActiveTool('select');
+    };
+
+    const selectedStand = selectedStandId ? plan.stands.find(s => s.id === selectedStandId) || null : null;
+    const selectedStandOccupant = selectedStand
+        ? propApplications.find(app => app.id === selectedStand.occupantId) || null
+        : null;
 
     const addZone = () => {
         const newZone: Zone = {
@@ -320,7 +554,8 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         const zone = plan.zones.find(z => z.id === zoneId);
         if (!zone) return { used: 0, total: 0, placedStands: 0, free: 0 };
 
-        const total = zone.capacities[size] || 0;
+        const capacities = zone.capacities || {};
+        const total = capacities[size] || 0;
         const used = plan.stands.filter(s => s.zoneId === zoneId && s.size === size && s.occupantId).length;
         const placedStands = plan.stands.filter(s => s.zoneId === zoneId && s.size === size).length;
         const free = Math.max(0, total - placedStands);
@@ -328,33 +563,129 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         return { used, total, placedStands, free };
     };
 
+    const zoneCapacityTotal = (zone: Zone) =>
+        Number(zone.capacities?.S || 0) + Number(zone.capacities?.M || 0) + Number(zone.capacities?.L || 0);
+
+    const totalCapacitySlots = plan.zones.reduce((sum, zone) => sum + zoneCapacityTotal(zone), 0);
+
+    const validation = useMemo(() => {
+        const collisions: string[] = [];
+        const seen = new Map<string, string>();
+        plan.stands.forEach(stand => {
+            standCells(stand).forEach(cell => {
+                const key = `${cell.x}-${cell.y}`;
+                if (seen.has(key) && seen.get(key) !== stand.id) {
+                    collisions.push(key);
+                }
+                seen.set(key, stand.id);
+            });
+        });
+
+        const capacityOverflows = plan.zones.flatMap(zone => {
+            return [SpotSize.S, SpotSize.M, SpotSize.L]
+                .map(size => {
+                    const info = getCapacityInfo(zone.id, size);
+                    if (info.placedStands > info.total) {
+                        return `${zone.name} ${size}: ${info.placedStands}/${info.total}`;
+                    }
+                    return null;
+                })
+                .filter(Boolean) as string[];
+        });
+
+        const mismatches = plan.stands
+            .filter(s => s.occupantId)
+            .map(s => {
+                const app = propApplications.find(a => a.id === s.occupantId);
+                const zone = getZone(s.zoneId);
+                if (!app || !zone) return null;
+                const badSize = app.zone !== s.size;
+                const badCategory = app.zoneCategory && zone.category && app.zoneCategory !== zone.category;
+                if (badSize || badCategory) {
+                    return `${app.brandName}: ${badSize ? 'size' : ''}${badSize && badCategory ? ' + ' : ''}${badCategory ? 'category' : ''}`;
+                }
+                return null;
+            })
+            .filter(Boolean) as string[];
+
+        return { collisions, capacityOverflows, mismatches };
+    }, [plan.stands, plan.zones, propApplications]);
+
+    useEffect(() => {
+        const onMouseUp = () => setIsPainting(false);
+        window.addEventListener('mouseup', onMouseUp);
+        return () => window.removeEventListener('mouseup', onMouseUp);
+    }, []);
+
     const renderGrid = () => {
         const cells = [];
         for (let y = 0; y < plan.gridSize.height; y++) {
             for (let x = 0; x < plan.gridSize.width; x++) {
-                const stand = plan.stands.find(s => s.x === x && s.y === y);
+                const stand = getStandAtCell(x, y);
                 const occupant = stand ? getOccupant(stand) : null;
                 const zone = stand ? getZone(stand.zoneId) : null;
+                const isOrigin = stand ? stand.x === x && stand.y === y : false;
+                const dims = stand ? standDims(stand) : { width: 1, height: 1 };
 
                 cells.push(
                     <div
                         key={`${x}-${y}`}
-                        onClick={() => handleCellClick(x, y)}
+                        onClick={(e) => handleCellClick(x, y, e)}
+                        onMouseDown={() => {
+                            if (activeTool.startsWith('place-')) {
+                                setIsPainting(true);
+                                placeStandAt(x, y);
+                            }
+                            if (activeTool === 'erase') {
+                                const target = getStandAtCell(x, y);
+                                if (target && !target.locked) deleteStand(target.id);
+                            }
+                        }}
+                        onMouseEnter={() => {
+                            setHoverCell({ x, y });
+                            if (!isPainting) return;
+                            if (activeTool.startsWith('place-')) placeStandAt(x, y);
+                            if (activeTool === 'erase') {
+                                const target = getStandAtCell(x, y);
+                                if (target && !target.locked) deleteStand(target.id);
+                            }
+                        }}
+                        onMouseUp={() => setIsPainting(false)}
+                        onDragOver={(e) => {
+                            if (stand) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            const exhibitorId = e.dataTransfer.getData('text/exhibitor-id');
+                            if (exhibitorId) assignExhibitorByCell(x, y, exhibitorId);
+                            setDraggingExhibitorId(null);
+                        }}
                         className={`
               relative aspect-square border border-gray-200 flex items-center justify-center transition-all cursor-pointer
               ${!stand && activeTool.startsWith('place') ? 'hover:bg-lavrs-beige/40' : 'hover:bg-gray-50'}
-              ${stand && selectedStandId === stand.id ? 'ring-2 ring-lavrs-red ring-inset z-10' : ''}
+              ${stand && (selectedStandId === stand.id || selectedStandIds.includes(stand.id)) ? 'ring-2 ring-lavrs-red ring-inset z-10' : ''}
+              ${draggingExhibitorId && stand ? 'bg-lavrs-beige/30' : ''}
               ${stand ? 'bg-white' : 'bg-transparent'}
             `}
                     >
-                        {stand && (
+                        {stand && isOrigin && (
                             <div
-                                className="w-full h-full p-0.5 flex flex-col justify-between overflow-hidden"
-                                style={{ borderTop: `4px solid ${zone?.color || '#333'}` }}
+                                className="w-full h-full p-0.5 flex flex-col justify-between overflow-hidden absolute top-0 left-0"
+                                style={{
+                                    borderTop: `4px solid ${zone?.color || '#333'}`,
+                                    width: `calc(${dims.width * 100}% + ${(dims.width - 1) * 1}px)`,
+                                    height: `calc(${dims.height * 100}% + ${(dims.height - 1) * 1}px)`,
+                                    backgroundColor: `${zone?.color || '#111'}12`
+                                }}
                             >
                                 <div className="flex justify-between items-start">
-                                    <span className="text-[7px] font-black text-gray-400 uppercase">{stand.size}</span>
-                                    {occupant && <CheckCircle2 size={9} className="text-green-500" />}
+                                    <span className="text-[7px] font-black text-gray-500 uppercase">
+                                        {stand.label || stand.size}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        {stand.locked && <Lock size={9} className="text-gray-500" />}
+                                        {occupant && <CheckCircle2 size={9} className="text-green-500" />}
+                                    </div>
                                 </div>
 
                                 <div className="flex-1 flex flex-col justify-center items-center text-center px-1">
@@ -376,6 +707,115 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         return cells;
     };
 
+    const drawPlanCanvas = async () => {
+        const cell = Math.max(20, normalizedLayoutMeta.cellSize || 28);
+        const width = plan.gridSize.width * cell;
+        const height = plan.gridSize.height * cell;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height + 120;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (normalizedLayoutMeta.backgroundImageUrl) {
+            try {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                await new Promise<void>((resolve, reject) => {
+                    img.onload = () => resolve();
+                    img.onerror = () => reject(new Error('image'));
+                    img.src = normalizedLayoutMeta.backgroundImageUrl || '';
+                });
+                ctx.globalAlpha = Math.min(1, Math.max(0, normalizedLayoutMeta.backgroundOpacity || 0.35));
+                ctx.drawImage(
+                    img,
+                    normalizedLayoutMeta.originOffset?.x || 0,
+                    normalizedLayoutMeta.originOffset?.y || 0,
+                    width,
+                    height
+                );
+                ctx.globalAlpha = 1;
+            } catch {
+                // Ignore background load errors in export.
+            }
+        }
+
+        ctx.strokeStyle = '#d1d5db';
+        for (let x = 0; x <= plan.gridSize.width; x++) {
+            ctx.beginPath();
+            ctx.moveTo(x * cell, 0);
+            ctx.lineTo(x * cell, height);
+            ctx.stroke();
+        }
+        for (let y = 0; y <= plan.gridSize.height; y++) {
+            ctx.beginPath();
+            ctx.moveTo(0, y * cell);
+            ctx.lineTo(width, y * cell);
+            ctx.stroke();
+        }
+
+        plan.stands.forEach(stand => {
+            const zone = getZone(stand.zoneId);
+            const occ = getOccupant(stand);
+            const dims = standDims(stand);
+            const px = stand.x * cell;
+            const py = stand.y * cell;
+            const w = dims.width * cell;
+            const h = dims.height * cell;
+            ctx.fillStyle = `${zone?.color || '#111'}33`;
+            ctx.fillRect(px + 1, py + 1, w - 2, h - 2);
+            ctx.strokeStyle = zone?.color || '#111';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px + 1, py + 1, w - 2, h - 2);
+            ctx.fillStyle = '#111827';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(stand.label || stand.size, px + 4, py + 14);
+            if (occ) {
+                ctx.font = '10px sans-serif';
+                ctx.fillText(occ.brandName.slice(0, 16), px + 4, py + 28);
+            }
+        });
+
+        let legendY = height + 20;
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(`${eventDetails.title || 'LAVRS layout'} - legenda`, 10, legendY);
+        legendY += 18;
+        plan.zones.forEach(zone => {
+            ctx.fillStyle = zone.color;
+            ctx.fillRect(10, legendY - 10, 10, 10);
+            ctx.fillStyle = '#111827';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(`${zone.name} (${zone.category})`, 26, legendY);
+            legendY += 16;
+        });
+        return canvas;
+    };
+
+    const exportPng = async () => {
+        const canvas = await drawPlanCanvas();
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `${(eventDetails.title || 'lavrs-plan').replace(/\s+/g, '-').toLowerCase()}.png`;
+        link.click();
+    };
+
+    const exportPdf = async () => {
+        const canvas = await drawPlanCanvas();
+        if (!canvas) return;
+        const image = canvas.toDataURL('image/png');
+        const w = window.open('', '_blank');
+        if (!w) return;
+        w.document.write(`<html><body style="margin:0"><img src="${image}" style="width:100%;height:auto"/></body></html>`);
+        w.document.close();
+        w.focus();
+        w.print();
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -393,7 +833,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                             <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark">{currentEvent?.title}</h2>
                         </div>
                         <p className="text-gray-500 flex items-center gap-2">
-                            <Map size={14} className="text-lavrs-red" />
+                            <MapIcon size={14} className="text-lavrs-red" />
                             Interactive Layout Planner & Exhibitor Placement
                         </p>
                     </div>
@@ -401,6 +841,10 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
 
                 <button
                     onClick={async () => {
+                        if (validation.collisions.length > 0) {
+                            alert('Nelze uložit: plánek obsahuje kolize stánků.');
+                            return;
+                        }
                         await updateEvent(eventId, {
                             title: eventDetails.title,
                             date: eventDetails.date,
@@ -409,7 +853,17 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                             image: eventDetails.image,
                             status: eventDetails.status as any
                         });
-                        onSavePlan && onSavePlan(plan);
+                        onSavePlan && onSavePlan({
+                            ...plan,
+                            layoutMeta: normalizedLayoutMeta,
+                            stands: plan.stands.map(s => ({
+                                ...s,
+                                widthCells: s.widthCells || 1,
+                                heightCells: s.heightCells || 1,
+                                rotation: s.rotation === 90 ? 90 : 0,
+                                locked: !!s.locked
+                            }))
+                        });
                         setIsSaved(true);
                         setTimeout(() => setIsSaved(false), 2000);
                     }}
@@ -663,6 +1117,99 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                             {tool.label}
                                         </button>
                                     ))}
+                                    <div className="ml-auto flex items-center gap-2">
+                                        <button
+                                            onClick={() => setLayoutZoom(prev => Math.max(0.5, Number((prev - 0.1).toFixed(2))))}
+                                            className="px-2 py-2 text-[10px] font-bold border border-gray-200"
+                                        >
+                                            -
+                                        </button>
+                                        <span className="text-[10px] font-black text-gray-500 w-12 text-center">{Math.round(layoutZoom * 100)}%</span>
+                                        <button
+                                            onClick={() => setLayoutZoom(prev => Math.min(2.5, Number((prev + 0.1).toFixed(2))))}
+                                            className="px-2 py-2 text-[10px] font-bold border border-gray-200"
+                                        >
+                                            +
+                                        </button>
+                                        <button onClick={exportPng} className="px-3 py-2 text-[10px] font-black uppercase tracking-widest border border-gray-200 hover:border-lavrs-red flex items-center gap-1">
+                                            <FileImage size={12} /> PNG
+                                        </button>
+                                        <button onClick={exportPdf} className="px-3 py-2 text-[10px] font-black uppercase tracking-widest border border-gray-200 hover:border-lavrs-red flex items-center gap-1">
+                                            <FileText size={12} /> PDF
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 border-t border-gray-100 pt-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bulk akce</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={copySelected} className="px-2 py-2 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-1">
+                                            <Copy size={12} /> Copy
+                                        </button>
+                                        <button onClick={pasteClipboard} className="px-2 py-2 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-1">
+                                            <ClipboardPaste size={12} /> Paste
+                                        </button>
+                                        <button onClick={() => setLockedForSelected(true)} className="px-2 py-2 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-1">
+                                            <Lock size={12} /> Lock
+                                        </button>
+                                        <button onClick={() => setLockedForSelected(false)} className="px-2 py-2 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-1">
+                                            <Unlock size={12} /> Unlock
+                                        </button>
+                                        <button onClick={rotateSelected} className="px-2 py-2 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-1">
+                                            <RotateCw size={12} /> Rotate
+                                        </button>
+                                        <button onClick={relabelSelected} className="px-2 py-2 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-1">
+                                            <LocateFixed size={12} /> Relabel
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={deleteSelectedStands}
+                                        className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-red-500 border border-red-100 hover:bg-red-50 flex items-center justify-center gap-2"
+                                    >
+                                        <Trash2 size={12} /> Smazat vybrané ({selectedStandIds.length})
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2 border-t border-gray-100 pt-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Podklad mapy</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => floorplanInputRef.current?.click()}
+                                        className="w-full py-2 px-3 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-2"
+                                    >
+                                        <ImageIcon size={12} /> Nahrát floorplan
+                                    </button>
+                                    <input
+                                        ref={floorplanInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            setIsUploadingImage(true);
+                                            setUploadError(null);
+                                            try {
+                                                const { url } = await uploadEventImage(file, `${eventId}-floorplan`);
+                                                updateLayoutMeta({ backgroundImageUrl: url });
+                                            } catch (err) {
+                                                const msg = err instanceof Error ? err.message : 'Nahrání floorplanu selhalo.';
+                                                setUploadError(msg);
+                                            } finally {
+                                                setIsUploadingImage(false);
+                                                e.currentTarget.value = '';
+                                            }
+                                        }}
+                                    />
+                                    <label className="text-[9px] font-bold uppercase text-gray-400">Opacity: {Math.round((normalizedLayoutMeta.backgroundOpacity || 0) * 100)}%</label>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={100}
+                                        value={Math.round((normalizedLayoutMeta.backgroundOpacity || 0) * 100)}
+                                        onChange={(e) => updateLayoutMeta({ backgroundOpacity: Number(e.target.value) / 100 })}
+                                        className="w-full"
+                                    />
                                 </div>
 
                                 <div className="space-y-4">
@@ -826,10 +1373,10 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                                         type="number"
                                                                         min="0"
                                                                         className="w-full bg-white/5 border border-white/10 px-2 py-1.5 text-xs font-black text-center outline-none focus:bg-white/10 focus:border-lavrs-red transition-all"
-                                                                        value={zone.capacities[size]}
+                                                                        value={zone.capacities?.[size] || 0}
                                                                         onChange={(e) => {
                                                                             const val = parseInt(e.target.value) || 0;
-                                                                            const newCaps = { ...zone.capacities, [size]: val };
+                                                                            const newCaps = { ...(zone.capacities || {}), [size]: val };
                                                                             updateZone(zone.id, { capacities: newCaps });
                                                                         }}
                                                                     />
@@ -866,9 +1413,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                         </div>
                                         <div className="flex justify-between items-end">
                                             <div>
-                                                <p className="text-2xl font-black">{plan.stands.length}<span className="text-white/20 text-sm ml-2">/ {
-                                                    plan.zones.reduce((acc, z) => acc + z.capacities.S + z.capacities.M + z.capacities.L, 0)
-                                                }</span></p>
+                                                <p className="text-2xl font-black">{plan.stands.length}<span className="text-white/20 text-sm ml-2">/ {totalCapacitySlots}</span></p>
                                                 <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Stánků na mapě / Kapacita</p>
                                             </div>
                                             <div className="text-right">
@@ -889,7 +1434,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                         </div>
 
                         {/* Main Grid Area */}
-                        <div className="lg:col-span-9 space-y-6">
+                        <div className="lg:col-span-6 space-y-6">
                             <div className="bg-white border border-gray-100 p-4 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
                                 {/* Quick Tools */}
                                 <div className="flex flex-wrap items-center gap-2 pb-4 border-b border-gray-100">
@@ -939,9 +1484,15 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     <div
                                         className="grid mx-auto bg-white border border-gray-200 shadow-lg transition-all"
                                         style={{
-                                            gridTemplateColumns: `repeat(${plan.gridSize.width}, minmax(28px, 1fr))`,
+                                            gridTemplateColumns: `repeat(${plan.gridSize.width}, minmax(${normalizedLayoutMeta.cellSize || 28}px, 1fr))`,
                                             width: 'fit-content',
-                                            minWidth: '100%'
+                                            minWidth: '100%',
+                                            transform: `scale(${layoutZoom})`,
+                                            transformOrigin: 'top left',
+                                            backgroundImage: normalizedLayoutMeta.backgroundImageUrl ? `linear-gradient(rgba(255,255,255,${1 - (normalizedLayoutMeta.backgroundOpacity || 0.35)}), rgba(255,255,255,${1 - (normalizedLayoutMeta.backgroundOpacity || 0.35)})), url(${normalizedLayoutMeta.backgroundImageUrl})` : undefined,
+                                            backgroundSize: 'cover',
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: `${normalizedLayoutMeta.originOffset?.x || 0}px ${normalizedLayoutMeta.originOffset?.y || 0}px`
                                         }}
                                     >
                                         {renderGrid()}
@@ -949,38 +1500,53 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                 </div>
                             </div>
 
+                            {(validation.collisions.length > 0 || validation.capacityOverflows.length > 0 || validation.mismatches.length > 0) && (
+                                <div className="bg-amber-50 border border-amber-200 p-4 space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Validace plánku</p>
+                                    {validation.collisions.length > 0 && (
+                                        <p className="text-xs text-amber-800">Kolize buněk: {validation.collisions.length}</p>
+                                    )}
+                                    {validation.capacityOverflows.length > 0 && (
+                                        <p className="text-xs text-amber-800">Překročené kapacity: {validation.capacityOverflows.join(', ')}</p>
+                                    )}
+                                    {validation.mismatches.length > 0 && (
+                                        <p className="text-xs text-amber-800">Nesoulad přidělení: {validation.mismatches.slice(0, 4).join(', ')}</p>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Stand Operations Panel (Overlay when selected) */}
-                            {selectedStandId && (
+                            {selectedStandId && selectedStand && (
                                 <div className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-2xl z-50 animate-fadeIn">
                                     <div className="bg-lavrs-dark text-white p-6 shadow-2xl border border-white/10 flex items-center justify-between gap-8">
                                         <div className="flex items-center gap-6">
                                             <div className="w-16 h-16 border-2 border-white/20 flex flex-col items-center justify-center p-2">
                                                 <span className="text-[10px] font-black text-white/40 mb-1">STÁNEK</span>
-                                                <span className="text-xl font-black">{plan.stands.find(s => s.id === selectedStandId)?.size}</span>
+                                                <span className="text-xl font-black">{selectedStand.size}</span>
                                             </div>
 
                                             <div>
-                                                {getOccupant(plan.stands.find(s => s.id === selectedStandId)!) ? (
+                                                {selectedStandOccupant ? (
                                                     <>
                                                         <h4 className="text-xl font-bold flex items-center gap-2">
-                                                            {getOccupant(plan.stands.find(s => s.id === selectedStandId)!)?.brandName}
+                                                            {selectedStandOccupant?.brandName}
                                                             <CheckCircle2 size={16} className="text-green-500" />
                                                         </h4>
                                                         <p className="text-xs text-white/60 font-medium">
-                                                            {getOccupant(plan.stands.find(s => s.id === selectedStandId)!)?.contactPerson} · {getOccupant(plan.stands.find(s => s.id === selectedStandId)!)?.phone}
+                                                            {selectedStandOccupant?.contactPerson} · {selectedStandOccupant?.phone}
                                                         </p>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <h4 className="text-xl font-bold text-white/40 italic">Neobsazeno</h4>
-                                                        <p className="text-xs text-white/40">Zóna: {getZone(plan.stands.find(s => s.id === selectedStandId)!.zoneId)?.name}</p>
+                                                        <p className="text-xs text-white/40">Zóna: {getZone(selectedStand.zoneId)?.name}</p>
                                                     </>
                                                 )}
                                             </div>
                                         </div>
 
                                         <div className="flex gap-3">
-                                            {getOccupant(plan.stands.find(s => s.id === selectedStandId)!) ? (
+                                            {selectedStandOccupant ? (
                                                 <button
                                                     onClick={() => removeExhibitor(selectedStandId)}
                                                     className="px-6 py-3 border border-white/20 text-white font-bold hover:bg-white/10 transition-all flex items-center gap-2"
@@ -1011,6 +1577,53 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        <div className="lg:col-span-3 space-y-4">
+                            <div className="bg-white border border-gray-100 shadow-sm min-h-[600px] flex flex-col">
+                                <div className="p-4 border-b border-gray-100 space-y-3">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-lavrs-dark">Neumístění vystavovatelé</h3>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Hledat brand..."
+                                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 focus:border-lavrs-red outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                        Drag&drop na slot v mapě ({unplacedExhibitors.length})
+                                    </p>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                                    {unplacedExhibitors
+                                        .filter(app => app.brandName.toLowerCase().includes(searchTerm.toLowerCase()) || app.zoneCategory?.toLowerCase().includes(searchTerm.toLowerCase()))
+                                        .map(app => (
+                                            <div
+                                                key={app.id}
+                                                draggable
+                                                onDragStart={(e) => {
+                                                    e.dataTransfer.setData('text/exhibitor-id', app.id);
+                                                    setDraggingExhibitorId(app.id);
+                                                }}
+                                                onDragEnd={() => setDraggingExhibitorId(null)}
+                                                className="border border-gray-100 p-3 bg-white hover:border-lavrs-red cursor-grab active:cursor-grabbing"
+                                            >
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-lavrs-dark">{app.brandName}</p>
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                                            {app.zoneCategory} · {app.zone}
+                                                        </p>
+                                                    </div>
+                                                    <Users size={14} className="text-gray-300" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1065,7 +1678,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     <span className="text-[10px] font-black uppercase text-gray-400">{app.zoneCategory}</span>
                                                                     <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                                                    <span className={`text-[10px] font-black uppercase ${app.zone === plan.stands.find(s => s.id === selectedStandId)?.size ? 'text-green-600' : 'text-amber-600'}`}>
+                                                                    <span className={`text-[10px] font-black uppercase ${app.zone === selectedStand?.size ? 'text-green-600' : 'text-amber-600'}`}>
                                                                         Požadováno: {app.zone}
                                                                     </span>
                                                                 </div>
@@ -1197,9 +1810,35 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                                     </td>
 
                                                     <td className="px-8 py-6 text-right">
-                                                        <button className="p-2 text-gray-400 hover:text-lavrs-dark">
-                                                            <Info size={16} />
-                                                        </button>
+                                                        <div className="flex justify-end gap-1">
+                                                            {stand ? (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => focusStandOnMap(stand.id)}
+                                                                        className="px-2 py-1 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red"
+                                                                    >
+                                                                        Najít na mapě
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => removeExhibitor(stand.id)}
+                                                                        className="px-2 py-1 text-[10px] font-bold border border-amber-200 text-amber-700 hover:bg-amber-50"
+                                                                    >
+                                                                        Uvolnit
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setActiveTab('layout');
+                                                                        setShowExhibitorList(true);
+                                                                        setSearchTerm(app.brandName);
+                                                                    }}
+                                                                    className="px-2 py-1 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red"
+                                                                >
+                                                                    Přiřadit
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -1470,20 +2109,20 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                             </div>
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">OBSAZENOST</h4>
                             <p className="text-2xl font-black text-lavrs-dark">
-                                {Math.round((plan.stands.filter(s => s.occupantId).length / (plan.zones.reduce((sum, z) => sum + z.capacities.S + z.capacities.M + z.capacities.L, 0) || 1)) * 100)}%
+                                {Math.round((plan.stands.filter(s => s.occupantId).length / (totalCapacitySlots || 1)) * 100)}%
                             </p>
                             <div className="mt-2 w-full h-1 bg-gray-200">
-                                <div className="h-full bg-amber-500" style={{ width: `${Math.min((plan.stands.filter(s => s.occupantId).length / (plan.zones.reduce((sum, z) => sum + z.capacities.S + z.capacities.M + z.capacities.L, 0) || 1)) * 100, 100)}%` }} />
+                                <div className="h-full bg-amber-500" style={{ width: `${Math.min((plan.stands.filter(s => s.occupantId).length / (totalCapacitySlots || 1)) * 100, 100)}%` }} />
                             </div>
                         </div>
 
                         <div className="bg-gray-50 p-6 border border-gray-100 group hover:border-lavrs-red transition-all">
                             <div className="flex justify-between items-start mb-4">
-                                <div className="p-2 bg-lavrs-red text-white"><Map size={20} /></div>
+                                <div className="p-2 bg-lavrs-red text-white"><MapIcon size={20} /></div>
                             </div>
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">VOLNÉ KAPACITY</h4>
                             <p className="text-2xl font-black text-lavrs-dark">
-                                {plan.zones.reduce((sum, z) => sum + z.capacities.S + z.capacities.M + z.capacities.L, 0) - plan.stands.filter(s => s.occupantId).length}
+                                {totalCapacitySlots - plan.stands.filter(s => s.occupantId).length}
                             </p>
                             <p className="text-[9px] text-gray-400 mt-2 italic font-medium">Zbývající místa k prodeji</p>
                         </div>
@@ -1522,7 +2161,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                             </h3>
                             <div className="grid grid-cols-1 gap-4">
                                 {plan.zones.map(zone => {
-                                    const totalZoneCapacity = zone.capacities.S + zone.capacities.M + zone.capacities.L;
+                                    const totalZoneCapacity = zoneCapacityTotal(zone);
                                     const occupiedStands = plan.stands.filter(s => s.zoneId === zone.id && s.occupantId).length;
                                     const occupancyRate = (occupiedStands / (totalZoneCapacity || 1)) * 100;
 
@@ -1577,7 +2216,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                 {new Intl.NumberFormat('cs-CZ').format(
                                     plan.zones.reduce((sum, z) => {
                                         const catPrice = parseInt(plan.prices[z.category]?.replace(/[^\d]/g, '') || '0');
-                                        return sum + (catPrice * (z.capacities.S + z.capacities.M + z.capacities.L));
+                                        return sum + (catPrice * zoneCapacityTotal(z));
                                     }, 0)
                                 )} Kč
                             </p>

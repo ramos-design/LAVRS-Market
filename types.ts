@@ -86,6 +86,11 @@ export interface Stand {
   size: SpotSize;
   zoneId: string;
   occupantId?: string; // ID of the application/brand
+  label?: string;
+  widthCells?: number;
+  heightCells?: number;
+  rotation?: 0 | 90;
+  locked?: boolean;
 }
 
 export interface Zone {
@@ -109,6 +114,12 @@ export interface EventPlan {
   zones: Zone[];
   stands: Stand[];
   gridSize: { width: number; height: number };
+  layoutMeta?: {
+    backgroundImageUrl?: string;
+    backgroundOpacity?: number;
+    cellSize?: number;
+    originOffset?: { x: number; y: number };
+  };
   prices: {
     [key: string]: string;
   };
