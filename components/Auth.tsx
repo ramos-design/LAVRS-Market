@@ -40,7 +40,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                         data: {
                             full_name: fullName,
                         },
-                        emailRedirectTo: window.location.origin,
+                        emailRedirectTo: 'https://rezervace.lavrsmarket.cz/',
                     },
                 });
 
