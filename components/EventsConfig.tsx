@@ -1,17 +1,18 @@
 import React from 'react';
 import { Settings, Plus, Edit, Trash2, Calendar, MapPin, Users } from 'lucide-react';
-import { useApplications, useEvents } from '../hooks/useSupabase';
-import { dbEventToApp, formatEventDate } from '../lib/mappers';
+import { formatEventDate } from '../lib/mappers';
+import { Application, MarketEvent } from '../types';
 
 interface EventsConfigProps {
     onManageEvent?: (eventId: string) => void;
+    events: MarketEvent[];
+    applications: Application[];
+    onDeleteEvent?: (eventId: string) => Promise<void>;
 }
 
-const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
-    const { events: dbEvents, deleteEvent } = useEvents();
-    const { applications: dbApplications } = useApplications();
-    const events = React.useMemo(() => {
-        const parsed = dbEvents.map(dbEventToApp);
+const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, events, applications, onDeleteEvent }) => {
+    const sortedEvents = React.useMemo(() => {
+        const parsed = [...events];
         const parseDate = (dateStr: string) => {
             const d = new Date(dateStr);
             if (!isNaN(d.getTime())) return d.getTime();
@@ -45,23 +46,23 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
             return Number.NEGATIVE_INFINITY;
         };
         return parsed.sort((a, b) => parseDate(a.date) - parseDate(b.date));
-    }, [dbEvents]);
+    }, [events]);
 
     const eventApplicationCounts = React.useMemo(() => {
         const counts: Record<string, number> = {};
-        dbApplications.forEach(app => {
+        applications.forEach(app => {
             if (app.status === 'DELETED') return;
-            if (!app.event_id) return;
-            counts[app.event_id] = (counts[app.event_id] || 0) + 1;
+            if (!app.eventId) return;
+            counts[app.eventId] = (counts[app.eventId] || 0) + 1;
         });
         return counts;
-    }, [dbApplications]);
+    }, [applications]);
 
     const getEventOccupiedCount = (eventId: string) => eventApplicationCounts[eventId] || 0;
 
     const handleDeleteEvent = async (eventId: string) => {
         if (window.confirm('Opravdu chcete tento event vymazat? Tato akce je nevratná.')) {
-            await deleteEvent(eventId);
+            await onDeleteEvent?.(eventId);
         }
     };
 
@@ -79,7 +80,7 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent }) => {
 
             {/* Events Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
+                {sortedEvents.map((event) => (
                     <div key={event.id} className="bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden group hover:shadow-lg transition-all">
                         <div className="relative h-48 overflow-hidden">
                             <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />

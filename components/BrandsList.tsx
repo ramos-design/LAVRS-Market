@@ -1,10 +1,12 @@
 import React from 'react';
 import { Heart, Search } from 'lucide-react';
-import { AppStatus, ZoneCategory } from '../types';
-import { useApplications, useBrandProfiles, useEvents } from '../hooks/useSupabase';
-import { dbApplicationToApp, dbBrandProfileToApp, dbEventToApp } from '../lib/mappers';
+import { AppStatus, ZoneCategory, Application, BrandProfile, MarketEvent } from '../types';
 
-interface BrandsListProps { }
+interface BrandsListProps {
+  applications: Application[];
+  brands: BrandProfile[];
+  events: MarketEvent[];
+}
 
 const zoneCategoryTabs: { id: 'ALL' | string; label: string }[] = [
   { id: 'ALL', label: 'Vše' },
@@ -36,17 +38,7 @@ const getZoneCategoryLabel = (category?: ZoneCategory) => {
   }
 };
 
-const BrandsList: React.FC<BrandsListProps> = () => {
-  const { applications: dbApps, loading: loadingApps } = useApplications();
-  const applications = React.useMemo(() => dbApps.map(dbApplicationToApp), [dbApps]);
-
-  const { profiles: dbProfiles, loading: loadingProfiles } = useBrandProfiles();
-  const brands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
-
-  const { events: dbEvents, loading: loadingEvents } = useEvents();
-  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
-
-  const loading = loadingApps || loadingProfiles || loadingEvents;
+const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events }) => {
 
   const [tab, setTab] = React.useState<'ALL' | string>('ALL');
   const [query, setQuery] = React.useState('');
@@ -177,13 +169,7 @@ const BrandsList: React.FC<BrandsListProps> = () => {
             </tr>
           </thead>
           <tbody>
-            {loading && filtered.length === 0 ? (
-              <tr>
-                <td className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={5}>
-                  Načítám data...
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
+            {filtered.length === 0 ? (
               <tr>
                 <td className="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={5}>
                   Nic nenalezeno
@@ -231,3 +217,4 @@ const BrandsList: React.FC<BrandsListProps> = () => {
 };
 
 export default BrandsList;
+

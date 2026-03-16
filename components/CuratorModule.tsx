@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart } from 'lucide-react';
-import { Application, AppStatus, ZoneCategory } from '../types';
-import { useEvents } from '../hooks/useSupabase';
-import { dbEventToApp } from '../lib/mappers';
+import { Application, AppStatus, ZoneCategory, MarketEvent } from '../types';
 
 interface CuratorModuleProps {
   onBack: () => void;
+  events: MarketEvent[];
   applications: Application[];
   onUpdateStatus: (id: string, status: AppStatus) => void;
   onDeleteApplication: (id: string) => void;
   onRestoreApplication: (id: string) => void;
 }
 
-const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
+const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
   const deletedApplications = applications.filter(a => normalizeStatus(a.status) === AppStatus.DELETED);
   // Filter out applications that are already paid (those move to the event manager)
@@ -34,9 +33,6 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, applications, onU
   }, [viewMode, displayedIds, selectedAppId, displayedApplications]);
 
   const selectedApp = displayedApplications.find(a => a.id === selectedAppId) || (displayedApplications.length > 0 ? displayedApplications[0] : null);
-
-  const { events: dbEvents } = useEvents();
-  const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
 
   const handleAction = async (id: string, newStatus: AppStatus) => {
     setIsProcessing(true);

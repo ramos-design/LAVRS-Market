@@ -1,14 +1,13 @@
 import React from 'react';
 import { DollarSign, Search, Download, Filter, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { AppStatus } from '../types';
-import { useApplications, useEvents } from '../hooks/useSupabase';
-import { dbApplicationToApp, dbEventToApp } from '../lib/mappers';
+import { AppStatus, Application, MarketEvent } from '../types';
 
-const PaymentsAndInvoicing: React.FC = () => {
-    const { applications: dbApps } = useApplications();
-    const { events: dbEvents } = useEvents();
-    const applications = React.useMemo(() => dbApps.map(dbApplicationToApp), [dbApps]);
-    const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+interface PaymentsAndInvoicingProps {
+    applications: Application[];
+    events: MarketEvent[];
+}
+
+const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ applications, events }) => {
 
     const payments = React.useMemo(() => {
         return applications

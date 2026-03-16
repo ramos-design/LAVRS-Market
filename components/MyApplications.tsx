@@ -1,16 +1,13 @@
 import React from 'react';
 import { FileText, Clock, CheckCircle2, AlertCircle, ChevronRight, Search } from 'lucide-react';
-import { AppStatus, Application } from '../types';
-import { useEvents } from '../hooks/useSupabase';
-import { dbEventToApp } from '../lib/mappers';
+import { AppStatus, Application, MarketEvent } from '../types';
 
 interface MyApplicationsProps {
     applications: Application[];
+    events: MarketEvent[];
 }
 
-const MyApplications: React.FC<MyApplicationsProps> = ({ applications }) => {
-    const { events: dbEvents } = useEvents();
-    const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
+const MyApplications: React.FC<MyApplicationsProps> = ({ applications, events }) => {
     const getEventTitle = (eventId: string) => events.find(e => e.id === eventId)?.title || 'Neznámý event';
     const getStatusStyle = (status: AppStatus) => {
         switch (status) {

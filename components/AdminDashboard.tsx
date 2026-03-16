@@ -1,25 +1,23 @@
 
 import React from 'react';
 import { Plus, Users, ShoppingBag, LayoutGrid, List, MoreVertical, TrendingUp, Calendar } from 'lucide-react';
-import { AppStatus, User } from '../types';
-import { useEvents, useApplications, useBrandProfiles } from '../hooks/useSupabase';
-import { dbEventToApp, formatEventDate } from '../lib/mappers';
+import { AppStatus, User, MarketEvent, Application, BrandProfile } from '../types';
+import { formatEventDate } from '../lib/mappers';
 import { eventPlansDb } from '../lib/database';
 
 interface AdminDashboardProps {
   user: User;
+  events: MarketEvent[];
+  applications: Application[];
+  brands: BrandProfile[];
   onOpenCurator: () => void;
   onManageEvent?: (eventId: string) => void;
   onOpenEventsConfig?: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, onManageEvent, onOpenEventsConfig }) => {
-  const { events: dbEvents } = useEvents();
-  const { applications } = useApplications();
-  const { profiles } = useBrandProfiles();
-
-  const events = React.useMemo(() => {
-    const parsed = dbEvents.map(dbEventToApp);
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig }) => {
+  const sortedEvents = React.useMemo(() => {
+    const parsed = [...events];
     const parseDate = (dateStr: string) => {
       const d = new Date(dateStr);
       if (!isNaN(d.getTime())) return d.getTime();
@@ -53,7 +51,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
       return Number.NEGATIVE_INFINITY;
     };
     return parsed.sort((a, b) => parseDate(a.date) - parseDate(b.date));
-  }, [dbEvents]);
+  }, [events]);
   const [eventStats, setEventStats] = React.useState<Record<string, { occupied: number, total: number }>>({});
   const [eventPrices, setEventPrices] = React.useState<Record<string, Record<string, string>>>({});
 
@@ -62,36 +60,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
     const loadOccupancies = async () => {
       const result: Record<string, { occupied: number, total: number }> = {};
       const priceResult: Record<string, Record<string, string>> = {};
-      for (const event of events) {
-        try {
-          const { plan, zones, stands } = await eventPlansDb.getByEventId(event.id);
-          if (!plan) { 
-            result[event.id] = { occupied: 0, total: 0 }; 
-            priceResult[event.id] = {};
-            continue; 
+
+      const occupancyResults = await Promise.all(
+        sortedEvents.map(async (event) => {
+          try {
+            const { plan, zones, stands } = await eventPlansDb.getByEventId(event.id);
+            if (!plan) {
+              return { eventId: event.id, occupied: 0, total: 0, prices: {} as Record<string, string> };
+            }
+
+            const prices = (plan.prices as Record<string, string>) || {};
+            let totalCapacity = 0;
+            zones.forEach((z) => {
+              const caps = z.capacities as any;
+              totalCapacity += ((caps.S || 0) + (caps.M || 0) + (caps.L || 0));
+            });
+            const occupied = stands.filter((s) => s.occupant_id).length;
+            return { eventId: event.id, occupied, total: totalCapacity, prices };
+          } catch {
+            return { eventId: event.id, occupied: 0, total: 0, prices: {} as Record<string, string> };
           }
-          priceResult[event.id] = (plan.prices as Record<string, string>) || {};
-          if (zones.length === 0) {
-            result[event.id] = { occupied: 0, total: 0 };
-            continue;
-          }
-          let totalCapacity = 0;
-          zones.forEach(z => {
-            const caps = z.capacities as any;
-            totalCapacity += ((caps.S || 0) + (caps.M || 0) + (caps.L || 0));
-          });
-          const occupied = stands.filter(s => s.occupant_id).length;
-          result[event.id] = { occupied, total: totalCapacity };
-        } catch { 
-          result[event.id] = { occupied: 0, total: 0 }; 
-          priceResult[event.id] = {};
-        }
-      }
+        })
+      );
+
+      occupancyResults.forEach((row) => {
+        result[row.eventId] = { occupied: row.occupied, total: row.total };
+        priceResult[row.eventId] = row.prices;
+      });
+
       setEventStats(result);
       setEventPrices(priceResult);
     };
-    if (events.length > 0) loadOccupancies();
-  }, [events]);
+    if (sortedEvents.length > 0) {
+      loadOccupancies();
+    } else {
+      setEventStats({});
+      setEventPrices({});
+    }
+  }, [sortedEvents]);
 
   const getEventStat = (eventId: string) => eventStats[eventId] || { occupied: 0, total: 0 };
 
@@ -119,16 +125,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
     return applications.reduce((sum, app) => {
       const normalized = (app.status || '').toString().toUpperCase();
       if (normalized !== AppStatus.PAID) return sum;
-      const submittedAtMs = app.submitted_at ? new Date(app.submitted_at).getTime() : 0;
+      const submittedAtMs = app.submittedAt ? new Date(app.submittedAt).getTime() : 0;
       if (submittedAtMs && submittedAtMs < sinceMs) return sum;
-      const prices = eventPrices[app.event_id] || {};
-      const priceStr = app.zone_category ? prices[app.zone_category] : undefined;
+      const prices = eventPrices[app.eventId] || {};
+      const priceStr = app.zoneCategory ? prices[app.zoneCategory] : undefined;
       return sum + parsePrice(priceStr);
     }, 0);
   }, [applications, eventPrices]);
 
   const recentAppsCount = applications.filter(a => {
-    const d = new Date(a.submitted_at);
+    const d = new Date(a.submittedAt);
     return Date.now() - d.getTime() < 30 * 24 * 60 * 60 * 1000;
   }).length;
 
@@ -153,7 +159,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
         normalized === AppStatus.PAYMENT_REMINDER ||
         normalized === AppStatus.PAYMENT_LAST_CALL;
       if (!isApproved) return;
-      if (app.brand_name) names.add(app.brand_name.toLowerCase());
+      if (app.brandName) names.add(app.brandName.toLowerCase());
     });
     return names.size;
   }, [applications]);
@@ -162,13 +168,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
     const names = new Set<string>();
     applications.forEach((app) => {
       if (app.status === 'DELETED') return;
-      if (app.brand_name) names.add(app.brand_name.toLowerCase());
+      if (app.brandName) names.add(app.brandName.toLowerCase());
     });
-    profiles.forEach((profile) => {
-      if (profile.brand_name) names.add(profile.brand_name.toLowerCase());
+    brands.forEach((profile) => {
+      if (profile.brandName) names.add(profile.brandName.toLowerCase());
     });
     return names.size;
-  }, [applications, profiles]);
+  }, [applications, brands]);
 
   const stats = [
     { label: 'Celkový obrat', value: formatCurrency(totalRevenue), trend: '+0%', icon: TrendingUp, color: 'text-green-600', period: 'POSLEDNÍCH 30 DNÍ' },
@@ -234,8 +240,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onOpenCurator, on
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {events.map(event => {
-                  const { total: layoutTotal } = getEventStat(event.id);
+                {sortedEvents.map(event => {
                   const acceptedCount = getEventStat(event.id).occupied;
                   
                   return (

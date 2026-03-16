@@ -2,23 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ViewMode, User as UserType, BrandProfile, Application, AppStatus, Category, Banner } from './types';
 import Sidebar from './components/Sidebar';
-import ExhibitorDashboard from './components/ExhibitorDashboard';
-import AdminDashboard from './components/AdminDashboard';
-import ApplicationWizard from './components/ApplicationWizard';
-import PaymentPage from './components/PaymentPage';
-import CuratorModule from './components/CuratorModule';
-import MyApplications from './components/MyApplications';
-import Billing from './components/Billing';
-import Profile from './components/Profile';
-import Contact from './components/Contact';
-import PaymentsAndInvoicing from './components/PaymentsAndInvoicing';
-import EventsConfig from './components/EventsConfig';
-import AutomatedEmails from './components/AutomatedEmails';
-import BrandsList from './components/BrandsList';
-import EventLayoutManager from './components/EventLayoutManager';
 import MobileHeader from './components/MobileHeader';
-import BannerManager from './components/BannerManager';
-import CategoryManager from './components/CategoryManager';
 import Auth from './components/Auth';
 
 // Supabase hooks & mappers
@@ -29,6 +13,23 @@ import {
   dbBannerToApp, dbCategoryToApp, dbEventPlanToApp,
   appApplicationToDb, appBrandProfileToDb, appBannerToDb, appCategoryToDb,
 } from './lib/mappers';
+
+const ExhibitorDashboard = React.lazy(() => import('./components/ExhibitorDashboard'));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+const ApplicationWizard = React.lazy(() => import('./components/ApplicationWizard'));
+const PaymentPage = React.lazy(() => import('./components/PaymentPage'));
+const CuratorModule = React.lazy(() => import('./components/CuratorModule'));
+const MyApplications = React.lazy(() => import('./components/MyApplications'));
+const Billing = React.lazy(() => import('./components/Billing'));
+const Profile = React.lazy(() => import('./components/Profile'));
+const Contact = React.lazy(() => import('./components/Contact'));
+const PaymentsAndInvoicing = React.lazy(() => import('./components/PaymentsAndInvoicing'));
+const EventsConfig = React.lazy(() => import('./components/EventsConfig'));
+const AutomatedEmails = React.lazy(() => import('./components/AutomatedEmails'));
+const BrandsList = React.lazy(() => import('./components/BrandsList'));
+const EventLayoutManager = React.lazy(() => import('./components/EventLayoutManager'));
+const BannerManager = React.lazy(() => import('./components/BannerManager'));
+const CategoryManager = React.lazy(() => import('./components/CategoryManager'));
 
 class EventPlanErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; message: string }> {
   constructor(props: { children: React.ReactNode }) {
@@ -77,7 +78,7 @@ const App: React.FC = () => {
 
 
   // ─── Supabase data hooks ──────────────────────────────────
-  const { events: dbEvents, loading: eventsLoading } = useEvents();
+  const { events: dbEvents, loading: eventsLoading, deleteEvent } = useEvents();
   const {
     applications: dbApplications, loading: appsLoading,
     createApplication, updateStatus: updateAppStatus, deleteApplication,
@@ -108,7 +109,7 @@ const App: React.FC = () => {
         toDelete.forEach(id => deleteProfile(id));
       }
     }
-  }, [dbProfiles, profilesLoading, deleteProfile]);
+  }, [dbProfiles, profilesLoading]);
 
   const {
     banners: dbBanners, loading: bannersLoading,
@@ -336,10 +337,16 @@ const App: React.FC = () => {
             </div>
           )}
 
+          <React.Suspense fallback={
+            <div className="py-16 text-center text-gray-500 font-bold uppercase tracking-widest text-xs">
+              Načítám modul...
+            </div>
+          }>
           {currentScreen === 'DASHBOARD' && (
             userRole === 'EXHIBITOR' ? (
               <ExhibitorDashboard
                 user={currentUser}
+                events={events}
                 applications={applications}
                 brands={brandProfiles}
                 onApply={(id) => { setSelectedEventId(id); setCurrentScreen('APPLY'); }}
@@ -351,6 +358,9 @@ const App: React.FC = () => {
             ) : (
               <AdminDashboard
                 user={currentUser}
+                events={events}
+                applications={applications}
+                brands={brandProfiles}
                 onOpenCurator={() => setCurrentScreen('CURATOR')}
                 onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
                 onOpenEventsConfig={() => setCurrentScreen('EVENTS_CONFIG')}
@@ -369,11 +379,11 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'APPLICATIONS' && (
-            <MyApplications applications={applications} />
+            <MyApplications applications={applications} events={events} />
           )}
 
           {currentScreen === 'BILLING' && (
-            <Billing />
+            <Billing applications={applications} brands={brandProfiles} />
           )}
 
           {currentScreen === 'CONTACT' && (
@@ -387,6 +397,7 @@ const App: React.FC = () => {
           {currentScreen === 'CURATOR' && (
             <CuratorModule
               onBack={() => setCurrentScreen('DASHBOARD')}
+              events={events}
               applications={applications}
               onUpdateStatus={handleUpdateApplicationStatus}
               onDeleteApplication={handleDeleteApplication}
@@ -395,11 +406,16 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'PAYMENTS' && (
-            <PaymentsAndInvoicing />
+            <PaymentsAndInvoicing applications={applications} events={events} />
           )}
 
           {currentScreen === 'EVENTS_CONFIG' && (
-            <EventsConfig onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }} />
+            <EventsConfig
+              events={events}
+              applications={applications}
+              onDeleteEvent={deleteEvent}
+              onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
+            />
           )}
 
           {currentScreen === 'EMAILS' && (
@@ -407,7 +423,7 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'BRANDS' && (
-            <BrandsList applications={applications} brands={brandProfiles} />
+            <BrandsList applications={applications} brands={brandProfiles} events={events} />
           )}
 
           {currentScreen === 'PAYMENT' && (
@@ -460,6 +476,7 @@ const App: React.FC = () => {
               />
             </EventPlanErrorBoundary>
           )}
+          </React.Suspense>
         </div>
       </main>
 

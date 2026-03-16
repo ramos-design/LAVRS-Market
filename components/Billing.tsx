@@ -1,15 +1,13 @@
 import React from 'react';
 import { CreditCard, Download, FileText, ExternalLink, ArrowUpRight, TrendingUp } from 'lucide-react';
-import { useApplications, useBrandProfiles } from '../hooks/useSupabase';
-import { dbBrandProfileToApp, dbApplicationToApp } from '../lib/mappers';
-import { AppStatus } from '../types';
+import { AppStatus, Application, BrandProfile } from '../types';
 
-const Billing: React.FC = () => {
-    const { applications: dbApplications = [], loading: appsLoading } = useApplications();
-    const { profiles: dbProfiles, loading: profilesLoading } = useBrandProfiles();
+interface BillingProps {
+    applications: Application[];
+    brands: BrandProfile[];
+}
 
-    const profiles = dbProfiles.map(dbBrandProfileToApp);
-    const applications = (dbApplications || []).map(dbApplicationToApp);
+const Billing: React.FC<BillingProps> = ({ applications, brands }) => {
 
     const billingEligibleStatuses = [
         AppStatus.PAID,
@@ -31,12 +29,8 @@ const Billing: React.FC = () => {
             event: app.brandName
         }));
 
-    const mainProfile = profiles[0];
+    const mainProfile = brands[0];
     const hasBillingAccess = invoices.length > 0;
-
-    if (appsLoading || profilesLoading) {
-        return <div className="p-12 text-center text-gray-400">Načítám fakturační údaje...</div>;
-    }
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -144,3 +138,4 @@ const Billing: React.FC = () => {
 };
 
 export default Billing;
+

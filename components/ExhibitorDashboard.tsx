@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles, MapPin } from 'lucide-react';
 import { MarketEvent, User, AppStatus, Application, BrandProfile, Banner } from '../types';
-import { useEvents } from '../hooks/useSupabase';
-import { dbEventToApp, formatEventDate } from '../lib/mappers';
+import { formatEventDate } from '../lib/mappers';
 
 interface ExhibitorDashboardProps {
   user: User;
+  events: MarketEvent[];
   applications: Application[];
   brands: BrandProfile[];
   onApply: (eventId: string) => void;
@@ -16,10 +16,9 @@ interface ExhibitorDashboardProps {
   banners: Banner[];
 }
 
-const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applications, brands, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
-  const { events: dbEvents } = useEvents();
-  const events = React.useMemo(() => {
-    const parsed = dbEvents.map(dbEventToApp);
+const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, applications, brands, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
+  const sortedEvents = React.useMemo(() => {
+    const parsed = [...events];
     const parseDate = (dateStr: string) => {
       const d = new Date(dateStr);
       if (!isNaN(d.getTime())) return d.getTime();
@@ -53,10 +52,10 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
       return Number.NEGATIVE_INFINITY;
     };
     return parsed.sort((a, b) => parseDate(a.date) - parseDate(b.date));
-  }, [dbEvents]);
+  }, [events]);
   const visibleEvents = React.useMemo(
-    () => events.filter(event => event.status !== 'draft'),
-    [events]
+    () => sortedEvents.filter(event => event.status !== 'draft'),
+    [sortedEvents]
   );
   const [currentSlide, setCurrentSlide] = React.useState(0);
   const [now, setNow] = React.useState(Date.now());
@@ -71,7 +70,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
   );
 
   const displayApp = paymentRequestedApps[0];
-  const activeEvent = displayApp ? events.find(e => e.id === displayApp.eventId) : null;
+  const activeEvent = displayApp ? sortedEvents.find(e => e.id === displayApp.eventId) : null;
 
   const slides = banners;
 
@@ -151,7 +150,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
       {/* Action Required Widgets */}
       <div className="space-y-4">
         {paymentRequestedApps.map((app) => {
-          const event = events.find(e => e.id === app.eventId);
+          const event = sortedEvents.find(e => e.id === app.eventId);
           const isReview = app.status === AppStatus.PAYMENT_UNDER_REVIEW;
           const remaining = getRemaining(app.paymentDeadline);
 
@@ -320,7 +319,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, applicati
                         </span>
                       </div>
                       <p className="text-[11px] text-gray-500 mb-2 truncate">
-                        {events.find(e => e.id === app.eventId)?.title}
+                        {sortedEvents.find(e => e.id === app.eventId)?.title}
                       </p>
                       <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${
                           app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-100 text-green-700' :
