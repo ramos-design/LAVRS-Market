@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Mail, Edit, Eye, Copy, Plus, CheckCircle, X, Upload, Paperclip, Trash2, Save, ArrowLeft, FileText, AlertCircle, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react';
+import { Mail, Edit, Eye, Copy, Plus, CheckCircle, X, Upload, Paperclip, Trash2, Save, ArrowLeft, FileText, AlertCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { useEmailTemplates, useEmailAttachments } from '../hooks/useSupabase';
 import { DbEmailTemplate, DbEmailAttachment } from '../lib/database';
 

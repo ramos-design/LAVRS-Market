@@ -91,3 +91,55 @@ h4,
 ::-webkit-scrollbar-thumb:hover {
     background: var(--lavrs-red);
 }
+
+.heart-loader {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+}
+
+.heart-loader-svg {
+    width: 100%;
+    height: 100%;
+    transform-origin: center;
+    animation: heartBeat 1.35s ease-in-out infinite;
+}
+
+.heart-loader-base {
+    opacity: 0.22;
+}
+
+.heart-loader-trace {
+    stroke-dasharray: 72;
+    stroke-dashoffset: 72;
+    animation: heartTrace 1.35s ease-in-out infinite;
+}
+
+@keyframes heartTrace {
+    0% {
+        stroke-dashoffset: 72;
+        opacity: 0.2;
+    }
+    45% {
+        stroke-dashoffset: 0;
+        opacity: 1;
+    }
+    100% {
+        stroke-dashoffset: -72;
+        opacity: 0.2;
+    }
+}
+
+@keyframes heartBeat {
+    0%,
+    100% {
+        transform: scale(0.96);
+    }
+    35% {
+        transform: scale(1.03);
+    }
+    55% {
+        transform: scale(1);
+    }
+}

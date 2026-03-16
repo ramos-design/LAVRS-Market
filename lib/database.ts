@@ -4,6 +4,30 @@
  */
 import { supabase } from './supabase';
 
+const ROLE_CACHE_MS = 60_000;
+let roleCache: { userId: string; role: string | null; ts: number } | null = null;
+
+async function getCurrentSessionUser() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user ?? null;
+}
+
+async function getCurrentUserRole(userId: string): Promise<string | null> {
+    if (roleCache && roleCache.userId === userId && (Date.now() - roleCache.ts) < ROLE_CACHE_MS) {
+        return roleCache.role;
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+
+    const role = (profile?.role as string | null) ?? null;
+    roleCache = { userId, role, ts: Date.now() };
+    return role;
+}
+
 /* ─── Types matching DB schema (snake_case) ──────────────── */
 
 export interface DbEvent {
@@ -177,14 +201,6 @@ export const eventsDb = {
     },
 
     async uploadImage(file: File, eventId: string): Promise<{ path: string; url: string }> {
-        const toDataUrl = (input: File) =>
-            new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(String(reader.result || ''));
-                reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
-                reader.readAsDataURL(input);
-            });
-
         const buffer = await file.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         let binary = '';
@@ -206,7 +222,7 @@ export const eventsDb = {
             return { path: data.path || '', url: data.url };
         }
 
-        // Fallback 1: direct storage upload
+        // Fallback: direct storage upload
         try {
             const filePath = `event-images/${eventId}/${Date.now()}-${file.name}`;
             const { error: uploadError } = await supabase.storage
@@ -220,13 +236,10 @@ export const eventsDb = {
                 return { path: filePath, url: urlData.publicUrl };
             }
         } catch {
-            // Continue to DB-inline fallback.
+            // Keep original error handling below.
         }
 
-        // Fallback 2: always persist directly to DB as data URL.
-        const dataUrl = await toDataUrl(file);
-        await eventsDb.update(eventId, { image: dataUrl });
-        return { path: `inline:${eventId}`, url: dataUrl };
+        throw error || new Error('Failed to upload event image.');
     },
 
     async delete(id: string): Promise<void> {
@@ -268,7 +281,7 @@ export const categoriesDb = {
 ═══════════════════════════════════════════════════════════ */
 export const brandProfilesDb = {
     async getAll(): Promise<DbBrandProfile[]> {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getCurrentSessionUser();
         if (!user) return [];
 
         const { data, error } = await supabase
@@ -287,7 +300,7 @@ export const brandProfilesDb = {
     },
 
     async create(profile: Omit<DbBrandProfile, 'created_at'>): Promise<DbBrandProfile> {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getCurrentSessionUser();
         const profileWithUser = { ...profile, user_id: user?.id || null };
         // Použijeme upsert, aby se při stejném ID (třeba při refreshu) značka neduplikovala
         const { data, error } = await supabase.from('brand_profiles').upsert(profileWithUser).select().single();
@@ -312,12 +325,12 @@ export const brandProfilesDb = {
 ═══════════════════════════════════════════════════════════ */
 export const applicationsDb = {
     async getAll(): Promise<DbApplication[]> {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getCurrentSessionUser();
         if (!user) return [];
 
         // Admin sees all, exhibitors see only theirs (RLS handles this but filter is safer)
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-        const isAdmin = profile?.role === 'ADMIN';
+        const userRole = await getCurrentUserRole(user.id);
+        const isAdmin = userRole === 'ADMIN';
 
         let query = supabase.from('applications').select('*');
         if (!isAdmin) {
@@ -336,7 +349,7 @@ export const applicationsDb = {
     },
 
     async create(app: Omit<DbApplication, 'created_at'>): Promise<DbApplication> {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getCurrentSessionUser();
         const appWithUser = { ...app, user_id: user?.id || null };
         const { data, error } = await supabase.from('applications').insert(appWithUser).select().single();
         if (error) throw error;
@@ -585,3 +598,4 @@ export const emailAttachmentsDb = {
         await emailAttachmentsDb.delete(id);
     },
 };
+

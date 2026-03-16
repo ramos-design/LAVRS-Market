@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { clearSupabaseQueryCache } from './useSupabase';
 
 export type UserRole = 'EXHIBITOR' | 'ADMIN';
 
@@ -96,6 +97,7 @@ export function useAuth() {
             if (event === 'SIGNED_IN' && session) {
                 fetchProfile(session.user.id, session.user.email!);
             } else if (event === 'SIGNED_OUT') {
+                clearSupabaseQueryCache();
                 setUser(null);
                 setError(null);
                 setLoading(false);
@@ -136,6 +138,7 @@ export function useAuth() {
     const signOut = async () => {
         setLoading(true);
         await supabase.auth.signOut();
+        clearSupabaseQueryCache();
         setUser(null);
         setLoading(false);
     };

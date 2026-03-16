@@ -4,6 +4,7 @@ import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus,
 import { ZONE_DETAILS } from '../constants';
 import { useEvents, useBrandProfiles, useCategories } from '../hooks/useSupabase';
 import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb, formatEventDate } from '../lib/mappers';
+import HeartLoader from './HeartLoader';
 
 interface ApplicationWizardProps {
   eventId: string;
@@ -783,7 +784,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <HeartLoader size={20} className="text-white" />
                     Odesílám...
                   </>
                 ) : (

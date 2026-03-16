@@ -17,41 +17,101 @@ interface UseQueryResult<T> {
     data: T;
     loading: boolean;
     error: string | null;
-    refetch: () => void;
+    refetch: () => Promise<void>;
 }
 
-function useQuery<T>(fetcher: () => Promise<T>, defaultValue: T, deps: unknown[] = []): UseQueryResult<T> {
-    const [data, setData] = useState<T>(defaultValue);
-    const [loading, setLoading] = useState(true);
+interface QueryOptions {
+    staleMs?: number;
+    enabled?: boolean;
+}
+
+const DEFAULT_STALE_MS = 60_000;
+const queryCache = new Map<string, { data: unknown; ts: number }>();
+const inflightQueries = new Map<string, Promise<unknown>>();
+
+export function clearSupabaseQueryCache() {
+    queryCache.clear();
+    inflightQueries.clear();
+}
+
+function readCached<T>(queryKey: string, staleMs: number): T | undefined {
+    const entry = queryCache.get(queryKey);
+    if (!entry) return undefined;
+    if (Date.now() - entry.ts > staleMs) return undefined;
+    return entry.data as T;
+}
+
+function useQuery<T>(
+    queryKey: string,
+    fetcher: () => Promise<T>,
+    defaultValue: T,
+    deps: unknown[] = [],
+    options: QueryOptions = {}
+): UseQueryResult<T> {
+    const staleMs = options.staleMs ?? DEFAULT_STALE_MS;
+    const enabled = options.enabled ?? true;
+    const initialCached = readCached<T>(queryKey, staleMs);
+
+    const [data, setData] = useState<T>(initialCached ?? defaultValue);
+    const [loading, setLoading] = useState(enabled && initialCached === undefined);
     const [error, setError] = useState<string | null>(null);
 
-    const fetch = useCallback(async () => {
+    const fetch = useCallback(async (force = false) => {
+        if (!enabled) {
+            setLoading(false);
+            return;
+        }
+
+        if (!force) {
+            const cached = readCached<T>(queryKey, staleMs);
+            if (cached !== undefined) {
+                setData(cached);
+                setLoading(false);
+                return;
+            }
+        }
+
         setLoading(true);
         setError(null);
+
+        let promise = inflightQueries.get(queryKey) as Promise<T> | undefined;
+        if (!promise || force) {
+            promise = fetcher();
+            inflightQueries.set(queryKey, promise);
+        }
+
         try {
-            const result = await fetcher();
+            const result = await promise;
+            queryCache.set(queryKey, { data: result, ts: Date.now() });
             setData(result);
         } catch (e: any) {
             console.error('Query error:', e);
             setError(e.message || 'Unknown error');
         } finally {
+            if (inflightQueries.get(queryKey) === promise) {
+                inflightQueries.delete(queryKey);
+            }
             setLoading(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, deps);
+    }, [queryKey, staleMs, enabled, ...deps]);
 
     useEffect(() => {
+        if (!enabled) {
+            setLoading(false);
+            return;
+        }
         fetch();
-    }, [fetch]);
+    }, [fetch, enabled]);
 
-    return { data, loading, error, refetch: fetch };
+    return { data, loading, error, refetch: () => (enabled ? fetch(true) : Promise.resolve()) };
 }
 
 /* ═══════════════════════════════════════════════════════════
    EVENTS
 ═══════════════════════════════════════════════════════════ */
 export function useEvents() {
-    const query = useQuery(() => eventsDb.getAll(), []);
+    const query = useQuery('events', () => eventsDb.getAll(), []);
     return {
         ...query,
         events: query.data,
@@ -78,8 +138,8 @@ export function useEvents() {
 /* ═══════════════════════════════════════════════════════════
    CATEGORIES
 ═══════════════════════════════════════════════════════════ */
-export function useCategories() {
-    const query = useQuery(() => categoriesDb.getAll(), []);
+export function useCategories(enabled = true) {
+    const query = useQuery('categories', () => categoriesDb.getAll(), [], [], { enabled });
     return {
         ...query,
         categories: query.data,
@@ -102,7 +162,7 @@ export function useCategories() {
    BRAND PROFILES
 ═══════════════════════════════════════════════════════════ */
 export function useBrandProfiles() {
-    const query = useQuery(() => brandProfilesDb.getAll(), []);
+    const query = useQuery('brand_profiles', () => brandProfilesDb.getAll(), []);
     return {
         ...query,
         profiles: query.data,
@@ -125,7 +185,7 @@ export function useBrandProfiles() {
    APPLICATIONS
 ═══════════════════════════════════════════════════════════ */
 export function useApplications() {
-    const query = useQuery(() => applicationsDb.getAll(), []);
+    const query = useQuery('applications', () => applicationsDb.getAll(), []);
     return {
         ...query,
         applications: query.data,
@@ -154,6 +214,7 @@ export function useApplications() {
 ═══════════════════════════════════════════════════════════ */
 export function useEventPlan(eventId: string | null) {
     const query = useQuery(
+        `event_plan:${eventId || 'none'}`,
         async () => {
             if (!eventId) return { plan: null, zones: [], stands: [] };
             return eventPlansDb.getByEventId(eventId);
@@ -178,8 +239,8 @@ export function useEventPlan(eventId: string | null) {
 /* ═══════════════════════════════════════════════════════════
    BANNERS
 ═══════════════════════════════════════════════════════════ */
-export function useBanners() {
-    const query = useQuery(() => bannersDb.getAll(), []);
+export function useBanners(enabled = true) {
+    const query = useQuery('banners', () => bannersDb.getAll(), [], [], { enabled });
     return {
         ...query,
         banners: query.data,
@@ -206,7 +267,7 @@ export function useBanners() {
    EMAIL TEMPLATES + ATTACHMENTS
 ═══════════════════════════════════════════════════════════ */
 export function useEmailTemplates() {
-    const query = useQuery(() => emailTemplatesDb.getAll(), []);
+    const query = useQuery('email_templates', () => emailTemplatesDb.getAll(), []);
     return {
         ...query,
         templates: query.data,
@@ -227,6 +288,7 @@ export function useEmailTemplates() {
 
 export function useEmailAttachments(templateId: string | null) {
     const query = useQuery(
+        `email_attachments:${templateId || 'none'}`,
         async () => {
             if (!templateId) return [];
             return emailAttachmentsDb.getByTemplateId(templateId);

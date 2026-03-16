@@ -4,6 +4,7 @@ import { ViewMode, User as UserType, BrandProfile, Application, AppStatus, Categ
 import Sidebar from './components/Sidebar';
 import MobileHeader from './components/MobileHeader';
 import Auth from './components/Auth';
+import HeartLoader from './components/HeartLoader';
 
 // Supabase hooks & mappers
 import { useAuth } from './hooks/useAuth';
@@ -75,6 +76,14 @@ const App: React.FC = () => {
 
   // Derived role from user
   const userRole = user?.role;
+  const needsCategories =
+    currentScreen === 'PAYMENT' ||
+    currentScreen === 'APPLY' ||
+    currentScreen === 'CATEGORIES' ||
+    currentScreen === 'EVENT_PLAN';
+  const needsBanners =
+    currentScreen === 'BANNERS' ||
+    (currentScreen === 'DASHBOARD' && userRole === 'EXHIBITOR');
 
 
   // ─── Supabase data hooks ──────────────────────────────────
@@ -114,11 +123,11 @@ const App: React.FC = () => {
   const {
     banners: dbBanners, loading: bannersLoading,
     replaceAllBanners,
-  } = useBanners();
+  } = useBanners(needsBanners);
   const {
     categories: dbCategories, loading: categoriesLoading,
     // category mutations are handled inside CategoryManager
-  } = useCategories();
+  } = useCategories(needsCategories);
   const {
     plan: dbPlan, zones: dbZones, stands: dbStands,
     savePlan: saveEventPlan, loading: planLoading,
@@ -275,7 +284,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center">
         <div className="flex flex-col items-center gap-6">
-          <div className="w-16 h-16 border-4 border-lavrs-red/20 border-t-lavrs-red rounded-full animate-spin" />
+          <HeartLoader size={64} className="text-lavrs-red" />
           <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Inicializace systému...</p>
         </div>
       </div>
@@ -313,7 +322,7 @@ const App: React.FC = () => {
           {/* Global loading indicator */}
           {isLoading && !authError && (
             <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-lavrs-dark text-white px-6 py-2 rounded-none shadow-lg text-sm font-bold flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <HeartLoader size={16} className="text-white" />
               Načítám data...
             </div>
           )}
@@ -331,14 +340,15 @@ const App: React.FC = () => {
                 onClick={() => refetch()}
                 className="whitespace-nowrap bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center gap-2"
               >
-                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin hidden group-disabled:block" />
+                <HeartLoader size={14} className="text-white hidden group-disabled:block" />
                 Zkusit znovu načíst
               </button>
             </div>
           )}
 
           <React.Suspense fallback={
-            <div className="py-16 text-center text-gray-500 font-bold uppercase tracking-widest text-xs">
+            <div className="py-16 text-center text-gray-500 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2">
+              <HeartLoader size={16} className="text-lavrs-red" />
               Načítám modul...
             </div>
           }>
@@ -495,3 +505,5 @@ const App: React.FC = () => {
 
 
 export default App;
+
+

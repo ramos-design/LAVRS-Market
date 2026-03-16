@@ -15,6 +15,7 @@ import {
 import { BrandProfile, MarketEvent, Application, Category, ExtraItem, AppStatus } from '../types';
 import { useEventPlan } from '../hooks/useSupabase';
 import { formatEventDate } from '../lib/mappers';
+import HeartLoader from './HeartLoader';
 
 interface PaymentPageProps {
   onBack: () => void;
@@ -388,7 +389,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, initialBillingDetails
                   >
                     {isUpdatingStatus ? (
                       <div className="flex items-center justify-center gap-3">
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <HeartLoader size={20} className="text-white" />
                         Ukládám...
                       </div>
                     ) : (

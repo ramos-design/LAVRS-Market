@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import HeartLoader from './HeartLoader';
 
 interface AuthProps {
     onSuccess?: () => void;
@@ -191,7 +192,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                                 >
                                     {loading ? (
                                         <>
-                                            <Loader2 className="animate-spin" size={20} />
+                                            <HeartLoader size={20} className="text-white" />
                                             Zpracovávám...
                                         </>
                                     ) : (
