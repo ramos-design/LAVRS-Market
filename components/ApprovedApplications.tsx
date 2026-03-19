@@ -189,7 +189,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <div className="font-bold text-lavrs-dark">{app.brandName}</div>
-                          {normalizeStatus(app.status) === AppStatus.APPROVED && (
+                          {(normalizeStatus(app.status) === AppStatus.APPROVED || normalizeStatus(app.status) === AppStatus.PAID) && (
                             <Heart size={14} className="text-lavrs-red fill-lavrs-red shrink-0" />
                           )}
                         </div>
