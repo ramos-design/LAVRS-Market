@@ -308,6 +308,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteBrandProfile = async (brandProfileId: string) => {
+    await deleteProfile(brandProfileId);
+  };
+
   // Global loading state
   const isLoading = eventsLoading || appsLoading || profilesLoading || bannersLoading || categoriesLoading;
 
@@ -487,7 +491,12 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'BRANDS' && userRole === 'ADMIN' && (
-            <BrandsList applications={applications} brands={brandProfiles} events={events} />
+            <BrandsList
+              applications={applications}
+              brands={brandProfiles}
+              events={events}
+              onDeleteBrand={handleDeleteBrandProfile}
+            />
           )}
 
           {currentScreen === 'PAYMENT' && userRole === 'EXHIBITOR' && (

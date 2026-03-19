@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Mail, Phone, MapPin, MessageSquare, Globe } from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 const Contact: React.FC = () => {
     return (
@@ -21,31 +21,6 @@ const Contact: React.FC = () => {
                             <div>
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">E-mail</p>
                                 <a href="mailto:info@lavrs.cz" className="text-xl font-bold text-lavrs-dark hover:text-lavrs-red transition-colors">info@lavrs.cz</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-8 border-2 border-lavrs-red/10 rounded-none shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 bg-lavrs-beige flex items-center justify-center text-lavrs-red">
-                                <Phone size={24} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Telefon</p>
-                                <a href="tel:+420777123456" className="text-xl font-bold text-lavrs-dark hover:text-lavrs-red transition-colors">+420 777 123 456</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-8 border-2 border-lavrs-red/10 rounded-none shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 bg-lavrs-beige flex items-center justify-center text-lavrs-red">
-                                <MapPin size={24} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Adresa</p>
-                                <p className="text-xl font-bold text-lavrs-dark">Vnitroblock, Tusarova 31</p>
-                                <p className="text-sm text-gray-500">170 00 Praha 7 - Holešovice</p>
                             </div>
                         </div>
                     </div>

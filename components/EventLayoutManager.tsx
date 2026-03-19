@@ -33,9 +33,16 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     onSavePlan,
     categories
 }) => {
-    // Only show people who have PAID in the layout manager
-    // People who are just APPROVED stay in the Curator (Review) module until paid
-    const propApplications = allApplications.filter(app => app.status === AppStatus.PAID);
+    // Only show exhibitors for the current event who have PAID.
+    // People who are just APPROVED stay in the Curator module until paid.
+    const normalizedEventId = React.useMemo(() => (eventId || '').trim().toLowerCase(), [eventId]);
+    const propApplications = React.useMemo(
+        () => allApplications.filter(app =>
+            app.status === AppStatus.PAID &&
+            ((app.eventId || '').trim().toLowerCase() === normalizedEventId)
+        ),
+        [allApplications, normalizedEventId]
+    );
 
     const { events: dbEvents, updateEvent, uploadEventImage } = useEvents();
     const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);

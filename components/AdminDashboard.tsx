@@ -16,6 +16,8 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig }) => {
+  const normalizeId = React.useCallback((value?: string | null) => (value || '').trim().toLowerCase(), []);
+
   const sortedEvents = React.useMemo(() => {
     const parsed = [...events];
     const parseDate = (dateStr: string) => {
@@ -104,6 +106,21 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
   }, [sortedEvents, eventStats, loadingStats, loadEventStats]);
 
   const getEventStat = (eventId: string) => eventStats[eventId] || { occupied: 0, total: 0 };
+
+  const eventApplicationCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    applications.forEach((app) => {
+      if (!app.eventId) return;
+      const status = (app.status || '').toString().toUpperCase();
+      // Counter should reflect real number of registered exhibitors per event,
+      // even if they are not assigned to a stand yet.
+      if (status === AppStatus.DELETED) return;
+      const key = normalizeId(app.eventId);
+      if (!key) return;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [applications, normalizeId]);
 
   const avgOccupancy = React.useMemo(() => {
     const stats = Object.values(eventStats) as { occupied: number, total: number }[];
@@ -266,7 +283,9 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {sortedEvents.map(event => {
-                  const acceptedCount = getEventStat(event.id).occupied;
+                  const occupiedFromLayout = getEventStat(event.id).occupied;
+                  const occupiedFromApplications = eventApplicationCounts[normalizeId(event.id)] || 0;
+                  const acceptedCount = Math.max(occupiedFromLayout, occupiedFromApplications);
                   
                   return (
                     <tr key={event.id} className="group hover:bg-lavrs-beige/30 transition-colors">

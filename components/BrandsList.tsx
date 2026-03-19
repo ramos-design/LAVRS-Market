@@ -6,6 +6,7 @@ interface BrandsListProps {
   applications: Application[];
   brands: BrandProfile[];
   events: MarketEvent[];
+  onDeleteBrand: (brandProfileId: string) => Promise<void>;
 }
 
 const zoneCategoryTabs: { id: 'ALL' | string; label: string }[] = [
@@ -38,14 +39,24 @@ const getZoneCategoryLabel = (category?: ZoneCategory) => {
   }
 };
 
-const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events }) => {
+const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, onDeleteBrand }) => {
 
   const [tab, setTab] = React.useState<'ALL' | string>('ALL');
   const [query, setQuery] = React.useState('');
+  const [deletingBrandId, setDeletingBrandId] = React.useState<string | null>(null);
 
   const rows = React.useMemo(() => {
+    const profileIdByBrandName = new Map<string, string>();
+    brands.forEach((brand) => {
+      const key = (brand.brandName || '').trim().toLowerCase();
+      if (key && !profileIdByBrandName.has(key)) {
+        profileIdByBrandName.set(key, brand.id);
+      }
+    });
+
     const byName = new Map<string, {
       id: string;
+      profileId?: string;
       brandName: string;
       contactPerson?: string;
       email?: string;
@@ -74,6 +85,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events })
       const existing = byName.get(key);
       byName.set(key, {
         id: app.id,
+        profileId: existing?.profileId || profileIdByBrandName.get(key),
         brandName: app.brandName,
         contactPerson: app.contactPerson,
         email: app.email,
@@ -94,6 +106,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events })
       if (!byName.has(key)) {
         byName.set(key, {
           id: brand.id,
+          profileId: brand.id,
           brandName: brand.brandName,
           contactPerson: brand.contactPerson,
           email: brand.email,
@@ -106,6 +119,9 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events })
           isApproved: false,
           source: 'PROFILE'
         });
+      } else {
+        const existing = byName.get(key)!;
+        byName.set(key, { ...existing, profileId: existing.profileId || brand.id });
       }
     });
 
@@ -123,6 +139,28 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events })
       (row.instagram || '').toLowerCase().includes(q)
     );
   });
+
+  const handleDeleteBrand = async (row: (typeof rows)[number]) => {
+    const profileId = row.profileId;
+    if (!profileId) {
+      alert('Tuto značku nelze smazat, protože k ní není přiřazen profil značky.');
+      return;
+    }
+
+    if (!window.confirm(`Opravdu chcete smazat značku "${row.brandName}"? Tato akce je nevratná.`)) {
+      return;
+    }
+
+    setDeletingBrandId(profileId);
+    try {
+      await onDeleteBrand(profileId);
+    } catch (error: any) {
+      const msg = error?.message || 'Smazání značky se nezdařilo.';
+      alert(msg);
+    } finally {
+      setDeletingBrandId(null);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -201,8 +239,12 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events })
                       <button className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-gray-200 text-gray-600 hover:border-lavrs-red hover:text-lavrs-red transition-colors">
                         Upravit
                       </button>
-                      <button className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
-                        Smazat
+                      <button
+                        onClick={() => handleDeleteBrand(row)}
+                        disabled={deletingBrandId === row.profileId}
+                        className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingBrandId === row.profileId ? 'Mažu...' : 'Smazat'}
                       </button>
                     </div>
                   </td>
