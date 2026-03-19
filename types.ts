@@ -36,7 +36,7 @@ export interface MarketEvent {
   title: string;
   date: string;
   location: string;
-  status: 'open' | 'closed' | 'waitlist' | 'draft';
+  status: 'open' | 'closed' | 'waitlist' | 'draft' | 'soldout';
   image: string;
   description?: string;
   capacity?: number;

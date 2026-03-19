@@ -89,9 +89,11 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, events, appl
                                     ? 'bg-green-500 text-white'
                                     : event.status === 'draft'
                                         ? 'bg-gray-300 text-gray-700'
-                                        : 'bg-blue-500 text-white'
+                                        : event.status === 'soldout'
+                                            ? 'bg-red-600 text-white'
+                                            : 'bg-blue-500 text-white'
                                 }`}>
-                                {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : 'Waitlist'}
+                                {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : event.status === 'soldout' ? 'Vyprodáno' : 'Waitlist'}
                             </div>
                         </div>
 

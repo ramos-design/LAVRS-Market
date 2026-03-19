@@ -179,7 +179,7 @@ const BrandEditForm: React.FC<{
     </div>
 );
 
-const Profile: React.FC<ProfileProps> = () => {
+const ProfileInner: React.FC<ProfileProps> = () => {
     const { profiles: dbProfiles, createProfile, updateProfile, deleteProfile, loading } = useBrandProfiles();
     const brands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
 
@@ -419,5 +419,8 @@ const Profile: React.FC<ProfileProps> = () => {
         </div>
     );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates
+const Profile = React.memo(ProfileInner);
 
 export default Profile;

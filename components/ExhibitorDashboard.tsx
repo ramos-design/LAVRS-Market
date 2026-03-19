@@ -16,7 +16,7 @@ interface ExhibitorDashboardProps {
   banners: Banner[];
 }
 
-const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, applications, brands, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
+const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, events, applications, brands, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
   const sortedEvents = React.useMemo(() => {
     const parsed = [...events];
     const parseDate = (dateStr: string) => {
@@ -53,6 +53,13 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
     };
     return parsed.sort((a, b) => parseDate(a.date) - parseDate(b.date));
   }, [events]);
+
+  // Create a Map for O(1) event lookups (prevents N+1 queries)
+  const eventsMap = React.useMemo(() => {
+    const map = new Map<string, MarketEvent>();
+    sortedEvents.forEach(event => map.set(event.id, event));
+    return map;
+  }, [sortedEvents]);
   const visibleEvents = React.useMemo(
     () => sortedEvents.filter(event => event.status !== 'draft'),
     [sortedEvents]
@@ -70,7 +77,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
   );
 
   const displayApp = paymentRequestedApps[0];
-  const activeEvent = displayApp ? sortedEvents.find(e => e.id === displayApp.eventId) : null;
+  const activeEvent = displayApp ? eventsMap.get(displayApp.eventId) : null;
 
   const slides = banners;
 
@@ -81,12 +88,12 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [slides]); // Changed from [slides.length] to [slides] for proper dependency tracking
 
   React.useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, []); // Intentionally empty - timer runs continuously and is cleaned up on unmount
 
   const getRemaining = (deadlineIso?: string) => {
     if (!deadlineIso) return null;
@@ -107,8 +114,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
   return (
     <div className="space-y-12">
       <header>
-        <h2 className="text-4xl font-bold mb-2 tracking-tight">Vítej zpět, {user.name.split(' ')[0]}</h2>
-        <p className="text-gray-500 font-medium">Tvůj kurátorský prostor pro cirkulární módu.</p>
+        <h2 className="text-4xl font-bold mb-2 tracking-tight">Vítej, {user.name.split(' ')[0]}</h2>
       </header>
 
       {/* Banner Slideshow */}
@@ -150,7 +156,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
       {/* Action Required Widgets */}
       <div className="space-y-4">
         {paymentRequestedApps.map((app) => {
-          const event = sortedEvents.find(e => e.id === app.eventId);
+          const event = eventsMap.get(app.eventId);
           const isReview = app.status === AppStatus.PAYMENT_UNDER_REVIEW;
           const remaining = getRemaining(app.paymentDeadline);
 
@@ -232,9 +238,9 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
                   <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   <div
                     className="absolute top-4 right-4 px-3 py-1 rounded-none text-[10px] font-black uppercase tracking-widest shadow-lg text-white"
-                    style={{ backgroundColor: event.status === 'open' ? '#22C55E' : '#3B82F6' }}
+                    style={{ backgroundColor: event.status === 'open' ? '#22C55E' : event.status === 'soldout' ? '#DC2626' : '#3B82F6' }}
                   >
-                    {event.status === 'open' ? 'Přihlašování otevřeno' : 'WAITLIST'}
+                    {event.status === 'open' ? 'Přihlašování otevřeno' : event.status === 'soldout' ? 'Vyprodáno' : 'WAITLIST'}
                   </div>
                 </div>
                 <div className="pt-8 pb-10 px-8">
@@ -250,12 +256,15 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
                   <h4 className="text-xl font-bold mb-6 text-lavrs-dark">{event.title}</h4>
                   <button
                     onClick={() => onApply(event.id)}
-                    className={`w-full py-4 rounded-none font-black uppercase tracking-[0.2em] text-sm transition-all shadow-md hover:shadow-2xl hover:translate-y-[-4px] active:translate-y-0 ${event.status === 'open'
+                    disabled={event.status === 'soldout'}
+                    className={`w-full py-4 rounded-none font-black uppercase tracking-[0.2em] text-sm transition-all shadow-md hover:shadow-2xl hover:translate-y-[-4px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md disabled:hover:translate-y-0 ${event.status === 'open'
                       ? 'bg-lavrs-red text-white hover:bg-lavrs-dark'
-                      : 'bg-lavrs-dark text-white hover:bg-[#F7C0BF] hover:text-lavrs-dark'
+                      : event.status === 'soldout'
+                        ? 'bg-gray-400 text-white'
+                        : 'bg-lavrs-dark text-white hover:bg-[#F7C0BF] hover:text-lavrs-dark'
                       }`}
                   >
-                    {event.status === 'open' ? 'Přihlásit se' : 'Chci na Waitlist'}
+                    {event.status === 'open' ? 'Přihlásit se' : event.status === 'soldout' ? 'Vyprodáno' : 'Chci na Waitlist'}
                   </button>
                 </div>
               </div>
@@ -319,7 +328,7 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
                         </span>
                       </div>
                       <p className="text-[11px] text-gray-500 mb-2 truncate">
-                        {sortedEvents.find(e => e.id === app.eventId)?.title}
+                        {eventsMap.get(app.eventId)?.title}
                       </p>
                       <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${
                           app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-100 text-green-700' :
@@ -391,5 +400,8 @@ const ExhibitorDashboard: React.FC<ExhibitorDashboardProps> = ({ user, events, a
     </div>
   );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates
+const ExhibitorDashboard = React.memo(ExhibitorDashboardInner);
 
 export default ExhibitorDashboard;

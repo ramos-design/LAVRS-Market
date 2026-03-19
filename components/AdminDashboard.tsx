@@ -15,7 +15,7 @@ interface AdminDashboardProps {
   onOpenEventsConfig?: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig }) => {
+const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig }) => {
   const sortedEvents = React.useMemo(() => {
     const parsed = [...events];
     const parseDate = (dateStr: string) => {
@@ -54,50 +54,54 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, events, applicati
   }, [events]);
   const [eventStats, setEventStats] = React.useState<Record<string, { occupied: number, total: number }>>({});
   const [eventPrices, setEventPrices] = React.useState<Record<string, Record<string, string>>>({});
+  const [loadingStats, setLoadingStats] = React.useState<Set<string>>(new Set());
 
-  React.useEffect(() => {
-    // Load occupancies for all events
-    const loadOccupancies = async () => {
-      const result: Record<string, { occupied: number, total: number }> = {};
-      const priceResult: Record<string, Record<string, string>> = {};
+  // Lazy load event stats only when needed (not on mount with Promise.all)
+  const loadEventStats = React.useCallback(async (eventId: string) => {
+    // Skip if already loaded or currently loading
+    if (eventStats[eventId] || loadingStats.has(eventId)) return;
 
-      const occupancyResults = await Promise.all(
-        sortedEvents.map(async (event) => {
-          try {
-            const { plan, zones, stands } = await eventPlansDb.getByEventId(event.id);
-            if (!plan) {
-              return { eventId: event.id, occupied: 0, total: 0, prices: {} as Record<string, string> };
-            }
+    setLoadingStats(prev => new Set([...prev, eventId]));
+    try {
+      const { plan, zones, stands } = await eventPlansDb.getByEventId(eventId);
 
-            const prices = (plan.prices as Record<string, string>) || {};
-            let totalCapacity = 0;
-            zones.forEach((z) => {
-              const caps = z.capacities as any;
-              totalCapacity += ((caps.S || 0) + (caps.M || 0) + (caps.L || 0));
-            });
-            const occupied = stands.filter((s) => s.occupant_id).length;
-            return { eventId: event.id, occupied, total: totalCapacity, prices };
-          } catch {
-            return { eventId: event.id, occupied: 0, total: 0, prices: {} as Record<string, string> };
-          }
-        })
-      );
+      if (!plan) {
+        setEventStats(prev => ({ ...prev, [eventId]: { occupied: 0, total: 0 } }));
+        setEventPrices(prev => ({ ...prev, [eventId]: {} }));
+      } else {
+        const prices = (plan.prices as Record<string, string>) || {};
+        let totalCapacity = 0;
+        zones.forEach((z) => {
+          const caps = z.capacities as any;
+          totalCapacity += ((caps.S || 0) + (caps.M || 0) + (caps.L || 0));
+        });
+        const occupied = stands.filter((s) => s.occupant_id).length;
 
-      occupancyResults.forEach((row) => {
-        result[row.eventId] = { occupied: row.occupied, total: row.total };
-        priceResult[row.eventId] = row.prices;
+        setEventStats(prev => ({ ...prev, [eventId]: { occupied, total: totalCapacity } }));
+        setEventPrices(prev => ({ ...prev, [eventId]: prices }));
+      }
+    } catch (err) {
+      console.error(`Failed to load stats for event ${eventId}:`, err);
+      setEventStats(prev => ({ ...prev, [eventId]: { occupied: 0, total: 0 } }));
+      setEventPrices(prev => ({ ...prev, [eventId]: {} }));
+    } finally {
+      setLoadingStats(prev => {
+        const next = new Set(prev);
+        next.delete(eventId);
+        return next;
       });
-
-      setEventStats(result);
-      setEventPrices(priceResult);
-    };
-    if (sortedEvents.length > 0) {
-      loadOccupancies();
-    } else {
-      setEventStats({});
-      setEventPrices({});
     }
-  }, [sortedEvents]);
+  }, [eventStats, loadingStats]);
+
+  // Trigger lazy loading for each event when sortedEvents changes
+  React.useEffect(() => {
+    sortedEvents.forEach(event => {
+      if (!eventStats[event.id] && !loadingStats.has(event.id)) {
+        // Call async but don't await - loads in background
+        loadEventStats(event.id);
+      }
+    });
+  }, [sortedEvents, eventStats, loadingStats, loadEventStats]);
 
   const getEventStat = (eventId: string) => eventStats[eventId] || { occupied: 0, total: 0 };
 
@@ -133,47 +137,68 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, events, applicati
     }, 0);
   }, [applications, eventPrices]);
 
-  const recentAppsCount = applications.filter(a => {
-    const d = new Date(a.submittedAt);
-    return Date.now() - d.getTime() < 30 * 24 * 60 * 60 * 1000;
-  }).length;
+  // Combine all stats calculations into single pass for performance
+  const { recentAppsCount, pendingCount, waitingPaymentCount, approvedBrandsCount, activeBrandsCount } = React.useMemo(() => {
+    const now = Date.now();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    const approvedBrands = new Set<string>();
+    const activeBrands = new Set<string>();
 
-  const pendingCount = applications.filter(a => (a.status || '').toString().toUpperCase() === AppStatus.PENDING).length;
-  const waitingPaymentCount = applications.filter(a => {
-    const normalized = (a.status || '').toString().toUpperCase();
-    return [
-      AppStatus.APPROVED,
-      AppStatus.PAYMENT_REMINDER,
-      AppStatus.PAYMENT_LAST_CALL,
-      AppStatus.PAYMENT_UNDER_REVIEW
-    ].includes(normalized as AppStatus);
-  }).length;
+    const stats = applications.reduce(
+      (acc, app) => {
+        const normalized = (app.status || '').toString().toUpperCase();
+        const submittedAtMs = app.submittedAt ? new Date(app.submittedAt).getTime() : 0;
 
-  const approvedBrandsCount = React.useMemo(() => {
-    const names = new Set<string>();
-    applications.forEach((app) => {
-      const normalized = (app.status || '').toString().toUpperCase();
-      const isApproved =
-        normalized === AppStatus.APPROVED ||
-        normalized === AppStatus.PAID ||
-        normalized === AppStatus.PAYMENT_REMINDER ||
-        normalized === AppStatus.PAYMENT_LAST_CALL;
-      if (!isApproved) return;
-      if (app.brandName) names.add(app.brandName.toLowerCase());
-    });
-    return names.size;
-  }, [applications]);
+        // Count recent apps (within 30 days)
+        if (submittedAtMs && now - submittedAtMs < thirtyDaysMs) {
+          acc.recentAppsCount++;
+        }
 
-  const activeBrandsCount = React.useMemo(() => {
-    const names = new Set<string>();
-    applications.forEach((app) => {
-      if (app.status === 'DELETED') return;
-      if (app.brandName) names.add(app.brandName.toLowerCase());
-    });
+        // Count pending
+        if (normalized === AppStatus.PENDING) {
+          acc.pendingCount++;
+        }
+
+        // Count waiting payment
+        if ([
+          AppStatus.APPROVED,
+          AppStatus.PAYMENT_REMINDER,
+          AppStatus.PAYMENT_LAST_CALL,
+          AppStatus.PAYMENT_UNDER_REVIEW
+        ].includes(normalized as AppStatus)) {
+          acc.waitingPaymentCount++;
+        }
+
+        // Track approved brands
+        if ([
+          AppStatus.APPROVED,
+          AppStatus.PAID,
+          AppStatus.PAYMENT_REMINDER,
+          AppStatus.PAYMENT_LAST_CALL
+        ].includes(normalized as AppStatus)) {
+          if (app.brandName) approvedBrands.add(app.brandName.toLowerCase());
+        }
+
+        // Track active brands (not deleted)
+        if (normalized !== 'DELETED' && app.brandName) {
+          activeBrands.add(app.brandName.toLowerCase());
+        }
+
+        return acc;
+      },
+      { recentAppsCount: 0, pendingCount: 0, waitingPaymentCount: 0 }
+    );
+
+    // Add brand counts from profile brands to activeBrands
     brands.forEach((profile) => {
-      if (profile.brandName) names.add(profile.brandName.toLowerCase());
+      if (profile.brandName) activeBrands.add(profile.brandName.toLowerCase());
     });
-    return names.size;
+
+    return {
+      ...stats,
+      approvedBrandsCount: approvedBrands.size,
+      activeBrandsCount: activeBrands.size
+    };
   }, [applications, brands]);
 
   const stats = [
@@ -188,7 +213,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, events, applicati
       <header className="flex items-end justify-between">
         <div>
           <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-lavrs-dark">Operativní Hub</h2>
-          <p className="text-gray-500">Vítej zpět v mozkovém centru LAVRS.</p>
+          <p className="text-gray-500">Vítej v mozkovém centru LAVRS.</p>
         </div>
         <button
           onClick={() => (onOpenEventsConfig ? onOpenEventsConfig() : onOpenCurator())}
@@ -270,9 +295,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, events, applicati
                             ? 'bg-green-100 text-green-700'
                             : event.status === 'draft'
                               ? 'bg-gray-100 text-gray-500'
-                              : 'bg-amber-100 text-amber-700'
+                              : event.status === 'soldout'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-amber-100 text-amber-700'
                         }`}>
-                          {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : 'Waitlist'}
+                          {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : event.status === 'soldout' ? 'Vyprodáno' : 'Waitlist'}
                         </span>
                       </td>
                       <td className="px-8 py-6 text-right">
@@ -308,5 +335,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, events, applicati
     </div>
   );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates
+const AdminDashboard = React.memo(AdminDashboardInner);
 
 export default AdminDashboard;

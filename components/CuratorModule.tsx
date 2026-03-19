@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory, MarketEvent } from '../types';
 
@@ -11,7 +11,7 @@ interface CuratorModuleProps {
   onRestoreApplication: (id: string) => void;
 }
 
-const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
+const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
   const deletedApplications = applications.filter(a => normalizeStatus(a.status) === AppStatus.DELETED);
   // Filter out applications that are already paid (those move to the event manager)
@@ -34,7 +34,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, events, applicati
 
   const selectedApp = displayedApplications.find(a => a.id === selectedAppId) || (displayedApplications.length > 0 ? displayedApplications[0] : null);
 
-  const handleAction = async (id: string, newStatus: AppStatus) => {
+  const handleAction = useCallback(async (id: string, newStatus: AppStatus) => {
     setIsProcessing(true);
     try {
       await onUpdateStatus(id, newStatus);
@@ -62,7 +62,7 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, events, applicati
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [activeApplications, onUpdateStatus]);
 
   const getEventDetails = (eventId: string) => {
     return events.find(e => e.id === eventId);
@@ -548,5 +548,8 @@ const CuratorModule: React.FC<CuratorModuleProps> = ({ onBack, events, applicati
     </div>
   );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates
+const CuratorModule = React.memo(CuratorModuleInner);
 
 export default CuratorModule;

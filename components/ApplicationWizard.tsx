@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
 import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
 import { ZONE_DETAILS } from '../constants';
@@ -14,7 +14,7 @@ interface ApplicationWizardProps {
   userId?: string;
 }
 
-const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
+const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   eventId,
   onCancel,
   onApply,
@@ -72,6 +72,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
   const event = events.find(e => e.id === eventId);
   const isWaitlist = event?.status === 'waitlist' || event?.status === 'closed';
+  const isSoldout = event?.status === 'soldout';
 
   useEffect(() => {
     setTotalSteps(isWaitlist ? 1 : 5);
@@ -121,7 +122,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
   const selectedExtras = extrasList.filter(extra => extras[extra.id]);
 
-  const handleBrandSelect = (brandId: string | 'new') => {
+  const handleBrandSelect = useCallback((brandId: string | 'new') => {
     if (brandId === 'new') {
       setCurrentBrandId(null);
       setBrandName('');
@@ -156,15 +157,15 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
         setBillingEmail(brand.billingEmail || '');
       }
     }
-  };
+  }, [savedBrands]);
 
-  const handleFinalSubmit = async () => {
+  const handleFinalSubmit = useCallback(async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       // 1. Generate a stable ID for new brands or use existing
       const brandId = currentBrandId || `brand-${userId || 'anon'}-${Date.now()}`;
-      
+
       const brandData: BrandProfile = {
         id: brandId,
         brandName,
@@ -223,7 +224,7 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [isSubmitting, currentBrandId, userId, brandName, brandDescription, instagram, website, contactPerson, phone, email, selectedZone, billingName, ic, dic, billingAddress, billingEmail, saveToProfile, createProfile, selectedZoneCategory, isWaitlist, isSoldout, eventId, consentGDPR, consentOrg, consentStorno, consentNewsletter, extraNote, onApply]);
 
   const checkIsFull = (category: ZoneCategory | null) => {
     const plan = eventPlan;
@@ -271,6 +272,27 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   );
 
   const showSaveBox = isNewBrand || isModified;
+
+  // When event is sold out, prevent registration
+  if (isSoldout) {
+    return (
+      <div className="bg-white rounded-none flex flex-col items-center justify-center shadow-sm border border-gray-100 min-h-[85vh] p-8">
+        <div className="text-center max-w-md">
+          <div className="mb-6 text-6xl">🔒</div>
+          <h2 className="text-4xl font-bold text-lavrs-dark mb-4">Event je vyprodáno</h2>
+          <p className="text-gray-600 mb-8 text-lg">
+            Bohužel tento event dosáhl své kapacity a nejsou dostupné další místa pro vystavovatele.
+          </p>
+          <button
+            onClick={onCancel}
+            className="px-8 py-3 bg-lavrs-dark text-white font-bold hover:bg-lavrs-red transition-all rounded-none"
+          >
+            Zpět na dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-none flex flex-col md:flex-row overflow-hidden shadow-sm border border-gray-100 min-h-[85vh]">
@@ -800,5 +822,8 @@ const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     </div >
   );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates
+const ApplicationWizard = React.memo(ApplicationWizardInner);
 
 export default ApplicationWizard;

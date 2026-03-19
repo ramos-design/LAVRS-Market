@@ -7,7 +7,7 @@ interface MyApplicationsProps {
     events: MarketEvent[];
 }
 
-const MyApplications: React.FC<MyApplicationsProps> = ({ applications, events }) => {
+const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, events }) => {
     const getEventTitle = (eventId: string) => events.find(e => e.id === eventId)?.title || 'Neznámý event';
     const getStatusStyle = (status: AppStatus) => {
         switch (status) {
@@ -133,5 +133,8 @@ const MyApplications: React.FC<MyApplicationsProps> = ({ applications, events })
         </div>
     );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates
+const MyApplications = React.memo(MyApplicationsInner);
 
 export default MyApplications;

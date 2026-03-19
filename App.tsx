@@ -378,7 +378,7 @@ const App: React.FC = () => {
             )
           )}
 
-          {currentScreen === 'APPLY' && selectedEventId && (
+          {currentScreen === 'APPLY' && selectedEventId && userRole === 'EXHIBITOR' && (
             <ApplicationWizard
               eventId={selectedEventId}
               userId={user?.id}
@@ -388,11 +388,11 @@ const App: React.FC = () => {
             />
           )}
 
-          {currentScreen === 'APPLICATIONS' && (
+          {currentScreen === 'APPLICATIONS' && userRole === 'EXHIBITOR' && (
             <MyApplications applications={applications} events={events} />
           )}
 
-          {currentScreen === 'BILLING' && (
+          {currentScreen === 'BILLING' && userRole === 'EXHIBITOR' && (
             <Billing applications={applications} brands={brandProfiles} />
           )}
 
@@ -404,7 +404,7 @@ const App: React.FC = () => {
             <Profile initialBrands={brandProfiles} />
           )}
 
-          {currentScreen === 'CURATOR' && (
+          {currentScreen === 'CURATOR' && userRole === 'ADMIN' && (
             <CuratorModule
               onBack={() => setCurrentScreen('DASHBOARD')}
               events={events}
@@ -415,11 +415,11 @@ const App: React.FC = () => {
             />
           )}
 
-          {currentScreen === 'PAYMENTS' && (
+          {currentScreen === 'PAYMENTS' && userRole === 'ADMIN' && (
             <PaymentsAndInvoicing applications={applications} events={events} />
           )}
 
-          {currentScreen === 'EVENTS_CONFIG' && (
+          {currentScreen === 'EVENTS_CONFIG' && userRole === 'ADMIN' && (
             <EventsConfig
               events={events}
               applications={applications}
@@ -428,15 +428,15 @@ const App: React.FC = () => {
             />
           )}
 
-          {currentScreen === 'EMAILS' && (
+          {currentScreen === 'EMAILS' && userRole === 'ADMIN' && (
             <AutomatedEmails />
           )}
 
-          {currentScreen === 'BRANDS' && (
+          {currentScreen === 'BRANDS' && userRole === 'ADMIN' && (
             <BrandsList applications={applications} brands={brandProfiles} events={events} />
           )}
 
-          {currentScreen === 'PAYMENT' && (
+          {currentScreen === 'PAYMENT' && userRole === 'EXHIBITOR' && (
             <PaymentPage
               onBack={() => { setSelectedPaymentAppId(null); setCurrentScreen('DASHBOARD'); }}
               initialBillingDetails={brandProfiles[0]}
@@ -459,21 +459,21 @@ const App: React.FC = () => {
             />
           )}
 
-          {currentScreen === 'BANNERS' && (
+          {currentScreen === 'BANNERS' && userRole === 'ADMIN' && (
             <BannerManager
               banners={banners}
               onUpdateBanners={handleUpdateBanners}
             />
           )}
 
-          {currentScreen === 'CATEGORIES' && (
+          {currentScreen === 'CATEGORIES' && userRole === 'ADMIN' && (
             <CategoryManager
               categories={categories}
               onUpdateCategories={handleUpdateCategories}
             />
           )}
 
-          {currentScreen === 'EVENT_PLAN' && selectedEventId && (
+          {currentScreen === 'EVENT_PLAN' && selectedEventId && userRole === 'ADMIN' && (
             <EventPlanErrorBoundary>
               <EventLayoutManager
                 key={selectedEventId}
