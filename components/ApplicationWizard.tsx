@@ -413,9 +413,17 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                           {event ? formatEventDateRange(event.date, event?.endDate) : ''}
                         </span>
                       </div>
-                      <div className="flex items-center justify-end md:justify-start gap-2 text-lavrs-dark font-black uppercase tracking-widest text-[10px] md:text-xs">
-                        <MapPin size={14} className="text-lavrs-dark" />
-                        {event?.location}
+                      <div className="flex items-start justify-end md:justify-start gap-2 text-lavrs-dark font-black uppercase tracking-widest text-[10px] md:text-xs">
+                        <MapPin size={14} className="text-lavrs-dark shrink-0 mt-0.5" />
+                        <span className="md:inline">
+                          {event?.location?.includes(',') ? (
+                            <>
+                              <span className="block md:inline">{event.location.split(',')[0].trim()}</span>
+                              <span className="hidden md:inline">, </span>
+                              <span className="block md:inline">{event.location.split(',').slice(1).join(',').trim()}</span>
+                            </>
+                          ) : event?.location}
+                        </span>
                       </div>
                     </div>
                   </div>
