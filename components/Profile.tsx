@@ -250,10 +250,10 @@ const ProfileInner: React.FC<ProfileProps> = () => {
     const { user: authUser } = useAuth();
 
     return (
-        <div className="space-y-12 animate-fadeIn pb-40">
+        <div className="space-y-8 md:space-y-12 animate-fadeIn pb-40 pt-4 md:pt-0">
             <header>
-                <h1 className="text-4xl font-bold text-lavrs-dark mb-2">Moje značka</h1>
-                <p className="text-gray-500">Správa vašich uložených profilů a vizitka značek.</p>
+                <h1 className="text-2xl md:text-4xl font-bold text-lavrs-dark mb-1 md:mb-2">Moje značka</h1>
+                <p className="text-sm md:text-base text-gray-500">Správa vašich uložených profilů a vizitka značek.</p>
             </header>
 
             <section className="space-y-6">

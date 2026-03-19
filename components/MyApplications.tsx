@@ -9,6 +9,10 @@ interface MyApplicationsProps {
 
 const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, events }) => {
     const getEventTitle = (eventId: string) => events.find(e => e.id === eventId)?.title || 'Neznámý event';
+    const getEventDate = (eventId: string) => {
+        const event = events.find(e => e.id === eventId);
+        return event?.date ? new Date(event.date).toLocaleDateString('cs-CZ') : '';
+    };
     const getStatusStyle = (status: AppStatus) => {
         switch (status) {
             case AppStatus.APPROVED:
@@ -46,11 +50,11 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
     const visibleApplications = applications;
 
     return (
-        <div className="space-y-8 animate-fadeIn">
-            <header className="flex justify-between items-end">
+        <div className="space-y-6 md:space-y-8 pt-4 md:pt-0 animate-fadeIn">
+            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
                 <div>
-                    <h1 className="text-4xl font-bold text-lavrs-dark mb-2">Moje Přihlášky</h1>
-                    <p className="text-gray-500">Správa a historie vašich registrací na eventy.</p>
+                    <h1 className="text-2xl md:text-4xl font-bold text-lavrs-dark mb-1 md:mb-2">Moje Přihlášky</h1>
+                    <p className="text-sm md:text-base text-gray-500">Správa a historie vašich registrací na eventy.</p>
                 </div>
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-lavrs-red transition-colors" size={18} />
@@ -72,51 +76,54 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                 ) : visibleApplications.map((app) => {
                     const daysLeft = app.paymentDeadline ? getDaysLeft(app.paymentDeadline) : null;
                     return (
-                        <div key={app.id} className="bg-white p-6 rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
-                            <div className="flex items-center gap-6">
-                                <div className="w-12 h-12 bg-lavrs-beige rounded-none flex items-center justify-center text-lavrs-red group-hover:scale-110 transition-transform">
-                                    <FileText size={24} />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h3 className="font-bold text-lavrs-dark">{app.brandName}</h3>
-                                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border ${getStatusStyle(app.status)}`}>
-                                            {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
-                                                app.status === AppStatus.PENDING ? 'Čeká na posouzení' :
-                                                    app.status === AppStatus.REJECTED ? 'Zamítnuto' :
-                                                        app.status === AppStatus.WAITLIST ? 'Na waitlistu' :
-                                                            app.status === AppStatus.PAID ? 'Zaplaceno' :
-                                                                app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
-                                                                    app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
-                                        </span>
+                        <div key={app.id} className="bg-white p-4 md:p-6 rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden border-r-4 border-r-lavrs-red md:border-r md:border-r-gray-100">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 bg-lavrs-beige rounded-none flex items-center justify-center text-lavrs-red group-hover:scale-110 transition-transform shrink-0">
+                                        <FileText size={20} className="md:hidden" />
+                                        <FileText size={24} className="hidden md:block" />
                                     </div>
-                                    <div className="flex gap-4 text-xs text-gray-400">
-                                        <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
-                                        <span className="font-medium text-gray-500">{getEventTitle(app.eventId)}</span>
-                                        <span className="font-medium text-gray-500">ID: {app.id}</span>
-                                    </div>
-                                    {app.status === AppStatus.APPROVED && app.paymentDeadline && (
-                                        <div className="mt-2 text-xs text-lavrs-dark">
-                                            <span className="font-bold">Splatnost faktury:</span> {formatDate(app.paymentDeadline)}
-                                            {' '}
-                                            {daysLeft !== null && daysLeft >= 0 ? (
-                                                <span className="text-gray-500">(zbývá {daysLeft} dní)</span>
-                                            ) : (
-                                                <span className="text-red-600 font-bold">Po splatnosti</span>
-                                            )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 md:gap-3 mb-1 flex-wrap">
+                                            <h3 className="font-bold text-lavrs-dark text-sm md:text-base">{app.brandName}</h3>
+                                            <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border ${getStatusStyle(app.status)}`}>
+                                                {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
+                                                    app.status === AppStatus.PENDING ? 'Čeká na posouzení' :
+                                                        app.status === AppStatus.REJECTED ? 'Zamítnuto' :
+                                                            app.status === AppStatus.WAITLIST ? 'Na waitlistu' :
+                                                                app.status === AppStatus.PAID ? 'Zaplaceno' :
+                                                                    app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
+                                                                        app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
+                                            </span>
                                         </div>
-                                    )}
+                                        <div className="flex flex-wrap gap-x-3 gap-y-1 md:gap-4 text-xs text-gray-400">
+                                            <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
+                                            <span className="font-medium text-gray-500">{getEventTitle(app.eventId)} · {getEventDate(app.eventId)}</span>
+                                            <span className="hidden md:inline font-medium text-gray-500">ID: {app.id}</span>
+                                        </div>
+                                        {app.status === AppStatus.APPROVED && app.paymentDeadline && (
+                                            <div className="mt-2 text-xs text-lavrs-dark">
+                                                <span className="font-bold">Splatnost faktury:</span> {formatDate(app.paymentDeadline)}
+                                                {' '}
+                                                {daysLeft !== null && daysLeft >= 0 ? (
+                                                    <span className="text-gray-500">(zbývá {daysLeft} dní)</span>
+                                                ) : (
+                                                    <span className="text-red-600 font-bold">Po splatnosti</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex items-center gap-8">
-                                <div className="text-right">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
-                                    <p className="font-bold text-lavrs-dark">4.200 Kč</p>
+                                <div className="flex items-center gap-4 md:gap-8 shrink-0 ml-3">
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
+                                        <p className="font-bold text-lavrs-dark text-sm md:text-base">4.200 Kč</p>
+                                    </div>
+                                    <button className="hidden md:block p-3 rounded-none bg-gray-50 text-gray-400 hover:bg-lavrs-red hover:text-white transition-all shadow-sm">
+                                        <ChevronRight size={20} />
+                                    </button>
                                 </div>
-                                <button className="p-3 rounded-none bg-gray-50 text-gray-400 hover:bg-lavrs-red hover:text-white transition-all shadow-sm">
-                                    <ChevronRight size={20} />
-                                </button>
                             </div>
                         </div>
                     );

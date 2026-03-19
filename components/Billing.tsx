@@ -33,10 +33,10 @@ const Billing: React.FC<BillingProps> = ({ applications, brands }) => {
     const hasBillingAccess = invoices.length > 0;
 
     return (
-        <div className="space-y-8 animate-fadeIn">
+        <div className="space-y-6 md:space-y-8 pt-4 md:pt-0 animate-fadeIn">
             <div>
-                <h1 className="text-4xl font-bold text-lavrs-dark mb-2">Fakturace</h1>
-                <p className="text-gray-500">Přehled plateb a daňových dokladů.</p>
+                <h1 className="text-2xl md:text-4xl font-bold text-lavrs-dark mb-1 md:mb-2">Fakturace</h1>
+                <p className="text-sm md:text-base text-gray-500">Přehled plateb a daňových dokladů.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
