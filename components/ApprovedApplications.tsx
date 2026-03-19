@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Instagram, Globe, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Instagram, Globe, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, ChevronDown, ChevronUp, Search, Heart } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory, MarketEvent } from '../types';
 
 interface ApprovedApplicationsProps {
