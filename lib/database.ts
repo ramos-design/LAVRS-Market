@@ -442,7 +442,6 @@ export const eventPlansDb = {
             equipment: planData.equipment,
             category_sizes: planData.categorySizes || {},
             extras: planData.extras,
-            layout_meta: planData.layoutMeta || {},
         });
         if (planError) throw planError;
 

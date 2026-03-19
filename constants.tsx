@@ -136,14 +136,7 @@ export const MOCK_EVENT_PLANS: { [key: string]: any } = {
       'TATTOO': ['1x Stůl', '2x Židle', 'Podložka'],
       'Reuse': ['1x Stůl', '2x Židle']
     },
-    categorySizes: {
-      'Secondhands': 'Spot M',
-      'České značky': 'Spot S',
-      'Designers': 'Spot M',
-      'Beauty ZONE': 'Spot S',
-      'TATTOO': 'Spot L',
-      'Reuse': 'Spot M'
-    },
+    categorySizes: {},
     extras: [
       { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
       { id: 'extra-table', label: 'Extra Stůl', price: '400 Kč' },

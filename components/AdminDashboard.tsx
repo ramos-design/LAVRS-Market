@@ -295,11 +295,13 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
                             ? 'bg-green-100 text-green-700'
                             : event.status === 'draft'
                               ? 'bg-gray-100 text-gray-500'
-                              : event.status === 'soldout'
+                              : event.status === 'closed'
                                 ? 'bg-red-100 text-red-700'
-                                : 'bg-amber-100 text-amber-700'
+                                : event.status === 'soldout'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-pink-100 text-pink-700'
                         }`}>
-                          {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : event.status === 'soldout' ? 'Vyprodáno' : 'Waitlist'}
+                          {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : event.status === 'closed' ? 'Zavřeno' : event.status === 'soldout' ? 'Vyprodáno' : 'Waitlist'}
                         </span>
                       </td>
                       <td className="px-8 py-6 text-right">

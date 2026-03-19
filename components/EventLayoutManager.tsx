@@ -20,7 +20,7 @@ interface EventLayoutManagerProps {
     applications: Application[];
     onUpdateApplication?: (updatedApp: Application) => void;
     initialPlan?: EventPlan;
-    onSavePlan: (plan: EventPlan) => void;
+    onSavePlan: (plan: EventPlan) => Promise<void> | void;
     categories: Category[];
 }
 
@@ -89,6 +89,47 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     const [isPainting, setIsPainting] = useState(false);
     const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
     const [draggingExhibitorId, setDraggingExhibitorId] = useState<string | null>(null);
+    const hasUserSetEndDate = useRef(false);
+    const lastSavedEndDate = useRef<string>('');
+
+    // Synchronize eventDetails with currentEvent when it changes
+    useEffect(() => {
+        if (currentEvent) {
+            console.log('=== SYNCING FROM DATABASE ===');
+            console.log('currentEvent.endDate from DB:', currentEvent.endDate);
+            console.log('currentEvent.endDate TYPE:', typeof currentEvent.endDate);
+            console.log('hasUserSetEndDate.current:', hasUserSetEndDate.current);
+            console.log('Full currentEvent:', JSON.stringify(currentEvent, null, 2));
+
+            setEventDetails(prev => {
+                console.log('Previous eventDetails.endDate:', prev.endDate);
+                console.log('lastSavedEndDate.current:', lastSavedEndDate.current);
+
+                // Priority order for endDate:
+                // 1. If DB has it, use it
+                // 2. If user just saved it (lastSavedEndDate), preserve it
+                // 3. If user is currently editing it (hasUserSetEndDate), preserve previous value
+                // 4. Otherwise empty
+                let finalEndDate = currentEvent.endDate || lastSavedEndDate.current || (hasUserSetEndDate.current ? prev.endDate : '');
+
+                // Normalize to proper date format for HTML input
+                finalEndDate = normalizeDateFormat(finalEndDate);
+                console.log('Final endDate being set (normalized):', finalEndDate);
+
+                return {
+                    title: currentEvent.title || '',
+                    date: currentEvent.date || '',
+                    endDate: finalEndDate,
+                    location: currentEvent.location || '',
+                    description: currentEvent.description || 'LAVRS market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
+                    image: currentEvent.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
+                    status: currentEvent.status === 'closed' ? 'waitlist' : (currentEvent.status || 'draft')
+                };
+            });
+            // Set eventDateType to 'multi' if either DB or local state has endDate
+            setEventDateType(prev => (currentEvent.endDate || hasUserSetEndDate.current) ? 'multi' : 'single');
+        }
+    }, [currentEvent]);
 
     useEffect(() => {
         setPlan(prev => ({
@@ -124,6 +165,34 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         S: { width: 1, height: 1 },
         M: { width: 2, height: 1 },
         L: { width: 2, height: 2 }
+    };
+
+    // Ensure date is always in YYYY-MM-DD format for HTML date input
+    const normalizeDateFormat = (dateStr: string | undefined): string => {
+        if (!dateStr) return '';
+        dateStr = dateStr.trim();
+        if (!dateStr) return '';
+
+        // If already in YYYY-MM-DD format, return as-is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            return dateStr;
+        }
+
+        // Try to parse various formats and convert to YYYY-MM-DD
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                console.error('Invalid date:', dateStr);
+                return '';
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            console.error('Error normalizing date:', dateStr, e);
+            return '';
+        }
     };
 
     const normalizedLayoutMeta = useMemo(() => ({
@@ -823,44 +892,57 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             return;
                         }
                         try {
-                            console.log('Saving event with:', {
-                                eventId,
-                                title: eventDetails.title,
-                                date: eventDetails.date,
-                                end_date: eventDetails.endDate || null,
-                                location: eventDetails.location,
-                            });
+                            console.log('=== SAVING EVENT ===');
+                            console.log('eventDetails.endDate VALUE:', eventDetails.endDate);
+                            console.log('eventDetails.endDate TYPE:', typeof eventDetails.endDate);
+                            console.log('eventDetails.endDate LENGTH:', eventDetails.endDate?.length);
+                            console.log('Full eventDetails:', JSON.stringify(eventDetails, null, 2));
 
-                            await updateEvent(eventId, {
+                            const savePayload = {
                                 title: eventDetails.title,
                                 date: eventDetails.date,
-                                end_date: eventDetails.endDate || null,
+                                end_date: eventDetails.endDate && eventDetails.endDate.trim() ? eventDetails.endDate : null,
                                 location: eventDetails.location,
                                 description: eventDetails.description,
                                 image: eventDetails.image,
                                 status: eventDetails.status as any
-                            });
+                            };
+
+                            console.log('Payload being sent to DB:', JSON.stringify(savePayload, null, 2));
+
+                            await updateEvent(eventId, savePayload);
 
                             console.log('Event updated successfully');
+                            console.log('Current eventDetails.endDate after save:', eventDetails.endDate);
 
-                            onSavePlan && onSavePlan({
-                                ...plan,
-                                layoutMeta: normalizedLayoutMeta,
-                                stands: plan.stands.map(s => ({
-                                    ...s,
-                                    widthCells: s.widthCells || 1,
-                                    heightCells: s.heightCells || 1,
-                                    rotation: s.rotation === 90 ? 90 : 0,
-                                    locked: !!s.locked
-                                }))
-                            });
+                            // Track what we just saved so we don't lose it
+                            lastSavedEndDate.current = eventDetails.endDate || '';
+                            console.log('lastSavedEndDate.current set to:', lastSavedEndDate.current);
+
+                            // Sync eventDateType immediately after save to prevent losing multi-day setting
+                            setEventDateType(eventDetails.endDate ? 'multi' : 'single');
+
+                            if (onSavePlan) {
+                                await onSavePlan({
+                                    ...plan,
+                                    layoutMeta: normalizedLayoutMeta,
+                                    stands: plan.stands.map(s => ({
+                                        ...s,
+                                        widthCells: s.widthCells || 1,
+                                        heightCells: s.heightCells || 1,
+                                        rotation: s.rotation === 90 ? 90 : 0,
+                                        locked: !!s.locked
+                                    }))
+                                });
+                            }
 
                             console.log('Plan saved successfully');
                             setIsSaved(true);
                             setTimeout(() => setIsSaved(false), 2000);
-                        } catch (error) {
+                        } catch (error: any) {
                             console.error('Error saving event:', error);
-                            alert('Chyba při ukládání: ' + (error instanceof Error ? error.message : 'Neznámá chyba'));
+                            const msg = error?.message || error?.details || (typeof error === 'string' ? error : JSON.stringify(error));
+                            alert('Chyba při ukládání: ' + msg);
                         }
                     }}
                     className={`${isSaved ? 'bg-green-600' : 'bg-lavrs-dark'} text-white px-8 py-4 font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg min-w-[160px] justify-center`}
@@ -1028,6 +1110,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                         <button
                                                             onClick={() => {
                                                                 setEventDateType('single');
+                                                                hasUserSetEndDate.current = false;
                                                                 setEventDetails(prev => ({ ...prev, endDate: '' }));
                                                             }}
                                                             className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest transition-all ${eventDateType === 'single' ? 'bg-lavrs-dark text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
@@ -1060,7 +1143,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                         </div>
                                                     </div>
 
-                                                    {eventDateType === 'multi' && (
+                                                    {(eventDateType === 'multi' || eventDetails.endDate) && (
                                                         <div className="space-y-2">
                                                             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block">Do dne</label>
                                                             <div className="relative">
@@ -1070,7 +1153,17 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                                     value={eventDetails.endDate || ''}
                                                                     onChange={(e) => {
                                                                         const value = e.target.value;
+                                                                        console.log('endDate input changed to:', value);
+                                                                        hasUserSetEndDate.current = true;
                                                                         setEventDetails(prev => ({ ...prev, endDate: value }));
+                                                                    }}
+                                                                    onBlur={(e) => {
+                                                                        // Ensure the value is in correct format when leaving the field
+                                                                        const value = e.target.value;
+                                                                        console.log('endDate input blur with value:', value);
+                                                                        if (value && value.trim()) {
+                                                                            setEventDetails(prev => ({ ...prev, endDate: value }));
+                                                                        }
                                                                     }}
                                                                     className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 focus:border-lavrs-red outline-none font-bold text-lavrs-dark transition-all text-sm"
                                                                 />
@@ -1795,7 +1888,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                     <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
                                         <th className="px-8 py-4">Vystavovatel</th>
                                         <th className="px-8 py-4">Kategorie</th>
-                                        <th className="px-8 py-4">Velikost spotu</th>
+                                        <th className="px-8 py-4">Informace o spotu</th>
                                         <th className="px-8 py-4">Stav Umístění</th>
                                         <th className="px-8 py-4 text-right">Akce</th>
                                     </tr>
@@ -1825,7 +1918,9 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                     </td>
                                                     <td className="px-8 py-6">
                                                         <div className="flex flex-col">
-                                                            <span className="font-black text-sm text-lavrs-dark">{app.zone}</span>
+                                                            <span className="font-black text-sm text-lavrs-dark">
+                                                                {plan.categorySizes?.[app.zoneCategory] || '—'}
+                                                            </span>
                                                             {stand && (
                                                                 <div className="flex items-center gap-1 mt-1">
                                                                     <span className="text-[9px] font-bold text-lavrs-red uppercase bg-lavrs-pink px-1">REAL: {stand.size}</span>

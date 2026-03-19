@@ -379,7 +379,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     </div>
                   </div>
 
-                  {event?.description && (
+                  {step === 1 && event?.description && (
                     <div className="mt-8 pt-6 border-t border-gray-100">
                       <p className="text-xs text-gray-400 font-medium italic leading-relaxed">{event.description}</p>
                     </div>

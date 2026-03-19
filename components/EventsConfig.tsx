@@ -1,16 +1,17 @@
 import React from 'react';
 import { Settings, Plus, Edit, Trash2, Calendar, MapPin, Users } from 'lucide-react';
-import { formatEventDate } from '../lib/mappers';
+import { formatEventDateRange } from '../lib/mappers';
 import { Application, MarketEvent } from '../types';
 
 interface EventsConfigProps {
     onManageEvent?: (eventId: string) => void;
+    onCreateEvent?: () => void;
     events: MarketEvent[];
     applications: Application[];
     onDeleteEvent?: (eventId: string) => Promise<void>;
 }
 
-const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, events, applications, onDeleteEvent }) => {
+const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, onCreateEvent, events, applications, onDeleteEvent }) => {
     const sortedEvents = React.useMemo(() => {
         const parsed = [...events];
         const parseDate = (dateStr: string) => {
@@ -73,7 +74,10 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, events, appl
                     <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-lavrs-dark">Správa Eventů</h2>
                     <p className="text-gray-500">Vytváření a editace eventů LAVRS market.</p>
                 </div>
-                <button className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all flex items-center gap-2 shadow-lg active:scale-95">
+                <button
+                    onClick={onCreateEvent}
+                    className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all flex items-center gap-2 shadow-lg active:scale-95"
+                >
                     <Plus size={20} /> Vytvořit nový event
                 </button>
             </header>
@@ -89,11 +93,13 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, events, appl
                                     ? 'bg-green-500 text-white'
                                     : event.status === 'draft'
                                         ? 'bg-gray-300 text-gray-700'
-                                        : event.status === 'soldout'
+                                        : event.status === 'closed'
                                             ? 'bg-red-600 text-white'
-                                            : 'bg-blue-500 text-white'
+                                            : event.status === 'soldout'
+                                                ? 'bg-red-600 text-white'
+                                                : 'bg-pink-500 text-white'
                                 }`}>
-                                {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : event.status === 'soldout' ? 'Vyprodáno' : 'Waitlist'}
+                                {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : event.status === 'closed' ? 'Zavřeno' : event.status === 'soldout' ? 'Vyprodáno' : 'Waitlist'}
                             </div>
                         </div>
 
@@ -103,7 +109,7 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, events, appl
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                         <Calendar size={14} className="text-lavrs-red" />
-                                        <span>{formatEventDate(event.date)}</span>
+                                        <span>{formatEventDateRange(event.date, event?.endDate)}</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                         <MapPin size={14} className="text-lavrs-red" />

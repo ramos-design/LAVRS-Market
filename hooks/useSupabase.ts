@@ -116,8 +116,9 @@ export function useEvents() {
         ...query,
         events: query.data,
         createEvent: async (event: Omit<DbEvent, 'created_at'>) => {
-            await eventsDb.create(event);
-            query.refetch();
+            const created = await eventsDb.create(event);
+            await query.refetch();
+            return created;
         },
         updateEvent: async (id: string, updates: Partial<DbEvent>) => {
             await eventsDb.update(id, updates);

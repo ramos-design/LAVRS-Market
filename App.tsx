@@ -88,7 +88,7 @@ const App: React.FC = () => {
 
 
   // ─── Supabase data hooks ──────────────────────────────────
-  const { events: dbEvents, loading: eventsLoading, deleteEvent } = useEvents();
+  const { events: dbEvents, loading: eventsLoading, deleteEvent, createEvent } = useEvents();
   const {
     applications: dbApplications, loading: appsLoading,
     createApplication, updateStatus: updateAppStatus, deleteApplication,
@@ -434,6 +434,20 @@ const App: React.FC = () => {
               applications={applications}
               onDeleteEvent={deleteEvent}
               onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
+              onCreateEvent={async () => {
+                const newEvent = await createEvent({
+                  id: crypto.randomUUID(),
+                  title: 'Nový event',
+                  date: new Date().toISOString().slice(0, 10),
+                  location: '',
+                  status: 'draft',
+                  image: null,
+                  description: null,
+                  capacity: null,
+                });
+                setSelectedEventId(newEvent.id);
+                setCurrentScreen('EVENT_PLAN');
+              }}
             />
           )}
 

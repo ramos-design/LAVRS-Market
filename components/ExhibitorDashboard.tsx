@@ -238,9 +238,9 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                   <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   <div
                     className="absolute top-4 right-4 px-3 py-1 rounded-none text-[10px] font-black uppercase tracking-widest shadow-lg text-white"
-                    style={{ backgroundColor: event.status === 'open' ? '#22C55E' : event.status === 'soldout' ? '#DC2626' : '#3B82F6' }}
+                    style={{ backgroundColor: event.status === 'open' ? '#22C55E' : event.status === 'closed' ? '#DC2626' : event.status === 'soldout' ? '#DC2626' : '#EC4899' }}
                   >
-                    {event.status === 'open' ? 'Přihlašování otevřeno' : event.status === 'soldout' ? 'Vyprodáno' : 'WAITLIST'}
+                    {event.status === 'open' ? 'Otevřeno' : event.status === 'closed' ? 'Zavřeno' : event.status === 'soldout' ? 'Vyprodáno' : 'WAITLIST'}
                   </div>
                 </div>
                 <div className="pt-8 pb-10 px-8">
