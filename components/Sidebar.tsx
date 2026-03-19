@@ -20,7 +20,8 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignO
     { id: 'PROFILE', label: 'Můj profil', icon: User },
   ] : [
     { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
-    { id: 'CURATOR', label: 'Aktivní přihlášky', icon: Layers },
+    { id: 'CURATOR', label: 'Výběr přihlášek', icon: Layers },
+    { id: 'APPROVED_APPS', label: 'Schválené přihlášky', icon: FileText },
     { id: 'EVENTS_CONFIG', label: 'Správa Eventů', icon: Settings },
     { id: 'BRANDS', label: 'Seznam značek', icon: Users },
     { id: 'CATEGORIES', label: 'Kategorie značek', icon: Tags },

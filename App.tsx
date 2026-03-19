@@ -20,6 +20,7 @@ const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const ApplicationWizard = React.lazy(() => import('./components/ApplicationWizard'));
 const PaymentPage = React.lazy(() => import('./components/PaymentPage'));
 const CuratorModule = React.lazy(() => import('./components/CuratorModule'));
+const ApprovedApplications = React.lazy(() => import('./components/ApprovedApplications'));
 const MyApplications = React.lazy(() => import('./components/MyApplications'));
 const Billing = React.lazy(() => import('./components/Billing'));
 const Profile = React.lazy(() => import('./components/Profile'));
@@ -412,6 +413,14 @@ const App: React.FC = () => {
               onUpdateStatus={handleUpdateApplicationStatus}
               onDeleteApplication={handleDeleteApplication}
               onRestoreApplication={handleRestoreApplication}
+            />
+          )}
+
+          {currentScreen === 'APPROVED_APPS' && userRole === 'ADMIN' && (
+            <ApprovedApplications
+              onBack={() => setCurrentScreen('DASHBOARD')}
+              events={events}
+              applications={applications}
             />
           )}
 
