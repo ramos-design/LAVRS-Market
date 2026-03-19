@@ -46,9 +46,12 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
                     <User size={24} />
                 </button>
 
-                <div className="flex items-center justify-center">
+                <button
+                    onClick={() => handleNavigate('DASHBOARD')}
+                    className="flex items-center justify-center"
+                >
                     <img src={logo} alt="LAVRS market" className="h-8 w-auto object-contain" />
-                </div>
+                </button>
 
                 <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}

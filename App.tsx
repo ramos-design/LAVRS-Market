@@ -342,6 +342,9 @@ const App: React.FC = () => {
 
       <MobileHeader
         role={userRole as ViewMode}
+        activeItem={currentScreen}
+        onNavigate={(screen) => setCurrentScreen(screen)}
+        onSignOut={signOut}
       />
       
       <Sidebar

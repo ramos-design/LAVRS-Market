@@ -304,12 +304,14 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   return (
     <div className="bg-white rounded-none flex flex-col md:flex-row overflow-hidden shadow-sm border border-gray-100 min-h-[85vh]">
       {/* Left Panel - Progress & Info */}
-      <div className="w-full md:w-1/3 bg-lavrs-beige p-8 md:p-16 flex flex-col justify-between shrink-0">
+      <div className="w-full md:w-1/3 bg-lavrs-beige p-5 md:p-16 flex flex-col justify-between shrink-0">
         <div>
-          <button onClick={onCancel} className="mb-12 flex items-center gap-2 text-gray-400 hover:text-lavrs-dark transition-colors">
+          <button onClick={onCancel} className="mb-4 md:mb-12 flex items-center gap-2 text-gray-400 hover:text-lavrs-dark transition-colors">
             <ChevronLeft size={20} /> Zpět na dashboard
           </button>
 
+          <div className={!isWaitlist ? 'flex items-start gap-4 md:block' : ''}>
+          <div className={!isWaitlist ? 'w-[40%] shrink-0 md:w-full' : ''}>
           <div className="mb-2 flex gap-2">
             <span className="text-white bg-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
               {event?.id.includes('mini') ? 'Event' : 'Velký market'}
@@ -321,17 +323,17 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
             )}
           </div>
 
-          <p className="text-lavrs-red font-bold uppercase tracking-widest text-[10px] mb-4">Krok {step} z {totalSteps}</p>
-          <h2 className="text-4xl font-bold leading-tight text-lavrs-dark mb-8">
+          <p className="text-lavrs-red font-bold uppercase tracking-widest text-[10px] mb-2 md:mb-4">Krok {step} z {totalSteps}</p>
+          <h2 className="text-2xl md:text-4xl font-bold leading-tight text-lavrs-dark mb-4 md:mb-8">
             {isWaitlist ? "Chci na Waitlist" : (step === 1 ? "O akci" : "")}
             {!isWaitlist && step === 2 && "Kategorie zóny"}
             {!isWaitlist && step === 3 && "Cena a vybavení"}
             {!isWaitlist && step === 4 && "Informace o značce"}
             {!isWaitlist && step === 5 && "Vizuály a souhlasy"}
           </h2>
+          </div>
 
-
-          <div className="space-y-6">
+          <div className={`${!isWaitlist ? 'flex-1 min-w-0 ' : ''}space-y-6`}>
             {isWaitlist ? (
               <div className="space-y-5 animate-fadeIn">
                 <div className="space-y-2">
@@ -370,17 +372,17 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
               </div>
             ) : (
               <>
-                <div className="p-8 bg-white rounded-none border-2 border-lavrs-pink/20 shadow-md">
-                  <p className="text-[11px] text-lavrs-red font-black uppercase tracking-[0.3em] mb-4">VYBRANÁ AKCE</p>
-                  <h3 className="text-3xl font-black text-lavrs-dark leading-tight mb-6">{event?.title}</h3>
-                  
-                  <div className="space-y-4">
+                <div className="p-5 md:p-8 bg-white rounded-none border-2 border-lavrs-pink/20 shadow-md">
+                  <p className="text-[10px] md:text-[11px] text-lavrs-red font-black uppercase tracking-[0.3em] mb-2 md:mb-4">VYBRANÁ AKCE</p>
+                  <h3 className="text-xl md:text-3xl font-black text-lavrs-dark leading-tight mb-3 md:mb-6">{event?.title}</h3>
+
+                  <div className="space-y-2 md:space-y-4">
                     <div className="flex items-center gap-3">
-                      <span className="bg-lavrs-red text-white px-3 py-1 text-[11px] font-black uppercase tracking-widest leading-none">
+                      <span className="bg-lavrs-red text-white px-3 py-1 text-[10px] md:text-[11px] font-black uppercase tracking-widest leading-none">
                         {event ? formatEventDateRange(event.date, event?.endDate) : ''}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-lavrs-dark font-black uppercase tracking-widest text-xs">
+                    <div className="flex items-center gap-2 text-lavrs-dark font-black uppercase tracking-widest text-[10px] md:text-xs">
                       <MapPin size={14} className="text-lavrs-dark" />
                       {event?.location}
                     </div>
@@ -389,6 +391,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                 </div>
               </>
             )}
+          </div>
           </div>
         </div>
 
@@ -437,23 +440,23 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
               {/* Step 1: O akci (Normal) */}
               {step === 1 && event && (
                 <div className="animate-fadeIn">
-                  <div className="relative h-[400px] w-full overflow-hidden">
+                  <div className="relative h-[250px] md:h-[400px] w-full overflow-hidden">
                     <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-lavrs-dark/80 via-transparent to-transparent flex items-end">
-                      <div className="p-12 text-white">
-                        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] mb-4 text-lavrs-pink">
+                      <div className="p-6 md:p-12 text-white">
+                        <span className="flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mb-2 md:mb-4 text-lavrs-pink">
                           <Sparkles size={14} /> Připravujeme pro vás
                         </span>
-                        <h1 className="text-5xl font-bold mb-2">{event.title}</h1>
-                        <p className="text-lg opacity-90 italic">Unikátní setkání lokálních tvůrců a milovníků cirkulární módy.</p>
+                        <h1 className="text-2xl md:text-5xl font-bold mb-1 md:mb-2">{event.title}</h1>
+                        <p className="text-sm md:text-lg opacity-90 italic">Unikátní setkání lokálních tvůrců a milovníků cirkulární módy.</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="max-w-2xl mx-auto py-16 px-8">
-                    <section className="space-y-6 mb-16">
+                  <div className="max-w-2xl mx-auto py-8 md:py-16 px-5 md:px-8">
+                    <section className="space-y-4 md:space-y-6 mb-8 md:mb-16">
                       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">O tomto eventu</h3>
-                      <div className="prose prose-sm text-gray-600 leading-relaxed text-lg italic">
+                      <div className="prose prose-sm text-gray-600 leading-relaxed text-base md:text-lg italic">
                         <p>LAVRS market není jen prodejní akce. Je to komunita. Pro nadcházející edici v prostorách Vnitroblocku jsme připravili kurátorovaný výběr těch nejlepších lokálních značek, které kladou důraz na udržitelnost a kvalitu zpracování.</p>
                         <p className="mt-4">Čeká vás doprovodný program, workshopy zaměřené na upcyklaci a samozřejmě ta nejlepší atmosféra, kterou jinde nezažijete. Buďte součástí změny, kterou chcete vidět v módním průmyslu.</p>
                       </div>
@@ -466,13 +469,13 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
           {/* Step 2: Kategorie zóny */}
           {!isWaitlist && step === 2 && (
-            <div className="max-w-2xl mx-auto py-20 px-8">
-              <div className="space-y-12 animate-fadeIn">
+            <div className="max-w-2xl mx-auto py-8 md:py-20 px-5 md:px-8">
+              <div className="space-y-6 md:space-y-12 animate-fadeIn">
                 <header className="text-center">
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">KATEGORIE ZÓNY *</h3>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-3 md:gap-6">
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
@@ -480,20 +483,20 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                       onClick={() => {
                         setSelectedZoneCategory(cat.id);
                       }}
-                      className={`p-10 rounded-none border-2 text-left transition-all ${selectedZoneCategory === cat.id
+                      className={`p-4 md:p-10 rounded-none border-2 text-left transition-all ${selectedZoneCategory === cat.id
                         ? 'border-lavrs-red bg-white shadow-xl scale-[1.02]'
                         : 'border-white bg-white/60 hover:border-lavrs-pink'
                         }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-2xl font-black text-lavrs-dark leading-tight">{cat.name}</p>
+                      <div className="flex items-center justify-between mb-1 md:mb-2">
+                        <p className="text-base md:text-2xl font-black text-lavrs-dark leading-tight">{cat.name}</p>
                         {selectedZoneCategory === cat.id && (
                           <div className="w-6 h-6 bg-lavrs-red text-white flex items-center justify-center">
                             <Check size={16} strokeWidth={4} />
                           </div>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500 font-medium">{cat.description}</p>
+                      <p className="text-xs md:text-sm text-gray-500 font-medium">{cat.description}</p>
                     </button>
                   ))}
                 </div>
@@ -523,24 +526,24 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
           {/* Step 3: Cena a informace */}
           {!isWaitlist && step === 3 && (
-            <div className="max-w-xl mx-auto py-20 px-8">
-              <div className="space-y-12 animate-fadeIn">
-                <section className="space-y-6">
+            <div className="max-w-xl mx-auto py-8 md:py-20 px-5 md:px-8">
+              <div className="space-y-6 md:space-y-12 animate-fadeIn">
+                <section className="space-y-4 md:space-y-6">
                   <header>
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Cena a podmínky</h3>
-                    <p className="text-sm text-gray-500">Základní cena vaší účasti v kategorii <span className="text-lavrs-dark font-bold">{selectedZoneCategory}</span>.</p>
+                    <p className="text-xs md:text-sm text-gray-500">Základní cena vaší účasti v kategorii <span className="text-lavrs-dark font-bold">{selectedZoneCategory}</span>.</p>
                   </header>
 
-                  <div className="p-10 bg-white border-2 border-lavrs-red/10 rounded-none shadow-sm text-center">
+                  <div className="p-6 md:p-10 bg-white border-2 border-lavrs-red/10 rounded-none shadow-sm text-center">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Předpokládaná cena</p>
-                    <p className="text-5xl font-black text-lavrs-dark mb-2">
+                    <p className="text-3xl md:text-5xl font-black text-lavrs-dark mb-2">
                       {getCategoryPrice(selectedZoneCategory).toLocaleString('cs-CZ')} Kč
                     </p>
                     <p className="text-xs text-gray-500 font-medium italic">Včetně základního vybavení dle kategorie</p>
                   </div>
                 </section>
 
-                <div className="bg-lavrs-beige/50 p-8 rounded-none border border-lavrs-pink/20 space-y-4">
+                <div className="bg-lavrs-beige/50 p-5 md:p-8 rounded-none border border-lavrs-pink/20 space-y-4">
                   <div className="flex gap-4">
                     <Info size={24} className="text-lavrs-red shrink-0" />
                     <div>
@@ -572,8 +575,8 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
           {/* Step 4: Informace o značce */}
           {step === 4 && (
-            <div className="max-w-xl mx-auto py-20 px-8">
-              <div className="space-y-10 animate-fadeIn">
+            <div className="max-w-xl mx-auto py-8 md:py-20 px-5 md:px-8">
+              <div className="space-y-6 md:space-y-10 animate-fadeIn">
                 {/* Brand Selection from History */}
                 {savedBrands.length > 0 && (
                   <section className="space-y-4">
@@ -619,10 +622,10 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   </section>
                 )}
 
-                <div className="space-y-6 pt-6 border-t border-gray-100">
+                <div className="space-y-4 md:space-y-6 pt-4 md:pt-6 border-t border-gray-100">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Název Značky <span className="text-lavrs-red">*</span></label>
-                    <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" placeholder="Vaše značka" className="w-full bg-white p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-bold text-xl transition-all" />
+                    <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" placeholder="Vaše značka" className="w-full bg-white p-4 md:p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-bold text-base md:text-xl transition-all" />
                   </div>
 
 
@@ -634,14 +637,14 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                       <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Kontaktní osoba <span className="text-lavrs-red">*</span></label>
                       <div className="relative">
                         <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} type="text" placeholder="Jméno a příjmení" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
+                        <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} type="text" placeholder="Jméno a příjmení" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Telefon</label>
                       <div className="relative">
                         <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input value={phone} onChange={(e) => setPhone(e.target.value)} type="text" placeholder="+420 000 000 000" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
+                        <input value={phone} onChange={(e) => setPhone(e.target.value)} type="text" placeholder="+420 000 000 000" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
                       </div>
                     </div>
                   </div>
@@ -650,7 +653,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">E-mail <span className="text-lavrs-red">*</span></label>
                     <div className="relative">
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="prijmeni@email.cz" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
+                      <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="prijmeni@email.cz" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
                     </div>
                   </div>
 
@@ -659,14 +662,14 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                       <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Instagram</label>
                       <div className="relative">
                         <Instagram className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input value={instagram} onChange={(e) => setInstagram(e.target.value)} type="text" placeholder="@vas_brand" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
+                        <input value={instagram} onChange={(e) => setInstagram(e.target.value)} type="text" placeholder="@vas_brand" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Web (volitelné)</label>
                       <div className="relative">
                         <Globe className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input value={website} onChange={(e) => setWebsite(e.target.value)} type="text" placeholder="www.vas-brand.cz" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
+                        <input value={website} onChange={(e) => setWebsite(e.target.value)} type="text" placeholder="www.vas-brand.cz" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
                       </div>
                     </div>
                   </div>
@@ -697,16 +700,16 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
           {/* Step 5: Souhlasy & Vizuály */}
           {step === 5 && (
-            <div className="max-w-xl mx-auto py-20 px-8">
-              <div className="space-y-10 animate-fadeIn">
+            <div className="max-w-xl mx-auto py-8 md:py-20 px-5 md:px-8">
+              <div className="space-y-6 md:space-y-10 animate-fadeIn">
                 {/* Price Confirmation Note */}
-                <div className="p-10 bg-lavrs-dark text-white rounded-none border-l-8 border-lavrs-red shadow-2xl relative overflow-hidden animate-fadeIn">
-                  <h4 className="text-[11px] font-black text-lavrs-pink uppercase tracking-[0.3em] mb-6">REKAPITULACE PLATBY</h4>
-                  <div className="space-y-4">
-                    <p className="text-sm opacity-80 leading-relaxed max-w-sm">
+                <div className="p-6 md:p-10 bg-lavrs-dark text-white rounded-none border-l-8 border-lavrs-red shadow-2xl relative overflow-hidden animate-fadeIn">
+                  <h4 className="text-[10px] md:text-[11px] font-black text-lavrs-pink uppercase tracking-[0.3em] mb-4 md:mb-6">REKAPITULACE PLATBY</h4>
+                  <div className="space-y-3 md:space-y-4">
+                    <p className="text-xs md:text-sm opacity-80 leading-relaxed max-w-sm">
                       Pokud bude vaše přihláška schválena kurátorským týmem, vystavíme vám výzvu k platbě ve výši:
                     </p>
-                    <p className="text-5xl font-black text-white tracking-tighter">
+                    <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">
                       {calculateTotal().toLocaleString('cs-CZ')} Kč
                     </p>
                     <div className="pt-4 flex items-center gap-2 border-t border-white/10">
@@ -718,7 +721,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   </div>
                 </div>
 
-                <section className="space-y-4 border-t border-gray-100 pt-10">
+                <section className="space-y-4 border-t border-gray-100 pt-6 md:pt-10">
                   <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Závěrečné souhlasy</h4>
 
                   <div className="space-y-4">
@@ -795,9 +798,9 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
           )}
 
           {!isWaitlist && (
-            <div className="pb-12 px-8 flex justify-between items-center max-w-2xl mx-auto w-full mt-auto">
+            <div className="pb-6 md:pb-12 px-5 md:px-8 flex justify-between items-center max-w-2xl mx-auto w-full mt-auto">
               {step > 1 ? (
-                <button onClick={prevStep} className="px-8 py-4 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-colors">
+                <button onClick={prevStep} className="px-4 md:px-8 py-3 md:py-4 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-colors">
                   Zpět
                 </button>
               ) : <div />}
@@ -807,7 +810,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                 disabled={
                   isSubmitting || (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno))
                 }
-                className={`px-12 py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl ${(isSubmitting || (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno)))
+                className={`px-8 md:px-12 py-4 md:py-5 rounded-none font-bold transition-all flex items-center gap-2 shadow-xl text-sm md:text-base ${(isSubmitting || (step === totalSteps && (!consentGDPR || !consentOrg || !consentStorno)))
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-lavrs-dark text-white hover:bg-lavrs-red hover:translate-y-[-2px] active:translate-y-[0px]'
                   }`}
