@@ -822,28 +822,46 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             alert('Nelze uložit: plánek obsahuje kolize stánků.');
                             return;
                         }
-                        await updateEvent(eventId, {
-                            title: eventDetails.title,
-                            date: eventDetails.date,
-                            end_date: eventDetails.endDate || null,
-                            location: eventDetails.location,
-                            description: eventDetails.description,
-                            image: eventDetails.image,
-                            status: eventDetails.status as any
-                        });
-                        onSavePlan && onSavePlan({
-                            ...plan,
-                            layoutMeta: normalizedLayoutMeta,
-                            stands: plan.stands.map(s => ({
-                                ...s,
-                                widthCells: s.widthCells || 1,
-                                heightCells: s.heightCells || 1,
-                                rotation: s.rotation === 90 ? 90 : 0,
-                                locked: !!s.locked
-                            }))
-                        });
-                        setIsSaved(true);
-                        setTimeout(() => setIsSaved(false), 2000);
+                        try {
+                            console.log('Saving event with:', {
+                                eventId,
+                                title: eventDetails.title,
+                                date: eventDetails.date,
+                                end_date: eventDetails.endDate || null,
+                                location: eventDetails.location,
+                            });
+
+                            await updateEvent(eventId, {
+                                title: eventDetails.title,
+                                date: eventDetails.date,
+                                end_date: eventDetails.endDate || null,
+                                location: eventDetails.location,
+                                description: eventDetails.description,
+                                image: eventDetails.image,
+                                status: eventDetails.status as any
+                            });
+
+                            console.log('Event updated successfully');
+
+                            onSavePlan && onSavePlan({
+                                ...plan,
+                                layoutMeta: normalizedLayoutMeta,
+                                stands: plan.stands.map(s => ({
+                                    ...s,
+                                    widthCells: s.widthCells || 1,
+                                    heightCells: s.heightCells || 1,
+                                    rotation: s.rotation === 90 ? 90 : 0,
+                                    locked: !!s.locked
+                                }))
+                            });
+
+                            console.log('Plan saved successfully');
+                            setIsSaved(true);
+                            setTimeout(() => setIsSaved(false), 2000);
+                        } catch (error) {
+                            console.error('Error saving event:', error);
+                            alert('Chyba při ukládání: ' + (error instanceof Error ? error.message : 'Neznámá chyba'));
+                        }
                     }}
                     className={`${isSaved ? 'bg-green-600' : 'bg-lavrs-dark'} text-white px-8 py-4 font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg min-w-[160px] justify-center`}
                 >
