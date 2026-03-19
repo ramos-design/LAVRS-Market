@@ -33,27 +33,47 @@ const EventLayoutManager = React.lazy(() => import('./components/EventLayoutMana
 const BannerManager = React.lazy(() => import('./components/BannerManager'));
 const CategoryManager = React.lazy(() => import('./components/CategoryManager'));
 
-class EventPlanErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; message: string }> {
-  constructor(props: { children: React.ReactNode }) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  onReset?: () => void;
+  label?: string;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  message: string;
+}
+
+class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, message: '' };
   }
 
-  static getDerivedStateFromError(error: unknown) {
+  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
     return { hasError: true, message: error instanceof Error ? error.message : 'Unknown error' };
   }
 
   componentDidCatch(error: unknown, info: unknown) {
-    console.error('Event plan crashed', error, info);
+    console.error('App section crashed', error, info);
   }
 
   render() {
     if (this.state.hasError) {
       return (
         <div className="bg-white border border-red-200 p-8 shadow-sm">
-          <h3 className="text-xl font-bold text-red-700 mb-2">Editor eventu spadl</h3>
-          <p className="text-sm text-gray-600">Detail se nepodařilo vykreslit. Vrať se zpět a otevři event znovu.</p>
-          <p className="text-xs text-gray-400 mt-3">Chyba: {this.state.message}</p>
+          <h3 className="text-xl font-bold text-red-700 mb-2">Něco se pokazilo</h3>
+          <p className="text-sm text-gray-600">Nepodařilo se načíst obsah. Zkuste to znovu.</p>
+          <p className="text-xs text-gray-400 mt-3 mb-4">Chyba: {this.state.message}</p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, message: '' });
+              this.props.onReset?.();
+            }}
+            className="bg-lavrs-red text-white px-6 py-3 text-xs font-black uppercase tracking-widest hover:bg-lavrs-dark transition-all"
+          >
+            Zkusit znovu
+          </button>
         </div>
       );
     }
@@ -77,6 +97,7 @@ const App: React.FC = () => {
 
   // Derived role from user
   const userRole = user?.role;
+  const canFetchUserData = !authLoading && !!user;
   const needsCategories =
     currentScreen === 'PAYMENT' ||
     currentScreen === 'APPLY' ||
@@ -88,18 +109,27 @@ const App: React.FC = () => {
 
 
   // ─── Supabase data hooks ──────────────────────────────────
-  const { events: dbEvents, loading: eventsLoading, deleteEvent, createEvent } = useEvents();
+  const { events: dbEvents, loading: eventsLoading, deleteEvent, createEvent } = useEvents(canFetchUserData);
   const {
     applications: dbApplications, loading: appsLoading,
     createApplication, updateStatus: updateAppStatus, deleteApplication,
-  } = useApplications();
+  } = useApplications({
+    enabled: canFetchUserData,
+    userId: user?.id,
+    role: userRole,
+  });
   const {
     profiles: dbProfiles, loading: profilesLoading,
     createProfile, updateProfile, deleteProfile,
-  } = useBrandProfiles();
+  } = useBrandProfiles({
+    enabled: canFetchUserData,
+    userId: user?.id,
+    role: userRole,
+  });
 
   // DOČASNÝ ÚKLID DUPLICIT: Pokud najdeme více značek se stejným jménem, necháme jen tu první.
   useEffect(() => {
+    if (userRole !== 'ADMIN') return;
     if (!profilesLoading && dbProfiles.length > 0) {
       const seen = new Set<string>();
       const toDelete: string[] = [];
@@ -119,16 +149,16 @@ const App: React.FC = () => {
         toDelete.forEach(id => deleteProfile(id));
       }
     }
-  }, [dbProfiles, profilesLoading]);
+  }, [dbProfiles, profilesLoading, deleteProfile, userRole]);
 
   const {
     banners: dbBanners, loading: bannersLoading,
     replaceAllBanners,
-  } = useBanners(needsBanners);
+  } = useBanners(canFetchUserData && needsBanners);
   const {
     categories: dbCategories, loading: categoriesLoading,
     // category mutations are handled inside CategoryManager
-  } = useCategories(needsCategories);
+  } = useCategories(canFetchUserData && needsCategories);
   const {
     plan: dbPlan, zones: dbZones, stands: dbStands,
     savePlan: saveEventPlan, loading: planLoading,
@@ -347,6 +377,7 @@ const App: React.FC = () => {
             </div>
           )}
 
+          <AppErrorBoundary onReset={() => setCurrentScreen('DASHBOARD')}>
           <React.Suspense fallback={
             <div className="py-16 text-center text-gray-500 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2">
               <HeartLoader size={16} className="text-lavrs-red" />
@@ -497,7 +528,7 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'EVENT_PLAN' && selectedEventId && userRole === 'ADMIN' && (
-            <EventPlanErrorBoundary>
+            <AppErrorBoundary>
               <EventLayoutManager
                 key={selectedEventId}
                 eventId={selectedEventId}
@@ -507,9 +538,10 @@ const App: React.FC = () => {
                 onSavePlan={(newPlan) => handleUpdateEventPlan(selectedEventId, newPlan)}
                 categories={categories}
               />
-            </EventPlanErrorBoundary>
+            </AppErrorBoundary>
           )}
           </React.Suspense>
+          </AppErrorBoundary>
         </div>
       </main>
 
@@ -528,5 +560,3 @@ const App: React.FC = () => {
 
 
 export default App;
-
-

@@ -892,6 +892,10 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             return;
                         }
                         try {
+                            if (typeof eventDetails.image === 'string' && /^data:/i.test(eventDetails.image.trim())) {
+                                alert('Náhledový obrázek eventu je ve formátu data URL. Nahrajte ho prosím přes tlačítko "Změnit", aby se uložil do Supabase Storage jako URL.');
+                                return;
+                            }
                             console.log('=== SAVING EVENT ===');
                             console.log('eventDetails.endDate VALUE:', eventDetails.endDate);
                             console.log('eventDetails.endDate TYPE:', typeof eventDetails.endDate);
@@ -904,7 +908,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                 end_date: eventDetails.endDate && eventDetails.endDate.trim() ? eventDetails.endDate : null,
                                 location: eventDetails.location,
                                 description: eventDetails.description,
-                                image: eventDetails.image,
+                                image: eventDetails.image && eventDetails.image.trim() ? eventDetails.image : null,
                                 status: eventDetails.status as any
                             };
 
@@ -1069,7 +1073,6 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                         try {
                                                             const { url } = await uploadEventImage(file, eventId);
                                                             setEventDetails(prev => ({ ...prev, image: url }));
-                                                            await updateEvent(eventId, { image: url });
                                                         } catch (err) {
                                                             console.error('Image upload failed', err);
                                                             const msg = err instanceof Error ? err.message : 'Nahrání obrázku se nezdařilo.';

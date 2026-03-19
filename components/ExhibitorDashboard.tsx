@@ -66,14 +66,16 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
   );
   const [currentSlide, setCurrentSlide] = React.useState(0);
   const [now, setNow] = React.useState(Date.now());
-  const activeApps = applications.filter(app => 
-    [AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(app.status)
-  );
-  const reviewApps = applications.filter(app => app.status === AppStatus.PAYMENT_UNDER_REVIEW);
-  
+
   // Combine all payment-relevant apps for unified logic
-  const paymentRequestedApps = applications.filter(app => 
+  const paymentRequestedApps = React.useMemo(() => applications.filter(app =>
     [AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(app.status)
+  ), [applications]);
+
+  // Only apps that actually need a countdown (have a deadline and are not under review)
+  const hasActiveCountdown = React.useMemo(() =>
+    paymentRequestedApps.some(app => app.status !== AppStatus.PAYMENT_UNDER_REVIEW && app.paymentDeadline),
+    [paymentRequestedApps]
   );
 
   const displayApp = paymentRequestedApps[0];
@@ -91,9 +93,10 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
   }, [slides]); // Changed from [slides.length] to [slides] for proper dependency tracking
 
   React.useEffect(() => {
+    if (!hasActiveCountdown) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []); // Intentionally empty - timer runs continuously and is cleaned up on unmount
+  }, [hasActiveCountdown]);
 
   const getRemaining = (deadlineIso?: string) => {
     if (!deadlineIso) return null;
@@ -126,7 +129,13 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
               className={`absolute inset-0 transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
                 }`}
             >
-              <img src={slide.image} className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]" alt="" />
+              <img
+                src={slide.image}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]"
+                alt=""
+              />
               <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/40 to-transparent flex items-center p-12">
                 <div className="max-w-md space-y-4">
                   <span className="px-3 py-1 bg-lavrs-red text-white text-[10px] font-black tracking-widest uppercase">
@@ -235,7 +244,13 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
             {visibleEvents.map(event => (
               <div key={event.id} className="group glass-card overflow-hidden">
                 <div className="relative h-64 overflow-hidden">
-                  <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <img
+                    src={event.image}
+                    loading="lazy"
+                    decoding="async"
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
                   <div
                     className="absolute top-4 right-4 px-3 py-1 rounded-none text-[10px] font-black uppercase tracking-widest shadow-lg text-white"
                     style={{ backgroundColor: event.status === 'open' ? '#22C55E' : event.status === 'closed' ? '#DC2626' : event.status === 'soldout' ? '#DC2626' : '#EC4899' }}
@@ -248,12 +263,12 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                     <span className="bg-lavrs-red text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest leading-none">
                       {formatEventDateRange(event.date, event?.endDate)}
                     </span>
-                    <span className="flex items-center gap-1.5 text-lavrs-dark text-[10px] font-bold uppercase tracking-widest">
-                      <MapPin size={12} className="text-lavrs-dark" />
-                      {event.location}
-                    </span>
                   </div>
-                  <h4 className="text-xl font-bold mb-6 text-lavrs-dark">{event.title}</h4>
+                  <h4 className="text-xl font-bold mb-2 text-lavrs-dark">{event.title}</h4>
+                  <span className="flex items-center gap-1.5 text-lavrs-dark text-[10px] font-bold uppercase tracking-widest mb-6">
+                    <MapPin size={12} className="text-lavrs-dark" />
+                    {event.location}
+                  </span>
                   <button
                     onClick={() => onApply(event.id)}
                     disabled={event.status === 'soldout'}

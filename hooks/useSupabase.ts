@@ -25,6 +25,12 @@ interface QueryOptions {
     enabled?: boolean;
 }
 
+interface UserScopedQueryOptions {
+    enabled?: boolean;
+    userId?: string | null;
+    role?: string | null;
+}
+
 const DEFAULT_STALE_MS = 60_000;
 const queryCache = new Map<string, { data: unknown; ts: number }>();
 const inflightQueries = new Map<string, Promise<unknown>>();
@@ -110,8 +116,8 @@ function useQuery<T>(
 /* ═══════════════════════════════════════════════════════════
    EVENTS
 ═══════════════════════════════════════════════════════════ */
-export function useEvents() {
-    const query = useQuery('events', () => eventsDb.getAll(), []);
+export function useEvents(enabled = true) {
+    const query = useQuery('events', () => eventsDb.getAll(), [], [], { enabled });
     return {
         ...query,
         events: query.data,
@@ -162,8 +168,17 @@ export function useCategories(enabled = true) {
 /* ═══════════════════════════════════════════════════════════
    BRAND PROFILES
 ═══════════════════════════════════════════════════════════ */
-export function useBrandProfiles() {
-    const query = useQuery('brand_profiles', () => brandProfilesDb.getAll(), []);
+export function useBrandProfiles(options: UserScopedQueryOptions = {}) {
+    const enabled = options.enabled ?? true;
+    const userKey = options.userId ?? 'anon';
+    const roleKey = options.role ? options.role.toUpperCase() : 'UNKNOWN';
+    const query = useQuery(
+        `brand_profiles:${userKey}:${roleKey}`,
+        () => brandProfilesDb.getAll({ userId: options.userId, role: options.role }),
+        [],
+        [options.userId, options.role],
+        { enabled }
+    );
     return {
         ...query,
         profiles: query.data,
@@ -185,8 +200,17 @@ export function useBrandProfiles() {
 /* ═══════════════════════════════════════════════════════════
    APPLICATIONS
 ═══════════════════════════════════════════════════════════ */
-export function useApplications() {
-    const query = useQuery('applications', () => applicationsDb.getAll(), []);
+export function useApplications(options: UserScopedQueryOptions = {}) {
+    const enabled = options.enabled ?? true;
+    const userKey = options.userId ?? 'anon';
+    const roleKey = options.role ? options.role.toUpperCase() : 'UNKNOWN';
+    const query = useQuery(
+        `applications:${userKey}:${roleKey}`,
+        () => applicationsDb.getAll({ userId: options.userId, role: options.role }),
+        [],
+        [options.userId, options.role],
+        { enabled }
+    );
     return {
         ...query,
         applications: query.data,

@@ -66,6 +66,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   const [consentStorno, setConsentStorno] = useState(false);
   const [consentNewsletter, setConsentNewsletter] = useState(false);
   const [showCatError, setShowCatError] = useState(false);
+  const [showBrandError, setShowBrandError] = useState(false);
 
   const { events: dbEvents } = useEvents();
   const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
@@ -242,12 +243,18 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   const isZoneFull = selectedZoneCategory ? checkIsFull(selectedZoneCategory) : false;
 
   const isZoneCategoryEmpty = !isWaitlist && step === 2 && !selectedZoneCategory;
+  const isBrandIncomplete = !isWaitlist && step === 4 && (!brandName.trim() || !contactPerson.trim() || !email.trim());
   const nextStep = () => {
     if (isZoneCategoryEmpty) {
       setShowCatError(true);
       return;
     }
+    if (isBrandIncomplete) {
+      setShowBrandError(true);
+      return;
+    }
     setShowCatError(false);
+    setShowBrandError(false);
     setStep(s => Math.min(s + 1, totalSteps));
     window.scrollTo(0, 0);
   };
@@ -379,11 +386,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     </div>
                   </div>
 
-                  {step === 1 && event?.description && (
-                    <div className="mt-8 pt-6 border-t border-gray-100">
-                      <p className="text-xs text-gray-400 font-medium italic leading-relaxed">{event.description}</p>
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -619,7 +621,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
                 <div className="space-y-6 pt-6 border-t border-gray-100">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Název Značky</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Název Značky <span className="text-lavrs-red">*</span></label>
                     <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" placeholder="Vaše značka" className="w-full bg-white p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-bold text-xl transition-all" />
                   </div>
 
@@ -629,7 +631,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Kontaktní osoba</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Kontaktní osoba <span className="text-lavrs-red">*</span></label>
                       <div className="relative">
                         <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} type="text" placeholder="Jméno a příjmení" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
@@ -645,7 +647,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">E-mail</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">E-mail <span className="text-lavrs-red">*</span></label>
                     <div className="relative">
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                       <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="prijmeni@email.cz" className="w-full bg-white pl-14 pr-6 py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
@@ -680,6 +682,12 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     />
                   </div>
                 </div>
+
+                {showBrandError && (!brandName.trim() || !contactPerson.trim() || !email.trim()) && (
+                  <p className="text-center text-sm text-lavrs-red font-bold animate-bounce pt-4">
+                    Vyplňte prosím všechna povinná pole (název značky, kontaktní osoba, e-mail).
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -12,6 +12,20 @@ async function getCurrentSessionUser() {
     return session?.user ?? null;
 }
 
+interface QueryScope {
+    userId?: string | null;
+    role?: string | null;
+}
+
+function assertEventImageIsUrl(image: string | null | undefined): void {
+    if (typeof image !== 'string') return;
+    const trimmed = image.trim();
+    if (!trimmed) return;
+    if (/^data:/i.test(trimmed)) {
+        throw new Error('Event image cannot be a data URL. Upload image to Supabase Storage and save only its URL.');
+    }
+}
+
 async function getCurrentUserRole(userId: string): Promise<string | null> {
     if (roleCache && roleCache.userId === userId && (Date.now() - roleCache.ts) < ROLE_CACHE_MS) {
         return roleCache.role;
@@ -190,12 +204,14 @@ export const eventsDb = {
     },
 
     async create(event: Omit<DbEvent, 'created_at'>): Promise<DbEvent> {
+        assertEventImageIsUrl(event.image);
         const { data, error } = await supabase.from('events').insert(event).select().single();
         if (error) throw error;
         return data;
     },
 
     async update(id: string, updates: Partial<DbEvent>): Promise<DbEvent> {
+        assertEventImageIsUrl(updates.image);
         console.log('Database update called with:', { id, updates });
         const { data, error } = await supabase.from('events').update(updates).eq('id', id).select().single();
         if (error) {
@@ -207,28 +223,11 @@ export const eventsDb = {
     },
 
     async uploadImage(file: File, eventId: string): Promise<{ path: string; url: string }> {
-        const buffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        const base64 = btoa(binary);
-
-        const { data, error } = await supabase.functions.invoke('upload-event-image', {
-            body: {
-                eventId,
-                fileName: file.name,
-                fileType: file.type || 'image/jpeg',
-                fileBase64: base64,
-            },
-        });
-
-        if (!error && data?.url) {
-            return { path: data.path || '', url: data.url };
+        if (!file.type || !file.type.startsWith('image/')) {
+            throw new Error('Only image files are allowed.');
         }
 
-        // Fallback: direct storage upload
+        // Prefer direct Storage upload (smaller payload than base64 JSON).
         try {
             const filePath = `event-images/${eventId}/${Date.now()}-${file.name}`;
             const { error: uploadError } = await supabase.storage
@@ -242,10 +241,25 @@ export const eventsDb = {
                 return { path: filePath, url: urlData.publicUrl };
             }
         } catch {
-            // Keep original error handling below.
+            // Fallback to Edge Function (service role), useful if client storage policy blocks upload.
         }
 
-        throw error || new Error('Failed to upload event image.');
+        const formData = new FormData();
+        formData.append('eventId', eventId);
+        formData.append('file', file, file.name);
+
+        const { data, error } = await supabase.functions.invoke('upload-event-image', {
+            body: formData,
+        });
+
+        if (error) {
+            throw error;
+        }
+        if (!data?.url) {
+            throw new Error('Upload succeeded but no public URL was returned.');
+        }
+
+        return { path: data.path || '', url: data.url };
     },
 
     async delete(id: string): Promise<void> {
@@ -286,15 +300,27 @@ export const categoriesDb = {
    BRAND PROFILES
 ═══════════════════════════════════════════════════════════ */
 export const brandProfilesDb = {
-    async getAll(): Promise<DbBrandProfile[]> {
-        const user = await getCurrentSessionUser();
-        if (!user) return [];
+    async getAll(scope: QueryScope = {}): Promise<DbBrandProfile[]> {
+        let userId = scope.userId ?? null;
+        if (!userId) {
+            const user = await getCurrentSessionUser();
+            userId = user?.id ?? null;
+        }
 
-        const { data, error } = await supabase
+        const role = scope.role ? scope.role.toUpperCase() : null;
+        const isAdmin = role === 'ADMIN';
+        if (!isAdmin && !userId) return [];
+
+        let query = supabase
             .from('brand_profiles')
             .select('*')
-            .eq('user_id', user.id)
             .order('brand_name');
+
+        if (!isAdmin) {
+            query = query.eq('user_id', userId);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
         return data || [];
     },
@@ -330,17 +356,22 @@ export const brandProfilesDb = {
    APPLICATIONS
 ═══════════════════════════════════════════════════════════ */
 export const applicationsDb = {
-    async getAll(): Promise<DbApplication[]> {
-        const user = await getCurrentSessionUser();
-        if (!user) return [];
+    async getAll(scope: QueryScope = {}): Promise<DbApplication[]> {
+        let userId = scope.userId ?? null;
+        if (!userId) {
+            const user = await getCurrentSessionUser();
+            userId = user?.id ?? null;
+        }
+        if (!userId) return [];
 
-        // Admin sees all, exhibitors see only theirs (RLS handles this but filter is safer)
-        const userRole = await getCurrentUserRole(user.id);
+        // Admin sees all, exhibitors see only theirs (RLS handles this but filter is safer).
+        // If role is already known from auth state, skip extra role query.
+        const userRole = scope.role ? scope.role.toUpperCase() : await getCurrentUserRole(userId);
         const isAdmin = userRole === 'ADMIN';
 
         let query = supabase.from('applications').select('*');
         if (!isAdmin) {
-            query = query.eq('user_id', user.id).neq('status', 'DELETED');
+            query = query.eq('user_id', userId).neq('status', 'DELETED');
         }
 
         const { data, error } = await query.order('submitted_at', { ascending: false });
