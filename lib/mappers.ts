@@ -7,11 +7,11 @@ import { DbEvent, DbApplication, DbBrandProfile, DbBanner, DbCategory, DbZone, D
 
 export function formatEventDate(dateStr: string): string {
     if (!dateStr) return '';
-    
+
     // Handle specific range format if it exists (like 25.–26. 09. 2026)
     // If it's not a standard ISO, we might need more logic, but for now let's try to parse it.
     const date = new Date(dateStr);
-    
+
     // If it's an invalid date (might happen with ranges), return as is or handle
     if (isNaN(date.getTime())) {
         return dateStr;
@@ -24,6 +24,37 @@ export function formatEventDate(dateStr: string): string {
     }).format(date);
 }
 
+export function formatEventDateRange(dateStr: string, endDateStr?: string): string {
+    if (!dateStr) return '';
+
+    // If no end date or same as start date, just return single date
+    if (!endDateStr || dateStr === endDateStr) {
+        return formatEventDate(dateStr);
+    }
+
+    const startDate = new Date(dateStr);
+    const endDate = new Date(endDateStr);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return dateStr + (endDateStr ? ` – ${endDateStr}` : '');
+    }
+
+    // Format: "25. – 26. září 2026"
+    const startDay = startDate.getDate();
+    const endDay = endDate.getDate();
+    const startMonth = new Intl.DateTimeFormat('cs-CZ', { month: 'long' }).format(startDate);
+    const endMonth = new Intl.DateTimeFormat('cs-CZ', { month: 'long' }).format(endDate);
+    const year = endDate.getFullYear();
+
+    if (startMonth === endMonth) {
+        // Same month: "25.–26. září 2026"
+        return `${startDay}.–${endDay}. ${endMonth} ${year}`;
+    } else {
+        // Different months: "25. srpna – 26. září 2026"
+        return `${startDay}. ${startMonth} – ${endDay}. ${endMonth} ${year}`;
+    }
+}
+
 /* ─── Events ─────────────────────────────────────────────── */
 
 export function dbEventToApp(e: DbEvent): MarketEvent {
@@ -31,6 +62,7 @@ export function dbEventToApp(e: DbEvent): MarketEvent {
         id: e.id,
         title: e.title,
         date: e.date,
+        endDate: (e as any).end_date || undefined,
         location: e.location,
         status: e.status,
         image: e.image || '',
@@ -49,6 +81,7 @@ export function appEventToDb(e: MarketEvent): Omit<DbEvent, 'created_at'> {
         image: e.image,
         description: e.description || null,
         capacity: e.capacity || null,
+        ...(e.endDate ? { end_date: e.endDate } as any : {}),
     };
 }
 

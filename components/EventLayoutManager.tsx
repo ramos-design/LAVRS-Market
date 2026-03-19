@@ -12,7 +12,7 @@ import {
 import { MarketEvent, Zone, Stand, SpotSize, ZoneCategory, Application, AppStatus, EventPlan, Category } from '../types';
 import { ZONE_DETAILS } from '../constants';
 import { useEvents } from '../hooks/useSupabase';
-import { dbEventToApp, formatEventDate } from '../lib/mappers';
+import { dbEventToApp, formatEventDate, formatEventDateRange } from '../lib/mappers';
 
 interface EventLayoutManagerProps {
     eventId: string;
@@ -64,11 +64,13 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     const [eventDetails, setEventDetails] = useState({
         title: currentEvent?.title || '',
         date: currentEvent?.date || '',
+        endDate: currentEvent?.endDate || '',
         location: currentEvent?.location || '',
         description: currentEvent?.description || 'LAVRS market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
         image: currentEvent?.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
         status: currentEvent?.status === 'closed' ? 'waitlist' : (currentEvent?.status || 'draft')
     });
+    const [eventDateType, setEventDateType] = useState<'single' | 'multi'>(currentEvent?.endDate ? 'multi' : 'single');
     const [selectedZoneId, setSelectedZoneId] = useState<string | null>(plan.zones[0]?.id || null);
     const [activeTool, setActiveTool] = useState<'select' | 'place-s' | 'place-m' | 'place-l' | 'erase'>('select');
     const [selectedStandId, setSelectedStandId] = useState<string | null>(null);
@@ -809,7 +811,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-[10px] font-black uppercase tracking-widest bg-lavrs-dark text-white px-2 py-0.5">ADMIN</span>
-                            <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark">LAVRS market · {currentEvent?.date ? formatEventDate(currentEvent.date) : ''}</h2>
+                            <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark">LAVRS market · {currentEvent?.date ? formatEventDateRange(currentEvent.date, currentEvent?.endDate) : ''}</h2>
                         </div>
                     </div>
                 </div>
@@ -823,6 +825,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                         await updateEvent(eventId, {
                             title: eventDetails.title,
                             date: eventDetails.date,
+                            endDate: eventDetails.endDate || undefined,
                             location: eventDetails.location,
                             description: eventDetails.description,
                             image: eventDetails.image,
@@ -1000,20 +1003,62 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block">Datum</label>
-                                                <div className="relative">
-                                                    <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                                                    <input
-                                                        type="date"
-                                                        value={dateInput}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value;
-                                                            setDateInput(value);
-                                                            setEventDetails(prev => ({ ...prev, date: value }));
-                                                        }}
-                                                        className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 focus:border-lavrs-red outline-none font-bold text-lavrs-dark transition-all text-sm"
-                                                    />
+                                            <div className="md:col-span-2 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block">Typ eventu</label>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEventDateType('single');
+                                                                setEventDetails(prev => ({ ...prev, endDate: '' }));
+                                                            }}
+                                                            className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest transition-all ${eventDateType === 'single' ? 'bg-lavrs-dark text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                        >
+                                                            Jednodenní
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setEventDateType('multi')}
+                                                            className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest transition-all ${eventDateType === 'multi' ? 'bg-lavrs-dark text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                        >
+                                                            Vícedenní
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className={`grid ${eventDateType === 'multi' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block">{eventDateType === 'multi' ? 'Od dne' : 'Datum'}</label>
+                                                        <div className="relative">
+                                                            <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                                                            <input
+                                                                type="date"
+                                                                value={eventDetails.date}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value;
+                                                                    setEventDetails(prev => ({ ...prev, date: value }));
+                                                                }}
+                                                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 focus:border-lavrs-red outline-none font-bold text-lavrs-dark transition-all text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {eventDateType === 'multi' && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block">Do dne</label>
+                                                            <div className="relative">
+                                                                <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                                                                <input
+                                                                    type="date"
+                                                                    value={eventDetails.endDate || ''}
+                                                                    onChange={(e) => {
+                                                                        const value = e.target.value;
+                                                                        setEventDetails(prev => ({ ...prev, endDate: value }));
+                                                                    }}
+                                                                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 focus:border-lavrs-red outline-none font-bold text-lavrs-dark transition-all text-sm"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
