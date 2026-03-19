@@ -34,6 +34,7 @@ export interface DbEvent {
     id: string;
     title: string;
     date: string;
+    end_date?: string | null;
     location: string;
     status: 'open' | 'closed' | 'waitlist' | 'draft';
     image: string | null;
