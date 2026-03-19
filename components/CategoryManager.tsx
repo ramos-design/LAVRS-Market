@@ -16,6 +16,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [editCatId, setEditCatId] = useState('');
 
   const handleAdd = async () => {
     const newCat = {
@@ -36,14 +37,27 @@ const CategoryManager: React.FC<CategoryManagerProps> = () => {
     setEditingId(cat.id);
     setEditName(cat.name);
     setEditDesc(cat.description);
+    setEditCatId(cat.id);
   };
 
   const saveEdit = async () => {
     if (!editingId) return;
-    await updateCategory(editingId, {
-      name: editName,
-      description: editDesc
-    });
+
+    // If ID changed, delete old and create new
+    if (editCatId !== editingId) {
+      await deleteCategory(editingId);
+      await createCategory({
+        id: editCatId,
+        name: editName,
+        description: editDesc
+      });
+    } else {
+      // If ID unchanged, just update name and desc
+      await updateCategory(editingId, {
+        name: editName,
+        description: editDesc
+      });
+    }
     setEditingId(null);
   };
 
@@ -70,17 +84,33 @@ const CategoryManager: React.FC<CategoryManagerProps> = () => {
           <div key={cat.id} className="bg-white border border-gray-100 p-8 shadow-sm group hover:shadow-lg transition-all relative">
             {editingId === cat.id ? (
               <div className="space-y-4">
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full text-lg font-bold border-b-2 border-lavrs-red outline-none py-1"
-                />
-                <textarea
-                  value={editDesc}
-                  onChange={(e) => setEditDesc(e.target.value)}
-                  className="w-full text-sm text-gray-500 border border-gray-100 p-2 outline-none h-24 resize-none"
-                />
+                <div>
+                  <label className="text-[10px] font-black text-lavrs-red uppercase tracking-widest block mb-1">ID Kategorie</label>
+                  <input
+                    type="text"
+                    value={editCatId}
+                    onChange={(e) => setEditCatId(e.target.value.toUpperCase())}
+                    className="w-full text-sm font-bold border-b-2 border-lavrs-red outline-none py-1 uppercase"
+                    placeholder="OSTATNI"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Jméno kategorie</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full text-lg font-bold border-b-2 border-lavrs-red outline-none py-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Popis</label>
+                  <textarea
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    className="w-full text-sm text-gray-500 border border-gray-100 p-2 outline-none h-24 resize-none"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <button onClick={saveEdit} className="bg-lavrs-dark text-white p-2 flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest">
                     <Save size={14} /> Uložit

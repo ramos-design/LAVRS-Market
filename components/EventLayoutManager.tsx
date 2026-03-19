@@ -12,7 +12,7 @@ import {
 import { MarketEvent, Zone, Stand, SpotSize, ZoneCategory, Application, AppStatus, EventPlan, Category } from '../types';
 import { ZONE_DETAILS } from '../constants';
 import { useEvents } from '../hooks/useSupabase';
-import { dbEventToApp } from '../lib/mappers';
+import { dbEventToApp, formatEventDate } from '../lib/mappers';
 
 interface EventLayoutManagerProps {
     eventId: string;
@@ -24,7 +24,7 @@ interface EventLayoutManagerProps {
     categories: Category[];
 }
 
-const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
+const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     eventId,
     onBack,
     applications: allApplications,
@@ -53,30 +53,9 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
             },
             zones: [],
             stands: [],
-            prices: {
-                'Secondhands': '2.500 Kč',
-                'České značky': '3.800 Kč',
-                'Designers': '4.200 Kč',
-                'Beauty ZONE': '3.500 Kč',
-                'TATTOO': '5.500 Kč',
-                'Reuse': '2.200 Kč'
-            },
-            equipment: {
-                'Secondhands': ['1x Stojan na šaty (vlastní)', '1x Stůl', '1x Židle'],
-                'České značky': ['1x Stojan na šaty', '1x Stůl', '2x Židle'],
-                'Designers': ['1x Stojan na šaty', '1x Stůl', '2x Židle', 'Zrcadlo'],
-                'Beauty ZONE': ['1x Stůl', '2x Židle', 'Zrcadlo'],
-                'TATTOO': ['1x Stůl', '2x Židle', 'Podložka'],
-                'Reuse': ['1x Stůl', '2x Židle']
-            },
-            categorySizes: {
-                'Secondhands': 'Spot M',
-                'České značky': 'Spot S',
-                'Designers': 'Spot M',
-                'Beauty ZONE': 'Spot S',
-                'TATTOO': 'Spot L',
-                'Reuse': 'Spot M'
-            },
+            prices: {},
+            equipment: {},
+            categorySizes: {},
             extras: []
         }
     );
@@ -830,12 +809,8 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-[10px] font-black uppercase tracking-widest bg-lavrs-dark text-white px-2 py-0.5">ADMIN</span>
-                            <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark">{currentEvent?.title}</h2>
+                            <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark">LAVRS market · {currentEvent?.date ? formatEventDate(currentEvent.date) : ''}</h2>
                         </div>
-                        <p className="text-gray-500 flex items-center gap-2">
-                            <MapIcon size={14} className="text-lavrs-red" />
-                            Interactive Layout Planner & Exhibitor Placement
-                        </p>
                     </div>
                 </div>
 
@@ -875,7 +850,7 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                         </>
                     ) : (
                         <>
-                            <Save size={18} /> Uložit plánek
+                            <Save size={18} /> Uložit změny
                         </>
                     )}
                 </button>
@@ -930,11 +905,12 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
                                     {/* Status Selector */}
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block">Stav eventu</label>
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-2 gap-4">
                                             {[
                                                 { id: 'draft', label: 'Nezveřejněno', icon: XCircle },
                                                 { id: 'open', label: 'Otevřeno', icon: CheckCircle2 },
-                                                { id: 'waitlist', label: 'Waitlist', icon: Clock }
+                                                { id: 'waitlist', label: 'Waitlist', icon: Clock },
+                                                { id: 'soldout', label: 'Vyprodáno', icon: Lock }
                                             ].map((status) => (
                                                 <button
                                                     key={status.id}
@@ -2228,5 +2204,8 @@ const EventLayoutManager: React.FC<EventLayoutManagerProps> = ({
         </div>
     );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates
+const EventLayoutManager = React.memo(EventLayoutManagerInner);
 
 export default EventLayoutManager;
