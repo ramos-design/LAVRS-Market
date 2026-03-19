@@ -116,49 +116,43 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
       </header>
 
       {/* Filters */}
-      <div className="space-y-4">
-        {/* Category Filter */}
-        <div>
-          <p className="text-sm font-semibold text-gray-600 mb-2">Kategorie zóny</p>
-          <div className="flex flex-wrap gap-2">
+      <div className="flex items-center justify-between gap-6">
+        {/* Category Filter - Left Side */}
+        <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedCategory('ALL')}
+            className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 whitespace-nowrap ${selectedCategory === 'ALL'
+              ? 'border-lavrs-red text-lavrs-red bg-white'
+              : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
+          >
+            Všechny
+          </button>
+          {categories.map((cat) => (
             <button
-              onClick={() => setSelectedCategory('ALL')}
-              className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 ${selectedCategory === 'ALL'
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 whitespace-nowrap ${selectedCategory === cat
                 ? 'border-lavrs-red text-lavrs-red bg-white'
                 : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
             >
-              Všechny
+              {cat}
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 ${selectedCategory === cat
-                  ? 'border-lavrs-red text-lavrs-red bg-white'
-                  : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
 
-        {/* Event Filter */}
-        <div>
-          <p className="text-sm font-semibold text-gray-600 mb-2">Event</p>
-          <select
-            value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-            className="px-5 py-2 rounded-none text-sm font-semibold border-2 border-gray-100 bg-white text-gray-700 focus:outline-none focus:border-lavrs-red transition-all shadow-sm"
-          >
-            <option value="ALL">Všechny eventy</option>
-            {eventsList.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.title} ({formatEventDateLong(event.date)})
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Event Filter - Right Side */}
+        <select
+          value={selectedEventId}
+          onChange={(e) => setSelectedEventId(e.target.value)}
+          className="px-5 py-2 rounded-none text-sm font-semibold border-2 border-gray-100 bg-white text-gray-700 focus:outline-none focus:border-lavrs-red transition-all shadow-sm shrink-0"
+        >
+          <option value="ALL">Všechny eventy</option>
+          {eventsList.map((event) => (
+            <option key={event.id} value={event.id}>
+              {event.title} ({formatEventDateLong(event.date)})
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}
