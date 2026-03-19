@@ -825,7 +825,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                         await updateEvent(eventId, {
                             title: eventDetails.title,
                             date: eventDetails.date,
-                            endDate: eventDetails.endDate || undefined,
+                            end_date: eventDetails.endDate || null,
                             location: eventDetails.location,
                             description: eventDetails.description,
                             image: eventDetails.image,
