@@ -196,8 +196,13 @@ export const eventsDb = {
     },
 
     async update(id: string, updates: Partial<DbEvent>): Promise<DbEvent> {
+        console.log('Database update called with:', { id, updates });
         const { data, error } = await supabase.from('events').update(updates).eq('id', id).select().single();
-        if (error) throw error;
+        if (error) {
+            console.error('Database update error:', error);
+            throw error;
+        }
+        console.log('Database update successful, returned data:', data);
         return data;
     },
 
