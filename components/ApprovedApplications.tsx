@@ -84,12 +84,24 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
     }
   };
 
-  const formatDate = (iso: string) => new Date(iso).toLocaleDateString('cs-CZ');
+  const formatDate = (iso?: string) => {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleDateString('cs-CZ');
+    } catch (e) {
+      return iso;
+    }
+  };
+
   const formatEventDateLong = (dateStr?: string) => {
     if (!dateStr) return '';
-    const parsed = new Date(dateStr);
-    if (isNaN(parsed.getTime())) return dateStr;
-    return parsed.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    try {
+      const parsed = new Date(dateStr);
+      if (isNaN(parsed.getTime())) return dateStr;
+      return parsed.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch (e) {
+      return dateStr || '';
+    }
   };
 
   const approvedCount = applications.filter(a => normalizeStatus(a.status) === AppStatus.APPROVED).length;
@@ -358,7 +370,45 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
   );
 };
 
+// Error Boundary
+class ApprovedApplicationsErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: '' };
+  }
+
+  static getDerivedStateFromError(error: unknown) {
+    const message = error instanceof Error ? error.message : 'Neznámá chyba';
+    console.error('ApprovedApplications error:', message);
+    return { hasError: true, error: message };
+  }
+
+  componentDidCatch(error: unknown, info: unknown) {
+    console.error('ApprovedApplications crashed:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-white border border-red-200 p-8 shadow-sm rounded-none">
+          <h3 className="text-xl font-bold text-red-700 mb-2">Chyba při načítání aktivních přihlášek</h3>
+          <p className="text-sm text-gray-600">{this.state.error}</p>
+          <p className="text-xs text-gray-400 mt-3">Prosím zkuste stránku znovu načíst.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Memoize to prevent unnecessary re-renders when parent updates
 const ApprovedApplications = React.memo(ApprovedApplicationsInner);
 
-export default ApprovedApplications;
+export default (props: React.ComponentProps<typeof ApprovedApplications>) => (
+  <ApprovedApplicationsErrorBoundary>
+    <ApprovedApplications {...props} />
+  </ApprovedApplicationsErrorBoundary>
+);
