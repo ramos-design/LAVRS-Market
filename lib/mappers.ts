@@ -81,7 +81,7 @@ export function appEventToDb(e: MarketEvent): Omit<DbEvent, 'created_at'> {
         image: e.image,
         description: e.description || null,
         capacity: e.capacity || null,
-        ...(e.endDate ? { end_date: e.endDate } as any : {}),
+        end_date: e.endDate || null,
     };
 }
 
