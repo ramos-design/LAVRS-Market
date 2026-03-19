@@ -66,7 +66,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
       {/* Header */}
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark mb-2">Schválené přihlášky</h2>
+          <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark mb-2">Aktivní přihlášky</h2>
           <p className="text-gray-500">Přehled schválených a zaplacených přihlášek ({approvedCount + paidCount})</p>
         </div>
         <div className="relative group">
