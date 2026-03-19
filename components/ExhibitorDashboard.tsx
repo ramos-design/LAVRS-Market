@@ -9,6 +9,7 @@ interface ExhibitorDashboardProps {
   events: MarketEvent[];
   applications: Application[];
   brands: BrandProfile[];
+  showGreeting?: boolean;
   onApply: (eventId: string) => void;
   onPayment: (appId: string) => void;
   onDismissApp: (appId: string) => void;
@@ -16,7 +17,7 @@ interface ExhibitorDashboardProps {
   banners: Banner[];
 }
 
-const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, events, applications, brands, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
+const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, events, applications, brands, showGreeting, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
   const sortedEvents = React.useMemo(() => {
     const parsed = [...events];
     const parseDate = (dateStr: string) => {
@@ -116,13 +117,9 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
 
   return (
     <div className="space-y-12">
-      <header>
-        <h2 className="text-4xl font-bold mb-2 tracking-tight">Vítej, {user.name.split(' ')[0]}</h2>
-      </header>
-
       {/* Banner Slideshow */}
       {slides.length > 0 && (
-        <div className="relative h-64 md:h-80 overflow-hidden group shadow-2xl border border-white/20">
+        <div className="relative h-72 md:h-80 overflow-hidden group shadow-2xl border border-white/20 -mx-4 -mt-4 md:mx-0 md:mt-0 md:rounded-none">
           {slides.map((slide, index) => (
             <div
               key={slide.id}
@@ -162,6 +159,13 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
           </div>
         </div>
       )}
+
+      {showGreeting && (
+        <header className="text-center md:text-left">
+          <h2 className="text-2xl md:text-4xl font-bold mb-2 tracking-tight">Vítej, {user.name.split(' ')[0]}</h2>
+        </header>
+      )}
+
       {/* Action Required Widgets */}
       <div className="space-y-4">
         {paymentRequestedApps.map((app) => {
@@ -240,7 +244,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4 md:px-0">
             {visibleEvents.map(event => (
               <div key={event.id} className="group glass-card overflow-hidden">
                 <div className="relative h-64 overflow-hidden">

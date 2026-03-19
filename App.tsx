@@ -84,6 +84,14 @@ class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundary
 const App: React.FC = () => {
   const { user, loading: authLoading, error: authError, signOut, refetch } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<string>('DASHBOARD');
+  const hasLeftDashboard = React.useRef(false);
+
+  React.useEffect(() => {
+    if (currentScreen !== 'DASHBOARD') {
+      hasLeftDashboard.current = true;
+    }
+  }, [currentScreen]);
+
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedPaymentAppId, setSelectedPaymentAppId] = useState<string | null>(null);
   const [locallyUnderReview, setLocallyUnderReview] = useState<string[]>(() => {
@@ -398,6 +406,7 @@ const App: React.FC = () => {
                 events={events}
                 applications={applications}
                 brands={brandProfiles}
+                showGreeting={!hasLeftDashboard.current}
                 onApply={(id) => { setSelectedEventId(id); setCurrentScreen('APPLY'); }}
                 onPayment={(appId) => { setSelectedPaymentAppId(appId); setCurrentScreen('PAYMENT'); }}
                 onDismissApp={handleDismissReviewApp}
