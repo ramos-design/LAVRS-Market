@@ -306,34 +306,61 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
       {/* Left Panel - Progress & Info */}
       <div className="w-full md:w-1/3 bg-lavrs-beige p-5 md:p-16 flex flex-col justify-between shrink-0">
         <div>
-          <button onClick={onCancel} className="mb-4 md:mb-12 flex items-center gap-2 text-gray-400 hover:text-lavrs-dark transition-colors">
-            <ChevronLeft size={20} /> Zpět na dashboard
-          </button>
+          {/* Mobile: back button + badge/steps on same row; Desktop: stacked */}
+          <div className="flex items-center justify-between mb-4 md:block md:mb-12">
+            <button onClick={onCancel} className="flex items-center gap-2 text-gray-400 hover:text-lavrs-dark transition-colors">
+              <ChevronLeft size={20} /> Zpět na dashboard
+            </button>
+            <div className="flex flex-col items-end md:hidden">
+              <div className="mb-1 flex gap-2">
+                <span className="text-white bg-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
+                  {event?.id.includes('mini') ? 'Event' : 'Velký market'}
+                </span>
+                {isWaitlist && (
+                  <span className="bg-white text-lavrs-red border border-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
+                    Waitlist režim
+                  </span>
+                )}
+              </div>
+              <p className="text-lavrs-red font-bold uppercase tracking-widest text-[10px]">Krok {step} z {totalSteps}</p>
+            </div>
+          </div>
 
-          <div className={!isWaitlist ? 'flex items-start gap-4 md:block' : ''}>
-          <div className={!isWaitlist ? 'w-[40%] shrink-0 md:w-full' : ''}>
-          <div className="mb-2 flex gap-2">
-            <span className="text-white bg-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
-              {event?.id.includes('mini') ? 'Event' : 'Velký market'}
-            </span>
-            {isWaitlist && (
-              <span className="bg-white text-lavrs-red border border-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
-                Waitlist režim
+          <div className={!isWaitlist ? 'md:block' : ''}>
+          {/* Desktop only: badge + steps (hidden on mobile, shown in top row instead) */}
+          <div className="hidden md:block">
+            <div className="mb-2 flex gap-2">
+              <span className="text-white bg-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
+                {event?.id.includes('mini') ? 'Event' : 'Velký market'}
               </span>
-            )}
+              {isWaitlist && (
+                <span className="bg-white text-lavrs-red border border-lavrs-red px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-widest">
+                  Waitlist režim
+                </span>
+              )}
+            </div>
+            <p className="text-lavrs-red font-bold uppercase tracking-widest text-[10px] mb-4">Krok {step} z {totalSteps}</p>
           </div>
 
-          <p className="text-lavrs-red font-bold uppercase tracking-widest text-[10px] mb-2 md:mb-4">Krok {step} z {totalSteps}</p>
-          <h2 className="text-2xl md:text-4xl font-bold leading-tight text-lavrs-dark mb-4 md:mb-8">
-            {isWaitlist ? "Chci na Waitlist" : (step === 1 ? "O akci" : "")}
-            {!isWaitlist && step === 2 && "Kategorie zóny"}
-            {!isWaitlist && step === 3 && "Cena a vybavení"}
-            {!isWaitlist && step === 4 && "Informace o značce"}
-            {!isWaitlist && step === 5 && "Vizuály a souhlasy"}
-          </h2>
-          </div>
+          {/* Step title - centered on mobile */}
+          {!isWaitlist && (
+            <div className="text-center md:text-left mb-4 md:mb-0">
+              <h2 className="text-2xl md:text-4xl font-bold leading-tight text-lavrs-dark mb-0 md:mb-8">
+                {step === 1 ? "O akci" : ""}
+                {step === 2 && "Kategorie zóny"}
+                {step === 3 && "Cena a vybavení"}
+                {step === 4 && "Informace o značce"}
+                {step === 5 && "Vizuály a souhlasy"}
+              </h2>
+            </div>
+          )}
+          {isWaitlist && (
+            <h2 className="text-2xl md:text-4xl font-bold leading-tight text-lavrs-dark mb-4 md:mb-8 text-center md:text-left">
+              Chci na Waitlist
+            </h2>
+          )}
 
-          <div className={`${!isWaitlist ? 'flex-1 min-w-0 ' : ''}space-y-6`}>
+          <div className="space-y-6">
             {isWaitlist ? (
               <div className="space-y-5 animate-fadeIn">
                 <div className="space-y-2">
@@ -373,21 +400,25 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
             ) : (
               <>
                 <div className="p-5 md:p-8 bg-white rounded-none border-2 border-lavrs-pink/20 shadow-md">
-                  <p className="text-[10px] md:text-[11px] text-lavrs-red font-black uppercase tracking-[0.3em] mb-2 md:mb-4">VYBRANÁ AKCE</p>
-                  <h3 className="text-xl md:text-3xl font-black text-lavrs-dark leading-tight mb-3 md:mb-6">{event?.title}</h3>
-
-                  <div className="space-y-2 md:space-y-4">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-lavrs-red text-white px-3 py-1 text-[10px] md:text-[11px] font-black uppercase tracking-widest leading-none">
-                        {event ? formatEventDateRange(event.date, event?.endDate) : ''}
-                      </span>
+                  <div className="flex items-start gap-4 md:block">
+                    {/* Left: label + title */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] md:text-[11px] text-lavrs-red font-black uppercase tracking-[0.3em] mb-1 md:mb-4">VYBRANÁ AKCE</p>
+                      <h3 className="text-base md:text-3xl font-black text-lavrs-dark leading-tight mb-0 md:mb-6">{event?.title}</h3>
                     </div>
-                    <div className="flex items-center gap-2 text-lavrs-dark font-black uppercase tracking-widest text-[10px] md:text-xs">
-                      <MapPin size={14} className="text-lavrs-dark" />
-                      {event?.location}
+                    {/* Right: date + location (mobile) / below (desktop) */}
+                    <div className="shrink-0 md:mt-0 space-y-2 md:space-y-4 text-right md:text-left">
+                      <div className="flex items-center justify-end md:justify-start gap-3">
+                        <span className="bg-lavrs-red text-white px-3 py-1 text-[10px] md:text-[11px] font-black uppercase tracking-widest leading-none whitespace-nowrap">
+                          {event ? formatEventDateRange(event.date, event?.endDate) : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-end md:justify-start gap-2 text-lavrs-dark font-black uppercase tracking-widest text-[10px] md:text-xs">
+                        <MapPin size={14} className="text-lavrs-dark" />
+                        {event?.location}
+                      </div>
                     </div>
                   </div>
-
                 </div>
               </>
             )}
@@ -472,7 +503,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
             <div className="max-w-2xl mx-auto py-8 md:py-20 px-5 md:px-8">
               <div className="space-y-6 md:space-y-12 animate-fadeIn">
                 <header className="text-center">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">KATEGORIE ZÓNY *</h3>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Vyberte kategorii, do které patříte</h3>
                 </header>
 
                 <div className="grid grid-cols-2 gap-3 md:gap-6">
