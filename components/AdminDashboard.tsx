@@ -2,7 +2,7 @@
 import React from 'react';
 import { Plus, Users, ShoppingBag, LayoutGrid, List, MoreVertical, TrendingUp, Calendar } from 'lucide-react';
 import { AppStatus, User, MarketEvent, Application, BrandProfile } from '../types';
-import { formatEventDate } from '../lib/mappers';
+import { formatEventDateRange } from '../lib/mappers';
 import { eventPlansDb } from '../lib/database';
 
 interface AdminDashboardProps {
@@ -277,7 +277,7 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
                           </div>
                           <div>
                             <p className="font-bold text-sm text-lavrs-dark">{event.title}</p>
-                            <p className="text-xs text-gray-500 font-medium">{formatEventDate(event.date)} · {event.location}</p>
+                            <p className="text-xs text-gray-500 font-medium">{formatEventDateRange(event.date, event?.endDate)} · {event.location}</p>
                           </div>
                         </div>
                       </td>

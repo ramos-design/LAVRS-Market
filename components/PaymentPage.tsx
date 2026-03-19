@@ -14,7 +14,7 @@ import {
 
 import { BrandProfile, MarketEvent, Application, Category, ExtraItem, AppStatus } from '../types';
 import { useEventPlan } from '../hooks/useSupabase';
-import { formatEventDate } from '../lib/mappers';
+import { formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
 
 interface PaymentPageProps {
@@ -155,7 +155,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, initialBillingDetails
                 <p className="font-semibold">{activeEvent?.title || 'Event'}</p>
                 <p className="text-xs text-gray-400 font-medium">{activeEvent?.location || 'Místo'}</p>
               </div>
-              <p className="font-bold">{activeEvent ? formatEventDate(activeEvent.date) : ''}</p>
+              <p className="font-bold">{activeEvent ? formatEventDateRange(activeEvent.date, activeEvent?.endDate) : ''}</p>
             </div>
 
             <div className="space-y-4">

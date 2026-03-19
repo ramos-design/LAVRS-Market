@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User,
 import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
 import { ZONE_DETAILS } from '../constants';
 import { useEvents, useBrandProfiles, useCategories } from '../hooks/useSupabase';
-import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb, formatEventDate } from '../lib/mappers';
+import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb, formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
 
 interface ApplicationWizardProps {
@@ -370,7 +370,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <span className="bg-lavrs-red text-white px-3 py-1 text-[11px] font-black uppercase tracking-widest leading-none">
-                        {event ? formatEventDate(event.date) : ''}
+                        {event ? formatEventDateRange(event.date, event?.endDate) : ''}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-lavrs-dark font-black uppercase tracking-widest text-xs">

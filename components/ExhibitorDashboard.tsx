@@ -2,7 +2,7 @@
 import React from 'react';
 import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles, MapPin } from 'lucide-react';
 import { MarketEvent, User, AppStatus, Application, BrandProfile, Banner } from '../types';
-import { formatEventDate } from '../lib/mappers';
+import { formatEventDateRange } from '../lib/mappers';
 
 interface ExhibitorDashboardProps {
   user: User;
@@ -169,7 +169,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                   </div>
                   <div>
                     <h3 className="text-xl text-lavrs-dark">
-                      Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDate(event.date) : ''}</span>
+                      Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDateRange(event.date, event?.endDate) : ''}</span>
                     </h3>
                     <p className="text-blue-700 font-bold text-sm mt-1">Nyní čekáme na přijetí vaší platby. Jakmile ji zpracujeme, budeme vás informovat e-mailem a zašleme vám fakturu.</p>
                   </div>
@@ -194,7 +194,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 </div>
                 <div>
                   <h3 className="text-xl text-lavrs-dark">
-                    Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDate(event.date) : ''}</span>
+                    Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDateRange(event.date, event?.endDate) : ''}</span>
                   </h3>
                   <p className="text-gray-600">Tvoje přihláška byla schválena! Proveď platbu pro potvrzení místa.</p>
                 </div>
@@ -246,7 +246,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 <div className="pt-8 pb-10 px-8">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
                     <span className="bg-lavrs-red text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest leading-none">
-                      {formatEventDate(event.date)}
+                      {formatEventDateRange(event.date, event?.endDate)}
                     </span>
                     <span className="flex items-center gap-1.5 text-lavrs-dark text-[10px] font-bold uppercase tracking-widest">
                       <MapPin size={12} className="text-lavrs-dark" />
