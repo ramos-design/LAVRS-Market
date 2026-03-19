@@ -302,9 +302,9 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-none flex flex-col md:flex-row overflow-hidden shadow-sm border border-gray-100 min-h-[85vh]">
+    <div className="bg-white rounded-none flex flex-col md:flex-row overflow-hidden shadow-sm border border-gray-100 min-h-[85vh] -mx-4 md:mx-0">
       {/* Left Panel - Progress & Info */}
-      <div className="w-full md:w-1/3 bg-lavrs-beige p-5 md:p-16 flex flex-col justify-between shrink-0">
+      <div className="w-full md:w-1/3 bg-lavrs-beige px-4 py-5 md:p-16 flex flex-col justify-between shrink-0">
         <div>
           {/* Mobile: back button + badge/steps on same row; Desktop: stacked */}
           <div className="flex items-center justify-between mb-4 md:block md:mb-12">
@@ -440,13 +440,13 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
       </div>
 
       {/* Right Panel - Interactive Content */}
-      <div className="flex-1 overflow-y-auto bg-[#FDFBFA] flex flex-col">
+      <div className="flex-1 overflow-y-auto bg-[#FDFBFA] flex flex-col px-4 md:px-0">
         <div className="flex-1">
 
           {/* Step 2+ or Right Panel in Waitlist */}
           {(step === 1 && isWaitlist && event) ? (
             <div className="animate-fadeIn h-full flex flex-col">
-              <div className="relative h-[300px] w-full overflow-hidden shrink-0">
+              <div className="relative h-[300px] overflow-hidden shrink-0 -mx-4 w-[calc(100%+2rem)] md:mx-0 md:w-full">
                 <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-lavrs-dark/80 via-transparent to-transparent flex items-end">
                   <div className="p-12 text-white">
@@ -471,7 +471,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
               {/* Step 1: O akci (Normal) */}
               {step === 1 && event && (
                 <div className="animate-fadeIn">
-                  <div className="relative h-[250px] md:h-[400px] w-full overflow-hidden">
+                  <div className="relative h-[250px] md:h-[400px] overflow-hidden -mx-4 w-[calc(100%+2rem)] md:mx-0 md:w-full">
                     <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-lavrs-dark/80 via-transparent to-transparent flex items-end">
                       <div className="p-6 md:p-12 text-white">
