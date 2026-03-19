@@ -187,7 +187,12 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                       className={`border-t border-gray-50 hover:bg-lavrs-beige/20 transition-colors cursor-pointer ${isSelected ? 'bg-lavrs-beige/30' : ''}`}
                     >
                       <td className="px-6 py-4">
-                        <div className="font-bold text-lavrs-dark">{app.brandName}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-bold text-lavrs-dark">{app.brandName}</div>
+                          {normalizeStatus(app.status) === AppStatus.APPROVED && (
+                            <Heart size={14} className="text-lavrs-red fill-lavrs-red shrink-0" />
+                          )}
+                        </div>
                         <div className="text-[11px] text-gray-400">{app.instagram || app.website || '—'}</div>
                       </td>
                       <td className="px-6 py-4">
