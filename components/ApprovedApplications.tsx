@@ -19,18 +19,52 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<'ALL' | string>('ALL');
+  const [selectedEventId, setSelectedEventId] = useState<'ALL' | string>('ALL');
 
   const selectedApp = approvedApplications.find(a => a.id === selectedAppId) || null;
 
+  // Get unique categories and events
+  const categories = React.useMemo(() => {
+    const cats = new Set<string>();
+    approvedApplications.forEach(app => {
+      if (app.zoneCategory) cats.add(app.zoneCategory);
+    });
+    return Array.from(cats).sort();
+  }, [approvedApplications]);
+
+  const eventsList = React.useMemo(() => {
+    const evts = new Map<string, MarketEvent>();
+    approvedApplications.forEach(app => {
+      const event = events.find(e => e.id === app.eventId);
+      if (event) evts.set(event.id, event);
+    });
+    return Array.from(evts.values()).sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateA - dateB;
+    });
+  }, [approvedApplications, events]);
+
   const filtered = approvedApplications.filter(app => {
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    return (
-      app.brandName.toLowerCase().includes(q) ||
-      (app.contactPerson || '').toLowerCase().includes(q) ||
-      (app.email || '').toLowerCase().includes(q) ||
-      (events.find(e => e.id === app.eventId)?.title || '').toLowerCase().includes(q)
-    );
+    // Search filter
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      const matchesQuery =
+        app.brandName.toLowerCase().includes(q) ||
+        (app.contactPerson || '').toLowerCase().includes(q) ||
+        (app.email || '').toLowerCase().includes(q) ||
+        (events.find(e => e.id === app.eventId)?.title || '').toLowerCase().includes(q);
+      if (!matchesQuery) return false;
+    }
+
+    // Category filter
+    if (selectedCategory !== 'ALL' && app.zoneCategory !== selectedCategory) return false;
+
+    // Event filter
+    if (selectedEventId !== 'ALL' && app.eventId !== selectedEventId) return false;
+
+    return true;
   });
 
   const getEventDetails = (eventId: string) => {
@@ -67,7 +101,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark mb-2">Aktivní přihlášky</h2>
-          <p className="text-gray-500">Přehled schválených a zaplacených přihlášek ({approvedCount + paidCount})</p>
+          <p className="text-gray-500">Přehled schválených a zaplacených přihlášek ({filtered.length})</p>
         </div>
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-lavrs-red transition-colors" size={18} />
@@ -80,6 +114,52 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
           />
         </div>
       </header>
+
+      {/* Filters */}
+      <div className="space-y-4">
+        {/* Category Filter */}
+        <div>
+          <p className="text-sm font-semibold text-gray-600 mb-2">Kategorie zóny</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedCategory('ALL')}
+              className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 ${selectedCategory === 'ALL'
+                ? 'border-lavrs-red text-lavrs-red bg-white'
+                : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
+            >
+              Všechny
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 ${selectedCategory === cat
+                  ? 'border-lavrs-red text-lavrs-red bg-white'
+                  : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Event Filter */}
+        <div>
+          <p className="text-sm font-semibold text-gray-600 mb-2">Event</p>
+          <select
+            value={selectedEventId}
+            onChange={(e) => setSelectedEventId(e.target.value)}
+            className="px-5 py-2 rounded-none text-sm font-semibold border-2 border-gray-100 bg-white text-gray-700 focus:outline-none focus:border-lavrs-red transition-all shadow-sm"
+          >
+            <option value="ALL">Všechny eventy</option>
+            {eventsList.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.title} ({formatEventDateLong(event.date)})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* Table */}
       <div className="bg-white border border-gray-100 shadow-sm overflow-hidden">
