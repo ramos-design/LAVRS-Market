@@ -22,6 +22,9 @@ interface EventLayoutManagerProps {
     categories: Category[];
 }
 
+const FIXED_GRID_WIDTH = 16;
+const FIXED_GRID_HEIGHT = 9;
+
 const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     eventId,
     onBack,
@@ -40,14 +43,14 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         [allApplications, normalizedEventId]
     );
 
-    const { events: dbEvents, updateEvent, uploadEventImage } = useEvents();
+    const { events: dbEvents, updateEvent, uploadEventImage, uploadEventFloorplan } = useEvents();
     const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
 
     const currentEvent = events.find(e => e.id === eventId);
     const [plan, setPlan] = useState<EventPlan>(
         initialPlan || {
             eventId,
-            gridSize: { width: 15, height: 10 },
+            gridSize: { width: FIXED_GRID_WIDTH, height: FIXED_GRID_HEIGHT },
             layoutMeta: {
                 backgroundImageUrl: '',
                 backgroundOpacity: 0.35,
@@ -114,6 +117,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     useEffect(() => {
         setPlan(prev => ({
             ...prev,
+            gridSize: { width: FIXED_GRID_WIDTH, height: FIXED_GRID_HEIGHT },
             zones: prev.zones.map(z => ({
                 ...z,
                 capacity: (z.capacity !== undefined) ? z.capacity : (Number(z.capacities?.S || 0) + Number(z.capacities?.M || 0) + Number(z.capacities?.L || 0)),
@@ -656,6 +660,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             if (onSavePlan) {
                                 await onSavePlan({
                                     ...plan,
+                                    gridSize: { width: FIXED_GRID_WIDTH, height: FIXED_GRID_HEIGHT },
                                     layoutMeta: normalizedLayoutMeta,
                                     stands: plan.stands.map(s => ({
                                         ...s,
@@ -914,15 +919,13 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
 
                                 {/* Grid Size */}
                                 <div className="space-y-2 border-t border-gray-100 pt-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Velikost mřížky</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Velikost mřížky (fix 16:9)</p>
                                     <div className="flex items-center gap-2">
-                                        <input type="number" min={1} max={50} value={plan.gridSize.width}
-                                            onChange={(e) => setPlan(prev => ({ ...prev, gridSize: { ...prev.gridSize, width: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 outline-none focus:border-lavrs-red" />
+                                        <input type="number" value={FIXED_GRID_WIDTH} disabled
+                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-gray-100 text-gray-500 cursor-not-allowed" />
                                         <span className="text-gray-400 font-bold">×</span>
-                                        <input type="number" min={1} max={50} value={plan.gridSize.height}
-                                            onChange={(e) => setPlan(prev => ({ ...prev, gridSize: { ...prev.gridSize, height: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 outline-none focus:border-lavrs-red" />
+                                        <input type="number" value={FIXED_GRID_HEIGHT} disabled
+                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-gray-100 text-gray-500 cursor-not-allowed" />
                                     </div>
                                 </div>
 
@@ -956,7 +959,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                             setIsUploadingImage(true);
                                             setUploadError(null);
                                             try {
-                                                const { url } = await uploadEventImage(file, `${eventId}-floorplan`);
+                                                const { url } = await uploadEventFloorplan(file, eventId);
                                                 updateLayoutMeta({ backgroundImageUrl: url });
                                             } catch (err) {
                                                 const msg = err instanceof Error ? err.message : 'Nahrání floorplanu selhalo.';

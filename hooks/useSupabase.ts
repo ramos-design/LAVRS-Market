@@ -135,6 +135,9 @@ export function useEvents(enabled = true) {
             query.refetch();
             return result;
         },
+        uploadEventFloorplan: async (file: File, eventId: string) => {
+            return eventsDb.uploadFloorplan(file, eventId);
+        },
         deleteEvent: async (id: string) => {
             await eventsDb.delete(id);
             query.refetch();

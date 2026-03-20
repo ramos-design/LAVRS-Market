@@ -264,6 +264,25 @@ export const eventsDb = {
         return { path: data.path || '', url: data.url };
     },
 
+    async uploadFloorplan(file: File, eventId: string): Promise<{ path: string; url: string }> {
+        if (!file.type || !file.type.startsWith('image/')) {
+            throw new Error('Only image files are allowed.');
+        }
+
+        const filePath = `event-floorplans/${eventId}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+            .from('event-images')
+            .upload(filePath, file, { upsert: true, contentType: file.type || 'image/jpeg', cacheControl: '3600' });
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('event-images').getPublicUrl(filePath);
+        if (!urlData?.publicUrl) {
+            throw new Error('Upload succeeded but no public URL was returned.');
+        }
+
+        return { path: filePath, url: urlData.publicUrl };
+    },
+
     async delete(id: string): Promise<void> {
         const { error } = await supabase.from('events').delete().eq('id', id);
         if (error) throw error;
