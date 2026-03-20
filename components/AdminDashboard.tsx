@@ -14,9 +14,10 @@ interface AdminDashboardProps {
   onOpenCurator: () => void;
   onManageEvent?: (eventId: string) => void;
   onOpenEventsConfig?: () => void;
+  onCreateEvent?: () => void;
 }
 
-const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig }) => {
+const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig, onCreateEvent }) => {
   const { activities, loading: activitiesLoading } = useAdminActivity(true);
   const normalizeId = React.useCallback((value?: string | null) => (value || '').trim().toLowerCase(), []);
 
@@ -235,7 +236,17 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
           <p className="text-gray-500">Vítej v mozkovém centru LAVRS.</p>
         </div>
         <button
-          onClick={() => (onOpenEventsConfig ? onOpenEventsConfig() : onOpenCurator())}
+          onClick={async () => {
+            if (onCreateEvent) {
+              await onCreateEvent();
+              return;
+            }
+            if (onOpenEventsConfig) {
+              onOpenEventsConfig();
+              return;
+            }
+            onOpenCurator();
+          }}
           className="hidden md:flex bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all items-center gap-2 shadow-lg active:scale-95"
         >
           <Plus size={20} /> Vytvořit nový event

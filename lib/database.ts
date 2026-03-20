@@ -53,7 +53,7 @@ export interface DbEvent {
     status: 'open' | 'closed' | 'waitlist' | 'draft';
     image: string | null;
     description: string | null;
-    capacity: number | null;
+    capacity?: number | null;
     created_at?: string;
     updated_at?: string;
 }

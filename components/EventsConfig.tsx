@@ -75,7 +75,13 @@ const EventsConfig: React.FC<EventsConfigProps> = ({ onManageEvent, onCreateEven
                     <p className="text-gray-500">Vytváření a editace eventů LAVRS market.</p>
                 </div>
                 <button
-                    onClick={onCreateEvent}
+                    onClick={async () => {
+                        if (!onCreateEvent) {
+                            alert('Vytvoření eventu není dostupné.');
+                            return;
+                        }
+                        await onCreateEvent();
+                    }}
                     className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all flex items-center gap-2 shadow-lg active:scale-95"
                 >
                     <Plus size={20} /> Vytvořit nový event

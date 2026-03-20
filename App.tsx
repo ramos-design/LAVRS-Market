@@ -96,6 +96,7 @@ const App: React.FC = () => {
   }, [currentScreen]);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [creatingEvent, setCreatingEvent] = useState(false);
   const [selectedPaymentAppId, setSelectedPaymentAppId] = useState<string | null>(null);
   const [locallyUnderReview, setLocallyUnderReview] = useState<string[]>(() => {
     const saved = localStorage.getItem('lavrs_locally_under_review');
@@ -389,6 +390,49 @@ const App: React.FC = () => {
     await deleteProfile(brandProfileId);
   };
 
+  const handleCreateEvent = async () => {
+    if (creatingEvent) return;
+    setCreatingEvent(true);
+    try {
+      const eventId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `event-${Date.now()}`;
+
+      const newEvent = await createEvent({
+        id: eventId,
+        title: 'Nový event',
+        date: new Date().toISOString().slice(0, 10),
+        location: '',
+        status: 'draft',
+        image: '/media/lavrs-market.webp',
+        description: null,
+      });
+
+      if (!newEvent?.id) {
+        throw new Error('Event byl vytvořen bez ID.');
+      }
+
+      setSelectedEventId(newEvent.id);
+      setCurrentScreen('EVENT_PLAN');
+      if (user) {
+        logAdminAction({
+          adminId: user.id,
+          adminName: user.fullName || user.email,
+          action: 'event_created',
+          entityType: 'event',
+          entityId: newEvent.id,
+          metadata: { eventTitle: newEvent.title },
+        });
+      }
+    } catch (error: any) {
+      console.error('Create event failed:', error);
+      const msg = error?.message || 'Vytvoření eventu selhalo.';
+      alert(`Vytvoření eventu selhalo: ${msg}`);
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
+
   // Global loading state
   const isLoading = eventsLoading || appsLoading || profilesLoading || bannersLoading || categoriesLoading;
 
@@ -493,6 +537,7 @@ const App: React.FC = () => {
                 onOpenCurator={() => setCurrentScreen('CURATOR')}
                 onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
                 onOpenEventsConfig={() => setCurrentScreen('EVENTS_CONFIG')}
+                onCreateEvent={handleCreateEvent}
               />
             )
           )}
@@ -565,30 +610,7 @@ const App: React.FC = () => {
                 }
               }}
               onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
-              onCreateEvent={async () => {
-                const newEvent = await createEvent({
-                  id: crypto.randomUUID(),
-                  title: 'Nový event',
-                  date: new Date().toISOString().slice(0, 10),
-                  location: '',
-                  status: 'draft',
-                  image: null,
-                  description: null,
-                  capacity: null,
-                });
-                setSelectedEventId(newEvent.id);
-                setCurrentScreen('EVENT_PLAN');
-                if (user) {
-                  logAdminAction({
-                    adminId: user.id,
-                    adminName: user.fullName || user.email,
-                    action: 'event_created',
-                    entityType: 'event',
-                    entityId: newEvent.id,
-                    metadata: { eventTitle: 'Nový event' },
-                  });
-                }
-              }}
+              onCreateEvent={handleCreateEvent}
             />
           )}
 
@@ -676,3 +698,4 @@ const App: React.FC = () => {
 
 
 export default App;
+
