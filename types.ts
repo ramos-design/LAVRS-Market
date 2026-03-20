@@ -41,6 +41,7 @@ export interface MarketEvent {
   image: string;
   description?: string;
   capacity?: number;
+  updatedAt?: string;
 }
 
 export interface Application {
@@ -78,6 +79,7 @@ export interface Application {
   extraNote?: string;
   paymentDeadline?: string;
   approvedAt?: string | null;
+  updatedAt?: string;
 }
 
 export interface Stand {
@@ -102,6 +104,7 @@ export interface Zone {
   capacities: {
     [key in SpotSize]?: number;
   };
+  capacity?: number;
 }
 
 export interface ExtraItem {

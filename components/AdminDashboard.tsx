@@ -4,6 +4,7 @@ import { Plus, Users, ShoppingBag, LayoutGrid, List, MoreVertical, TrendingUp, C
 import { AppStatus, User, MarketEvent, Application, BrandProfile } from '../types';
 import { formatEventDateRange } from '../lib/mappers';
 import { eventPlansDb } from '../lib/database';
+import { useAdminActivity } from '../hooks/useAdminActivity';
 
 interface AdminDashboardProps {
   user: User;
@@ -16,6 +17,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig }) => {
+  const { activities, loading: activitiesLoading } = useAdminActivity(true);
   const normalizeId = React.useCallback((value?: string | null) => (value || '').trim().toLowerCase(), []);
 
   const sortedEvents = React.useMemo(() => {
@@ -234,27 +236,28 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
         </div>
         <button
           onClick={() => (onOpenEventsConfig ? onOpenEventsConfig() : onOpenCurator())}
-          className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all flex items-center gap-2 shadow-lg active:scale-95"
+          className="hidden md:flex bg-lavrs-dark text-white px-8 py-4 rounded-none font-semibold hover:bg-lavrs-red transition-all items-center gap-2 shadow-lg active:scale-95"
         >
           <Plus size={20} /> Vytvořit nový event
         </button>
       </header>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white p-8 rounded-none border border-gray-100 shadow-sm transition-all hover:shadow-md">
-            <div className="flex justify-between items-start mb-6">
-              <div className={`p-3 bg-gray-50 rounded-none ${stat.color}`}>
-                <stat.icon size={24} />
+          <div key={i} className="bg-white p-4 md:p-8 rounded-none border border-gray-100 shadow-sm transition-all hover:shadow-md">
+            <div className="flex justify-between items-start mb-3 md:mb-6">
+              <div className={`p-2 md:p-3 bg-gray-50 rounded-none ${stat.color}`}>
+                <stat.icon size={20} className="md:hidden" />
+                <stat.icon size={24} className="hidden md:block" />
               </div>
               {stat.period && (
-                <span className="text-[10px] font-bold px-2 py-1 bg-gray-50 rounded-none text-gray-400">{stat.period}</span>
+                <span className="text-[8px] md:text-[10px] font-bold px-1.5 md:px-2 py-0.5 md:py-1 bg-gray-50 rounded-none text-gray-400">{stat.period}</span>
               )}
             </div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-            <h4 className="text-3xl font-extrabold tracking-tight text-lavrs-dark">{stat.value}</h4>
-            <p className={`text-xs mt-2 font-semibold ${stat.color}`}>{stat.trend}</p>
+            <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+            <h4 className="text-xl md:text-3xl font-extrabold tracking-tight text-lavrs-dark">{stat.value}</h4>
+            <p className={`text-[10px] md:text-xs mt-1 md:mt-2 font-semibold ${stat.color}`}>{stat.trend}</p>
           </div>
         ))}
       </div>
@@ -264,14 +267,63 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
 
         {/* Active Markets Table */}
         <div className="lg:col-span-2 bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+          <div className="p-4 md:p-8 border-b border-gray-50">
             <h3 className="text-xl font-bold text-lavrs-dark">Přehled eventů LAVRS market</h3>
-            <div className="flex gap-2 p-1 bg-gray-50 rounded-none">
-              <button className="p-2 bg-white rounded-none shadow-sm"><LayoutGrid size={16} /></button>
-              <button className="p-2 text-gray-400"><List size={16} /></button>
-            </div>
           </div>
-          <div className="flex-1 overflow-x-auto">
+          {/* Mobile card layout */}
+          <div className="md:hidden divide-y divide-gray-50">
+            {sortedEvents.map(event => {
+              const occupiedFromLayout = getEventStat(event.id).occupied;
+              const occupiedFromApplications = eventApplicationCounts[normalizeId(event.id)] || 0;
+              const acceptedCount = Math.max(occupiedFromLayout, occupiedFromApplications);
+
+              return (
+                <div key={event.id} className="p-4 hover:bg-lavrs-beige/30 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-none overflow-hidden shadow-sm shrink-0">
+                      <img src={event.image} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-bold text-sm text-lavrs-dark truncate">{event.title}</p>
+                        <span className={`px-2 py-0.5 rounded-none text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                          event.status === 'open'
+                            ? 'bg-green-100 text-green-700'
+                            : event.status === 'draft'
+                              ? 'bg-gray-100 text-gray-500'
+                              : event.status === 'closed'
+                                ? 'bg-red-100 text-red-700'
+                                : event.status === 'soldout'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-pink-100 text-pink-700'
+                        }`}>
+                          {event.status === 'open' ? 'Otevřeno' : event.status === 'draft' ? 'Nezveřejněno' : event.status === 'closed' ? 'Zavřeno' : event.status === 'soldout' ? 'Vyprodáno' : 'Waitlist'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 font-medium mt-0.5">{formatEventDateRange(event.date, event?.endDate)} · {event.location}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-lavrs-red text-white font-black text-[9px] flex items-center justify-center shrink-0">
+                            {acceptedCount}
+                          </div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Vystavovatelů</p>
+                        </div>
+                        <button
+                          onClick={() => onManageEvent ? onManageEvent(event.id) : onOpenCurator()}
+                          className="text-lavrs-red text-[11px] font-bold hover:underline"
+                        >
+                          SPRAVOVAT
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table layout */}
+          <div className="hidden md:block flex-1 overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -286,7 +338,7 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
                   const occupiedFromLayout = getEventStat(event.id).occupied;
                   const occupiedFromApplications = eventApplicationCounts[normalizeId(event.id)] || 0;
                   const acceptedCount = Math.max(occupiedFromLayout, occupiedFromApplications);
-                  
+
                   return (
                     <tr key={event.id} className="group hover:bg-lavrs-beige/30 transition-colors">
                       <td className="px-8 py-6">
@@ -343,11 +395,36 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
         <div className="space-y-8">
           <div className="bg-white rounded-none p-8 border border-gray-100 shadow-sm space-y-6">
             <h4 className="text-lg font-bold text-lavrs-dark">Nedávné aktivity</h4>
-            {/* Real activities would be fetched from a logs/audit table - showing placeholder for now */}
-            <div className="space-y-6">
-              <div className="py-12 text-center">
-                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Zatím žádná aktivita</p>
-              </div>
+            <div className="space-y-1 max-h-[400px] overflow-y-auto">
+              {activitiesLoading ? (
+                <div className="py-8 text-center">
+                  <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Načítám...</p>
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Zatím žádná aktivita</p>
+                </div>
+              ) : (
+                activities.map(activity => (
+                  <div key={activity.id} className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
+                    <div className="w-8 h-8 rounded-full bg-lavrs-red text-white font-black text-[10px] flex items-center justify-center shrink-0 uppercase">
+                      {activity.adminName.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-lavrs-dark">
+                        <span className="font-bold">{activity.adminName}</span>
+                        {' '}{activity.description}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        {new Intl.DateTimeFormat('cs-CZ', {
+                          day: 'numeric', month: 'short',
+                          hour: '2-digit', minute: '2-digit'
+                        }).format(new Date(activity.createdAt))}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

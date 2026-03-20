@@ -456,3 +456,67 @@ Doufáme, že se Vám event líbil a byl pro Vás přínosný.
 S pozdravem,
 Tým LAVRS Market', 'event', true)
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- Multi-Admin Collaboration System
+-- ============================================
+
+-- 10. Admin Activity Log (audit trail)
+CREATE TABLE IF NOT EXISTS admin_activity_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  admin_name TEXT NOT NULL,
+  action TEXT NOT NULL,
+  description TEXT NOT NULL,
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('application', 'event', 'event_plan', 'stand', 'brand')),
+  entity_id TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_log_created_at ON admin_activity_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON admin_activity_log(entity_type, entity_id);
+
+ALTER TABLE admin_activity_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can read activity log" ON admin_activity_log;
+CREATE POLICY "Admins can read activity log" ON admin_activity_log
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+  );
+
+DROP POLICY IF EXISTS "Admins can insert activity log" ON admin_activity_log;
+CREATE POLICY "Admins can insert activity log" ON admin_activity_log
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+  );
+
+-- Enable Realtime for admin_activity_log (needed for live toasts & feed)
+ALTER PUBLICATION supabase_realtime ADD TABLE admin_activity_log;
+
+-- 11. Optimistic Locking: updated_at columns + auto-update trigger
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+-- Backfill existing rows
+UPDATE applications SET updated_at = COALESCE(created_at, now()) WHERE updated_at IS NULL;
+UPDATE events SET updated_at = COALESCE(created_at, now()) WHERE updated_at IS NULL;
+
+-- Auto-update trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_updated_at_applications ON applications;
+CREATE TRIGGER set_updated_at_applications
+    BEFORE UPDATE ON applications
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_updated_at_events ON events;
+CREATE TRIGGER set_updated_at_events
+    BEFORE UPDATE ON events
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

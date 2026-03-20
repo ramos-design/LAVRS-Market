@@ -55,6 +55,7 @@ export interface DbEvent {
     description: string | null;
     capacity: number | null;
     created_at?: string;
+    updated_at?: string;
 }
 
 export interface DbCategory {
@@ -114,6 +115,7 @@ export interface DbApplication {
     approved_at?: string | null;
     brand_profile_id: string | null;
     created_at?: string;
+    updated_at?: string;
 }
 
 export interface DbEventPlan {
@@ -632,6 +634,47 @@ export const emailAttachmentsDb = {
         await supabase.storage.from('attachments').remove([storagePath]);
         // Delete metadata
         await emailAttachmentsDb.delete(id);
+    },
+};
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN ACTIVITY LOG
+═══════════════════════════════════════════════════════════ */
+
+export interface DbActivityLog {
+    id: string;
+    admin_id: string;
+    admin_name: string;
+    action: string;
+    description: string;
+    entity_type: 'application' | 'event' | 'event_plan' | 'stand' | 'brand';
+    entity_id: string | null;
+    metadata: Record<string, any>;
+    created_at: string;
+}
+
+export const activityLogDb = {
+    async getRecent(limit = 20): Promise<DbActivityLog[]> {
+        const { data, error } = await supabase
+            .from('admin_activity_log')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return data || [];
+    },
+
+    async log(entry: Omit<DbActivityLog, 'id' | 'created_at'>): Promise<DbActivityLog> {
+        const { data, error } = await supabase
+            .from('admin_activity_log')
+            .insert(entry)
+            .select()
+            .single();
+        if (error) {
+            console.error('Failed to log admin activity:', error);
+            throw error;
+        }
+        return data;
     },
 };
 

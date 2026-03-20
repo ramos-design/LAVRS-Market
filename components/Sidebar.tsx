@@ -2,6 +2,7 @@
 import React from 'react';
 import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
 import { ViewMode } from '../types';
+import { AdminPresenceState, getScreenLabel } from '../hooks/useAdminPresence';
 
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
 
@@ -10,9 +11,10 @@ interface SidebarProps {
   activeItem: string;
   onNavigate: (screen: string) => void;
   onSignOut: () => void;
+  onlineAdmins?: AdminPresenceState[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignOut }) => {
+const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignOut, onlineAdmins }) => {
   const menuItems = role === 'EXHIBITOR' ? [
     { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
     { id: 'APPLICATIONS', label: 'Moje Přihlášky', icon: FileText },
@@ -73,6 +75,28 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignO
             alt="Mascot"
             className="w-full max-w-[220px] h-auto max-h-[150px] lg:max-h-[220px] xl:max-h-[280px] object-contain transition-all duration-500"
           />
+        </div>
+      )}
+
+      {role === 'ADMIN' && onlineAdmins && onlineAdmins.length > 0 && (
+        <div className="mt-auto mb-4 px-2">
+          <p className="text-[9px] font-black text-white/50 uppercase tracking-widest mb-3">Online admini</p>
+          <div className="space-y-2">
+            {onlineAdmins.map(admin => (
+              <div key={admin.userId} className="flex items-center gap-2">
+                <div className="relative">
+                  <div className="w-7 h-7 rounded-full bg-white/20 text-white font-black text-[9px] flex items-center justify-center uppercase">
+                    {admin.fullName.charAt(0)}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 border-2 border-lavrs-red rounded-full" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white text-xs font-bold truncate">{admin.fullName}</p>
+                  <p className="text-white/50 text-[9px] truncate">{getScreenLabel(admin.screen)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

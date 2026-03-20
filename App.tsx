@@ -9,6 +9,8 @@ import HeartLoader from './components/HeartLoader';
 // Supabase hooks & mappers
 import { useAuth } from './hooks/useAuth';
 import { useEvents, useApplications, useBrandProfiles, useEventPlan, useBanners, useCategories } from './hooks/useSupabase';
+import { logAdminAction, checkVersionConflict } from './lib/activityLog';
+import { useAdminPresence } from './hooks/useAdminPresence';
 import {
   dbEventToApp, dbApplicationToApp, dbBrandProfileToApp,
   dbBannerToApp, dbCategoryToApp, dbEventPlanToApp,
@@ -32,6 +34,7 @@ const BrandsList = React.lazy(() => import('./components/BrandsList'));
 const EventLayoutManager = React.lazy(() => import('./components/EventLayoutManager'));
 const BannerManager = React.lazy(() => import('./components/BannerManager'));
 const CategoryManager = React.lazy(() => import('./components/CategoryManager'));
+const ToastProvider = React.lazy(() => import('./components/ToastProvider'));
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -102,6 +105,15 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('lavrs_dismissed_review_apps');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Admin presence tracking
+  const { onlineAdmins } = useAdminPresence(
+    user?.id ?? null,
+    user?.fullName || user?.email?.split('@')[0] || '',
+    user?.email || '',
+    currentScreen,
+    user?.role === 'ADMIN'
+  );
 
   // Derived role from user
   const userRole = user?.role;
@@ -232,7 +244,9 @@ const App: React.FC = () => {
         name: z.name,
         color: z.color,
         category: z.category,
-        capacities: z.capacities,
+        capacities: z.capacity !== undefined
+          ? { S: 0, M: z.capacity, L: 0 }
+          : z.capacities,
       })),
       stands: newPlan.stands.map((s: any) => ({
         id: s.id,
@@ -248,6 +262,17 @@ const App: React.FC = () => {
         locked: !!s.locked,
       })),
     });
+    if (user) {
+      const evt = events.find(e => e.id === _eventId);
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'event_plan_saved',
+        entityType: 'event_plan',
+        entityId: _eventId,
+        metadata: { eventTitle: evt?.title },
+      });
+    }
   };
 
   const handleUpdateBanners = async (newBanners: Banner[]) => {
@@ -272,6 +297,17 @@ const App: React.FC = () => {
   };
 
   const handleUpdateApplicationStatus = async (id: string, newStatus: AppStatus) => {
+    const app = applications.find(a => a.id === id);
+    // Optimistic locking: check if another admin modified this application
+    if (app?.updatedAt) {
+      const { conflict } = await checkVersionConflict('applications', id, app.updatedAt);
+      if (conflict) {
+        const proceed = window.confirm(
+          'Pozor: Tato přihláška byla mezitím upravena jiným adminem. Chcete přesto pokračovat a přepsat změny?'
+        );
+        if (!proceed) return null;
+      }
+    }
     let paymentDeadline: string | undefined;
     let approvedAt: string | undefined;
     if (newStatus === AppStatus.APPROVED) {
@@ -280,7 +316,18 @@ const App: React.FC = () => {
       const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
       paymentDeadline = new Date(now.getTime() + fiveDaysMs).toISOString();
     }
-    return await updateAppStatus(id, newStatus, paymentDeadline, approvedAt);
+    const result = await updateAppStatus(id, newStatus, paymentDeadline, approvedAt);
+    if (user) {
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'application_status_changed',
+        entityType: 'application',
+        entityId: id,
+        metadata: { brandName: app?.brandName, newStatus, previousStatus: app?.status },
+      });
+    }
+    return result;
   };
 
   const handleLocalConfirmPayment = (appId: string) => {
@@ -300,11 +347,33 @@ const App: React.FC = () => {
   };
 
   const handleDeleteApplication = async (id: string) => {
+    const app = applications.find(a => a.id === id);
     await deleteApplication(id);
+    if (user) {
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'application_deleted',
+        entityType: 'application',
+        entityId: id,
+        metadata: { brandName: app?.brandName },
+      });
+    }
   };
 
   const handleRestoreApplication = async (id: string) => {
+    const app = applications.find(a => a.id === id);
     await updateAppStatus(id, AppStatus.PENDING);
+    if (user) {
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'application_restored',
+        entityType: 'application',
+        entityId: id,
+        metadata: { brandName: app?.brandName },
+      });
+    }
   };
 
   const handleSaveBrand = async (brand: BrandProfile) => {
@@ -345,6 +414,7 @@ const App: React.FC = () => {
   };
 
   return (
+    <ToastProvider currentUserId={user?.id ?? null} enabled={userRole === 'ADMIN'}>
     <div className="flex flex-col md:flex-row min-h-screen bg-lavrs-beige/30">
 
 
@@ -360,6 +430,7 @@ const App: React.FC = () => {
         activeItem={currentScreen}
         onNavigate={(screen) => setCurrentScreen(screen)}
         onSignOut={signOut}
+        onlineAdmins={onlineAdmins}
       />
 
       <main className="flex-1 p-4 md:p-6 lg:p-12 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
@@ -479,7 +550,20 @@ const App: React.FC = () => {
             <EventsConfig
               events={events}
               applications={applications}
-              onDeleteEvent={deleteEvent}
+              onDeleteEvent={async (eventId: string) => {
+                const evt = events.find(e => e.id === eventId);
+                await deleteEvent(eventId);
+                if (user) {
+                  logAdminAction({
+                    adminId: user.id,
+                    adminName: user.fullName || user.email,
+                    action: 'event_deleted',
+                    entityType: 'event',
+                    entityId: eventId,
+                    metadata: { eventTitle: evt?.title },
+                  });
+                }
+              }}
               onManageEvent={(id) => { setSelectedEventId(id); setCurrentScreen('EVENT_PLAN'); }}
               onCreateEvent={async () => {
                 const newEvent = await createEvent({
@@ -494,6 +578,16 @@ const App: React.FC = () => {
                 });
                 setSelectedEventId(newEvent.id);
                 setCurrentScreen('EVENT_PLAN');
+                if (user) {
+                  logAdminAction({
+                    adminId: user.id,
+                    adminName: user.fullName || user.email,
+                    action: 'event_created',
+                    entityType: 'event',
+                    entityId: newEvent.id,
+                    metadata: { eventTitle: 'Nový event' },
+                  });
+                }
               }}
             />
           )}
@@ -576,6 +670,7 @@ const App: React.FC = () => {
         }
       `}</style>
     </div>
+    </ToastProvider>
   );
 };
 

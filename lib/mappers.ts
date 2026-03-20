@@ -68,6 +68,7 @@ export function dbEventToApp(e: DbEvent): MarketEvent {
         image: e.image || '',
         description: e.description || undefined,
         capacity: e.capacity || undefined,
+        updatedAt: e.updated_at || undefined,
     };
 }
 
@@ -116,6 +117,7 @@ export function dbApplicationToApp(a: DbApplication): Application {
         extraNote: a.extra_note || undefined,
         paymentDeadline: a.payment_deadline || undefined,
         approvedAt: a.approved_at || undefined,
+        updatedAt: a.updated_at || undefined,
     };
 }
 
@@ -237,16 +239,16 @@ export function appCategoryToDb(c: Category): Omit<DbCategory, 'created_at'> {
 
 export function dbZoneToApp(z: DbZone): Zone {
     const rawCaps = z.capacities && typeof z.capacities === 'object' ? z.capacities : {};
+    const s = Number((rawCaps as any).S || 0);
+    const m = Number((rawCaps as any).M || 0);
+    const l = Number((rawCaps as any).L || 0);
     return {
         id: z.id,
         name: z.name,
         color: z.color,
         category: z.category || '',
-        capacities: {
-            S: Number((rawCaps as any).S || 0),
-            M: Number((rawCaps as any).M || 0),
-            L: Number((rawCaps as any).L || 0),
-        },
+        capacities: { S: s, M: m, L: l },
+        capacity: s + m + l,
     };
 }
 
