@@ -2,8 +2,8 @@
  * Mappers: convert between Supabase DB format (snake_case)
  * and the existing app TypeScript types (camelCase).
  */
-import { Application, AppStatus, BrandProfile, MarketEvent, Banner, Category, Zone, Stand, EventPlan, SpotSize, ExtraItem } from '../types';
-import { DbEvent, DbApplication, DbBrandProfile, DbBanner, DbCategory, DbZone, DbStand, DbEventPlan } from '../lib/database';
+import { Application, AppStatus, BrandProfile, MarketEvent, Banner, Category, Zone, Stand, EventPlan, SpotSize, ExtraItem, Invoice, CompanySettings } from '../types';
+import { DbEvent, DbApplication, DbBrandProfile, DbBanner, DbCategory, DbZone, DbStand, DbEventPlan, DbInvoice, DbCompanySettings } from '../lib/database';
 
 export function formatEventDate(dateStr: string): string {
     if (!dateStr) return '';
@@ -117,6 +117,7 @@ export function dbApplicationToApp(a: DbApplication): Application {
         extraNote: a.extra_note || undefined,
         paymentDeadline: a.payment_deadline || undefined,
         approvedAt: a.approved_at || undefined,
+        invoiceId: (a as any).invoice_id || undefined,
         updatedAt: a.updated_at || undefined,
     };
 }
@@ -295,5 +296,43 @@ export function dbEventPlanToApp(
         extras: plan.extras as ExtraItem[],
         zones: zones.map(dbZoneToApp),
         stands: stands.map(dbStandToApp),
+    };
+}
+
+/* ─── Invoices ───────────────────────────────────────────── */
+
+export function dbInvoiceToApp(i: DbInvoice): Invoice {
+    return {
+        id: i.id,
+        applicationId: i.application_id,
+        eventId: i.event_id || undefined,
+        invoiceNumber: i.invoice_number,
+        amountCzk: i.amount_czk,
+        issuedAt: i.issued_at,
+        dueDate: i.due_date,
+        variableSymbol: i.variable_symbol,
+        pdfStoragePath: i.pdf_storage_path || undefined,
+        xmlStoragePath: i.xml_storage_path || undefined,
+        pdfUrl: i.pdf_url || undefined,
+        xmlUrl: i.xml_url || undefined,
+        createdAt: i.created_at || '',
+    };
+}
+
+/* ─── Company Settings ───────────────────────────────────── */
+
+export function dbCompanySettingsToApp(cs: DbCompanySettings): CompanySettings {
+    return {
+        id: cs.id,
+        companyName: cs.company_name,
+        companyAddress: cs.company_address,
+        ic: cs.ic,
+        dic: cs.dic || undefined,
+        bankAccount: cs.bank_account,
+        bankIban: cs.bank_iban,
+        bankSwift: cs.bank_swift || undefined,
+        invoiceDueDays: cs.invoice_due_days,
+        invoiceNote: cs.invoice_note || undefined,
+        updatedAt: cs.updated_at || '',
     };
 }

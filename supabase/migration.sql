@@ -520,3 +520,93 @@ DROP TRIGGER IF EXISTS set_updated_at_events ON events;
 CREATE TRIGGER set_updated_at_events
     BEFORE UPDATE ON events
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- 12. Company Settings (Singleton for issuer info)
+-- ============================================
+CREATE TABLE IF NOT EXISTS company_settings (
+  id TEXT PRIMARY KEY DEFAULT 'singleton',
+  company_name TEXT NOT NULL DEFAULT 'LAVRS market s.r.o.',
+  company_address TEXT NOT NULL DEFAULT '',
+  ic TEXT NOT NULL DEFAULT '',
+  dic TEXT,
+  bank_account TEXT NOT NULL DEFAULT '',
+  bank_iban TEXT NOT NULL DEFAULT '',
+  bank_swift TEXT,
+  invoice_due_days INT NOT NULL DEFAULT 14,
+  invoice_note TEXT,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ============================================
+-- 13. Invoices Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS invoices (
+  id TEXT PRIMARY KEY,
+  application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  event_id TEXT REFERENCES events(id) ON DELETE SET NULL,
+  invoice_number TEXT NOT NULL UNIQUE,
+  amount_czk INT NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  due_date TIMESTAMPTZ NOT NULL,
+  variable_symbol TEXT NOT NULL,
+  pdf_storage_path TEXT,
+  xml_storage_path TEXT,
+  pdf_url TEXT,
+  xml_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ============================================
+-- 14. Update applications with invoice_id
+-- ============================================
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS invoice_id TEXT REFERENCES invoices(id) ON DELETE SET NULL;
+
+-- ============================================
+-- RLS for new tables
+-- ============================================
+ALTER TABLE company_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+
+-- company_settings: public read, admin write
+DROP POLICY IF EXISTS "Company settings public read" ON company_settings;
+CREATE POLICY "Company settings public read" ON company_settings FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Company settings admin write" ON company_settings;
+CREATE POLICY "Company settings admin write" ON company_settings FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+-- invoices: exhibitors see their own, admins see all
+DROP POLICY IF EXISTS "Exhibitors see own invoices" ON invoices;
+CREATE POLICY "Exhibitors see own invoices" ON invoices FOR SELECT USING (
+  application_id IN (
+    SELECT id FROM applications WHERE user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Admins see all invoices" ON invoices;
+CREATE POLICY "Admins see all invoices" ON invoices FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+DROP POLICY IF EXISTS "Admins insert invoices" ON invoices;
+CREATE POLICY "Admins insert invoices" ON invoices FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+-- ============================================
+-- Seed company_settings
+-- ============================================
+INSERT INTO company_settings (id, company_name, company_address, ic, dic, bank_account, bank_iban, invoice_due_days)
+VALUES (
+  'singleton',
+  'LAVRS market s.r.o.',
+  'Ul. XXX 123, 110 00 Praha 1',
+  '12345678',
+  'CZ12345678',
+  '2900765432/2010',
+  'CZ6520100000002900765432',
+  14
+)
+ON CONFLICT (id) DO NOTHING;

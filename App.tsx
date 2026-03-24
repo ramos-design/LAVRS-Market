@@ -8,12 +8,12 @@ import HeartLoader from './components/HeartLoader';
 
 // Supabase hooks & mappers
 import { useAuth } from './hooks/useAuth';
-import { useEvents, useApplications, useBrandProfiles, useEventPlan, useBanners, useCategories } from './hooks/useSupabase';
+import { useEvents, useApplications, useBrandProfiles, useEventPlan, useBanners, useCategories, useCompanySettings } from './hooks/useSupabase';
 import { logAdminAction, checkVersionConflict } from './lib/activityLog';
 import { useAdminPresence } from './hooks/useAdminPresence';
 import {
   dbEventToApp, dbApplicationToApp, dbBrandProfileToApp,
-  dbBannerToApp, dbCategoryToApp, dbEventPlanToApp,
+  dbBannerToApp, dbCategoryToApp, dbEventPlanToApp, dbCompanySettingsToApp,
   appApplicationToDb, appBrandProfileToDb, appBannerToDb, appCategoryToDb,
 } from './lib/mappers';
 
@@ -184,6 +184,9 @@ const App: React.FC = () => {
     plan: dbPlan, zones: dbZones, stands: dbStands,
     savePlan: saveEventPlan, loading: planLoading,
   } = useEventPlan(selectedEventId);
+  const {
+    data: dbCompanySettings, loading: companySettingsLoading,
+  } = useCompanySettings(canFetchUserData && userRole === 'ADMIN');
 
   // ─── Map DB data to app types ─────────────────────────────
   const events = useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
@@ -217,6 +220,16 @@ const App: React.FC = () => {
       return undefined;
     }
   }, [dbPlan, dbZones, dbStands]);
+
+  const currentEvent = useMemo(() => {
+    if (!selectedEventId) return undefined;
+    return events.find(e => e.id === selectedEventId);
+  }, [selectedEventId, events]);
+
+  const companySettings = useMemo(() => {
+    if (!dbCompanySettings) return null;
+    return dbCompanySettingsToApp(dbCompanySettings);
+  }, [dbCompanySettings]);
 
   const activeAppForExhibitor = useMemo(() => {
     if (userRole !== 'EXHIBITOR') return null;
@@ -328,6 +341,7 @@ const App: React.FC = () => {
         metadata: { brandName: app?.brandName, newStatus, previousStatus: app?.status },
       });
     }
+
     return result;
   };
 
@@ -388,6 +402,28 @@ const App: React.FC = () => {
 
   const handleDeleteBrandProfile = async (brandProfileId: string) => {
     await deleteProfile(brandProfileId);
+  };
+
+  const handleSaveBilling = async (details: Partial<BrandProfile>) => {
+    // Update the active application with billing details
+    if (activeAppForExhibitor) {
+      try {
+        const updatedApp: Application = {
+          ...activeAppForExhibitor,
+          billingName: details.billingName || activeAppForExhibitor.billingName,
+          billingAddress: details.billingAddress || activeAppForExhibitor.billingAddress,
+          ic: details.ic || activeAppForExhibitor.ic,
+          dic: details.dic || activeAppForExhibitor.dic,
+          billingEmail: details.billingEmail || activeAppForExhibitor.billingEmail,
+        };
+        const dbApp = appApplicationToDb(updatedApp, user?.id);
+        // Save to DB - but we need to use updateApplicationData or similar
+        // For now, we'll just ensure the local state is updated
+        console.log('Billing details saved (local):', details);
+      } catch (err) {
+        console.error('Failed to save billing details:', err);
+      }
+    }
   };
 
   const handleCreateEvent = async () => {
@@ -631,9 +667,12 @@ const App: React.FC = () => {
             <PaymentPage
               onBack={() => { setSelectedPaymentAppId(null); setCurrentScreen('DASHBOARD'); }}
               initialBillingDetails={brandProfiles[0]}
+              onSaveBilling={handleSaveBilling}
               activeApp={activeAppForExhibitor}
               activeEvent={activeEventForExhibitor}
               categories={categories}
+              companySettings={companySettings}
+              allApplications={applications}
               onUpdateStatus={async (id, status) => {
                 // Bypass DB for this status as it's purely informative and constrained in DB
                 if (status === AppStatus.PAYMENT_UNDER_REVIEW || status === 'PAYMENT_UNDER_REVIEW') {

@@ -416,13 +416,9 @@ export const applicationsDb = {
 
     async updateStatus(id: string, status: string, paymentDeadline?: string, approvedAt?: string): Promise<DbApplication> {
         const updates: any = { status };
-        // DOČASNĚ ZAKÁZÁNO: Tyto sloupce v DB pravděpodobně chybí a způsobují chybu při schvalování.
-        // TODO: Až budou sloupce v DB existovat, odkomentujte řádky níže.
-        /*
         if (paymentDeadline !== undefined) updates.payment_deadline = paymentDeadline;
         if (approvedAt !== undefined) updates.approved_at = approvedAt;
-        */
-        
+
         const { data, error } = await supabase.from('applications').update(updates).eq('id', id).select().single();
         if (error) throw error;
         return data;
@@ -693,6 +689,125 @@ export const activityLogDb = {
             console.error('Failed to log admin activity:', error);
             throw error;
         }
+        return data;
+    },
+};
+
+/* ═══════════════════════════════════════════════════════════
+   COMPANY SETTINGS (Singleton)
+═══════════════════════════════════════════════════════════ */
+export interface DbCompanySettings {
+    id: string;
+    company_name: string;
+    company_address: string;
+    ic: string;
+    dic?: string | null;
+    bank_account: string;
+    bank_iban: string;
+    bank_swift?: string | null;
+    invoice_due_days: number;
+    invoice_note?: string | null;
+    updated_at?: string;
+}
+
+export const companySettingsDb = {
+    async get(): Promise<DbCompanySettings | null> {
+        const { data, error } = await supabase
+            .from('company_settings')
+            .select('*')
+            .eq('id', 'singleton')
+            .single();
+        if (error) {
+            console.error('Failed to fetch company settings:', error);
+            return null;
+        }
+        return data;
+    },
+
+    async update(updates: Partial<Omit<DbCompanySettings, 'id'>>): Promise<DbCompanySettings> {
+        const { data, error } = await supabase
+            .from('company_settings')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', 'singleton')
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+};
+
+/* ═══════════════════════════════════════════════════════════
+   INVOICES
+═══════════════════════════════════════════════════════════ */
+export interface DbInvoice {
+    id: string;
+    application_id: string;
+    event_id?: string | null;
+    invoice_number: string;
+    amount_czk: number;
+    issued_at: string;
+    due_date: string;
+    variable_symbol: string;
+    pdf_storage_path?: string | null;
+    xml_storage_path?: string | null;
+    pdf_url?: string | null;
+    xml_url?: string | null;
+    created_at?: string;
+}
+
+export const invoicesDb = {
+    async getByApplicationId(applicationId: string): Promise<DbInvoice | null> {
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('*')
+            .eq('application_id', applicationId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (error) throw error;
+        return data;
+    },
+
+    async getByInvoiceNumber(invoiceNumber: string): Promise<DbInvoice | null> {
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('*')
+            .eq('invoice_number', invoiceNumber)
+            .single();
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            throw error;
+        }
+        return data;
+    },
+
+    async getAll(): Promise<DbInvoice[]> {
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('*')
+            .order('issued_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    },
+
+    async create(invoice: Omit<DbInvoice, 'created_at'>): Promise<DbInvoice> {
+        const { data, error } = await supabase
+            .from('invoices')
+            .insert(invoice)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+
+    async update(id: string, updates: Partial<DbInvoice>): Promise<DbInvoice> {
+        const { data, error } = await supabase
+            .from('invoices')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
         return data;
     },
 };

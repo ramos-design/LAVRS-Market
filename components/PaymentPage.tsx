@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
-  Building2, 
-  MapPin, 
-  Mail, 
-  CheckCircle2, 
-  Plus, 
-  Minus, 
+  Building2,
+  MapPin,
+  Mail,
+  CheckCircle2,
+  Plus,
+  Minus,
   QrCode,
   Sparkles
 } from 'lucide-react';
 
-import { BrandProfile, MarketEvent, Application, Category, ExtraItem, AppStatus } from '../types';
+import { BrandProfile, MarketEvent, Application, Category, ExtraItem, AppStatus, CompanySettings, EventPlan } from '../types';
 import { useEventPlan } from '../hooks/useSupabase';
 import { formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
@@ -25,13 +25,25 @@ interface PaymentPageProps {
   activeEvent?: MarketEvent | null;
   activeApp?: Application | null;
   categories?: Category[];
+  companySettings?: CompanySettings | null;
+  allApplications?: Application[];
 }
 
-const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, initialBillingDetails, onSaveBilling, onUpdateStatus, activeEvent, activeApp, categories }) => {
+const PaymentPage: React.FC<PaymentPageProps> = ({
+  onBack,
+  initialBillingDetails,
+  onSaveBilling,
+  onUpdateStatus,
+  activeEvent,
+  activeApp,
+  categories,
+  companySettings,
+  allApplications,
+}) => {
   const [step, setStep] = useState(1);
   const [now, setNow] = React.useState(Date.now());
   const [selectedExtras, setSelectedExtras] = useState<Set<string>>(new Set());
-  
+
   const { plan: eventPlan } = useEventPlan(activeEvent?.id || null);
 
   React.useEffect(() => {
@@ -50,10 +62,25 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, initialBillingDetails
   // Get pricing and categories
   const categoryPriceStr = activeApp?.zoneCategory && eventPlan?.prices?.[activeApp.zoneCategory] ? eventPlan.prices[activeApp.zoneCategory] : '0 Kč';
   const basePrice = parsePrice(categoryPriceStr);
-  
-  const selectedExtrasList = eventPlan?.extras.filter(extra => selectedExtras.has(extra.id)) || [];
+
+  const selectedExtrasList = eventPlan?.extras?.filter(extra => selectedExtras.has(extra.id)) || [];
   const extrasTotal = selectedExtrasList.reduce((sum, extra) => sum + parsePrice(extra.price), 0);
   const totalAmount = basePrice + extrasTotal;
+
+  // DEBUG: Log what we're calculating (only once per component mount to avoid spam)
+  React.useMemo(() => {
+    console.log('PaymentPage pricing DEBUG:', {
+      zoneCategory: activeApp?.zoneCategory,
+      categoryPriceStr,
+      basePrice,
+      selectedExtraIds: Array.from(selectedExtras),
+      selectedExtrasList: selectedExtrasList.map(e => ({ id: e.id, label: e.label, price: e.price })),
+      extrasTotal,
+      totalAmount,
+      eventPlanExtras: eventPlan?.extras?.length || 0,
+      allPriceKeys: eventPlan?.prices ? Object.keys(eventPlan.prices) : [],
+    });
+  }, [step]); // Only log when step changes
 
   // Time remaining logic
   const getRemaining = (deadlineIso?: string) => {
@@ -368,18 +395,66 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onBack, initialBillingDetails
                     </p>
                   </div>
 
-                  <button 
+                  <button
                     disabled={isUpdatingStatus}
                     onClick={async () => {
-                      if (activeApp && onUpdateStatus) {
+                      // Merge form data into application object for invoice generation
+                      const appWithBillingData = activeApp ? {
+                        ...activeApp,
+                        billingName: billingName || activeApp.billingName,
+                        ic: ic || activeApp.ic,
+                        dic: dic || activeApp.dic,
+                        billingAddress: billingAddress || activeApp.billingAddress,
+                        billingEmail: billingEmail || activeApp.billingEmail,
+                      } : null;
+
+                      // DEBUG LOG
+                      console.log('DEBUG - Payment data:', {
+                        appWithBillingData: appWithBillingData ? {
+                          id: appWithBillingData.id,
+                          zoneCategory: appWithBillingData.zoneCategory,
+                          billingName: appWithBillingData.billingName,
+                          billingEmail: appWithBillingData.billingEmail,
+                          ic: appWithBillingData.ic,
+                        } : null,
+                        activeEvent: activeEvent ? { id: activeEvent.id, date: activeEvent.date } : null,
+                        eventPlan: eventPlan ? { prices: Object.keys(eventPlan.prices), extrasCount: eventPlan.extras?.length } : null,
+                        selectedExtras: Array.from(selectedExtras),
+                        companySettings: companySettings ? { companyName: companySettings.companyName, bankIban: companySettings.bankIban } : null,
+                      });
+
+                      if (appWithBillingData && onUpdateStatus && activeEvent && eventPlan && companySettings && allApplications) {
                         setIsUpdatingStatus(true);
                         try {
+                          // 1. Generate invoice
+                          console.log('Generating invoice for application:', appWithBillingData.id);
+                          const { generateInvoice } = await import('../lib/invoice-generator');
+                          const { saveInvoice } = await import('../lib/invoice-storage');
+
+                          const generatedInvoice = await generateInvoice({
+                            application: appWithBillingData,
+                            event: activeEvent,
+                            eventPlan,
+                            selectedExtraIds: Array.from(selectedExtras),
+                            companySettings,
+                            allApplications,
+                          });
+
+                          await saveInvoice({
+                            result: generatedInvoice,
+                            applicationId: activeApp.id,
+                            eventId: activeEvent.id,
+                          });
+
+                          console.log('Invoice generated and saved:', generatedInvoice.invoiceNumber);
+
+                          // 2. Update status
                           await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
                           setConfirmedPayment(true);
                         } catch (err: any) {
-                          console.error("Status update error:", err);
+                          console.error("Error during invoice or status update:", err);
                           const errorMsg = err.message || err.details || JSON.stringify(err);
-                          alert(`Nepodařilo se uložit stav: ${errorMsg}`);
+                          alert(`❌ Chyba: ${errorMsg}`);
                         } finally {
                           setIsUpdatingStatus(false);
                         }

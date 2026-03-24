@@ -6,10 +6,13 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     eventsDb, categoriesDb, brandProfilesDb, applicationsDb,
     eventPlansDb, bannersDb, emailTemplatesDb, emailAttachmentsDb,
+    invoicesDb, companySettingsDb,
     DbEvent, DbCategory, DbBrandProfile, DbApplication,
     DbEventPlan, DbZone, DbStand, DbBanner,
-    DbEmailTemplate, DbEmailAttachment,
+    DbEmailTemplate, DbEmailAttachment, DbInvoice, DbCompanySettings,
 } from '../lib/database';
+import { dbInvoiceToApp, dbCompanySettingsToApp } from '../lib/mappers';
+import { Invoice, CompanySettings } from '../types';
 
 /* ─── Generic hook helper ────────────────────────────────── */
 
@@ -338,4 +341,34 @@ export function useEmailAttachments(templateId: string | null) {
             query.refetch();
         },
     };
+}
+
+/* ─── Invoices ───────────────────────────────────────────── */
+
+export function useInvoices(options: QueryOptions = {}): UseQueryResult<Invoice[]> {
+    return useQuery(
+        'invoices',
+        async () => {
+            const invoices = await invoicesDb.getAll();
+            return invoices.map(dbInvoiceToApp);
+        },
+        [],
+        [],
+        options
+    );
+}
+
+/* ─── Company Settings ───────────────────────────────────── */
+
+export function useCompanySettings(options: QueryOptions = {}): UseQueryResult<CompanySettings | null> {
+    return useQuery(
+        'company_settings',
+        async () => {
+            const cs = await companySettingsDb.get();
+            return cs ? dbCompanySettingsToApp(cs) : null;
+        },
+        null,
+        [],
+        options
+    );
 }

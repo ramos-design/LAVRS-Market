@@ -79,6 +79,7 @@ export interface Application {
   extraNote?: string;
   paymentDeadline?: string;
   approvedAt?: string | null;
+  invoiceId?: string;
   updatedAt?: string;
 }
 
@@ -167,4 +168,34 @@ export interface Banner {
   subtitle: string;
   image: string;
   tag: string;
+}
+
+export interface Invoice {
+  id: string;
+  applicationId: string;
+  eventId?: string;
+  invoiceNumber: string;
+  amountCzk: number;
+  issuedAt: string;
+  dueDate: string;
+  variableSymbol: string;
+  pdfStoragePath?: string;
+  xmlStoragePath?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  createdAt: string;
+}
+
+export interface CompanySettings {
+  id: string;
+  companyName: string;
+  companyAddress: string;
+  ic: string;
+  dic?: string;
+  bankAccount: string;
+  bankIban: string;
+  bankSwift?: string;
+  invoiceDueDays: number;
+  invoiceNote?: string;
+  updatedAt: string;
 }
