@@ -14,146 +14,231 @@ import {
     Font,
 } from '@react-pdf/renderer';
 
-// Register Liberation Sans font with Czech character support
+// Register Liberation Sans with both Regular and Bold weights (bundled locally)
 Font.register({
-    family: 'NotoSans',
-    src: 'https://cdn.jsdelivr.net/npm/liberation-fonts@1.1.13/LiberationSans-Regular.ttf',
+    family: 'LiberationSans',
+    fonts: [
+        { src: '/fonts/LiberationSans-Regular.ttf', fontWeight: 400 },
+        { src: '/fonts/LiberationSans-Bold.ttf', fontWeight: 700 },
+    ],
 });
 
 const styles = StyleSheet.create({
     page: {
         backgroundColor: '#FFFFFF',
         padding: 40,
-        fontFamily: 'NotoSans',
+        fontFamily: 'LiberationSans',
         fontSize: 10,
         color: '#1F2937',
         lineHeight: 1.5,
     },
-    header: {
+
+    // Header
+    headerContainer: {
         marginBottom: 30,
         paddingBottom: 20,
         borderBottomWidth: 2,
         borderBottomColor: '#EF4444',
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
         color: '#EF4444',
-        marginBottom: 5,
+        marginBottom: 10,
     },
-    headerMeta: {
-        fontSize: 10,
-        color: '#666666',
-        marginTop: 10,
+    headerMetaRow: {
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
     },
-    section: {
-        marginBottom: 20,
+    headerMetaDivider: {
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
     },
-    sectionTitle: {
+    metaLabel: {
+        fontSize: 9,
+        color: '#666',
+        marginBottom: 2,
+    },
+    metaValue: {
+        fontSize: 11,
+    },
+    metaValueLarge: {
         fontSize: 12,
         fontWeight: 'bold',
-        marginBottom: 10,
-        marginTop: 5,
-        color: '#1F2937',
     },
-    row: {
+    metaValueBold: {
+        fontSize: 11,
+        fontWeight: 'bold',
+    },
+    textRight: {
+        textAlign: 'right',
+    },
+
+    // Party info
+    partyColumns: {
         display: 'flex',
         flexDirection: 'row',
-        marginBottom: 6,
+        gap: 40,
+        marginBottom: 30,
     },
-    label: {
-        fontWeight: 'bold',
-        width: 120,
-        color: '#4B5563',
-    },
-    value: {
+    partyColumn: {
         flex: 1,
     },
-    table: {
-        width: '100%',
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderTopColor: '#CCCCCC',
-        borderBottomColor: '#CCCCCC',
-        marginVertical: 10,
+    partyLabel: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: '#666',
+        marginBottom: 8,
     },
-    tableHeader: {
+    partyName: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    partyAddress: {
+        fontSize: 10,
+        marginBottom: 8,
+        lineHeight: 1.4,
+    },
+    partyDetail: {
+        fontSize: 9,
+    },
+
+    // Line items table
+    lineItemsSection: {
+        marginBottom: 20,
+    },
+    tableHeaderRow: {
         display: 'flex',
         flexDirection: 'row',
-        backgroundColor: '#F3F4F6',
+        borderBottomWidth: 2,
+        borderBottomColor: '#1F2937',
+        paddingBottom: 8,
+        marginBottom: 8,
+    },
+    tableHeaderCellBase: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: '#FFF',
+        backgroundColor: '#1F2937',
+        padding: 6,
+    },
+    thDescription: {
+        width: '50%',
+        textAlign: 'left',
+    },
+    thQuantity: {
+        width: '15%',
+        textAlign: 'center',
+    },
+    thUnitPrice: {
+        width: '18%',
+        textAlign: 'right',
+    },
+    thTotal: {
+        width: '17%',
+        textAlign: 'right',
+    },
+    tableDataRow: {
+        display: 'flex',
+        flexDirection: 'row',
         borderBottomWidth: 1,
-        borderBottomColor: '#D1D5DB',
-        paddingHorizontal: 8,
+        borderBottomColor: '#E5E7EB',
         paddingVertical: 6,
+    },
+    tdDescription: {
+        width: '50%',
         fontSize: 10,
+        textAlign: 'left',
+    },
+    tdQuantity: {
+        width: '15%',
+        fontSize: 10,
+        textAlign: 'center',
+    },
+    tdUnitPrice: {
+        width: '18%',
+        fontSize: 10,
+        textAlign: 'right',
+    },
+    tdTotal: {
+        width: '17%',
+        fontSize: 10,
+        textAlign: 'right',
         fontWeight: 'bold',
     },
-    tableHeaderCell: {
-        width: '50%',
-        textAlign: 'left',
-    },
-    tableHeaderCellRight: {
-        width: '25%',
-        textAlign: 'right',
-    },
-    tableRow: {
-        display: 'flex',
-        flexDirection: 'row',
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
-    },
-    tableCell: {
-        width: '50%',
-        textAlign: 'left',
-        fontSize: 10,
-    },
-    tableCellRight: {
-        width: '25%',
-        textAlign: 'right',
-        fontSize: 10,
-    },
-    totalSection: {
-        marginTop: 15,
+
+    // Totals
+    totalsContainer: {
+        marginTop: 20,
         paddingTop: 15,
         borderTopWidth: 2,
         borderTopColor: '#EF4444',
     },
-    totalRow: {
+    subtotalRow: {
         display: 'flex',
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        marginBottom: 8,
+        marginBottom: 10,
     },
-    totalLabel: {
-        width: 200,
+    subtotalLabel: {
+        width: '40%',
         textAlign: 'right',
-        fontWeight: 'bold',
+        fontSize: 10,
+        color: '#666',
     },
-    totalAmount: {
-        width: 100,
+    subtotalValue: {
+        width: '20%',
         textAlign: 'right',
-        fontWeight: 'bold',
+        fontSize: 10,
     },
-    finalTotal: {
+    grandTotalRow: {
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingVertical: 12,
+        paddingHorizontal: 10,
+        backgroundColor: '#FEE2E2',
+        borderLeftWidth: 3,
+        borderLeftColor: '#EF4444',
+    },
+    grandTotalLabel: {
+        width: '40%',
+        textAlign: 'right',
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#EF4444',
+    },
+    grandTotalValue: {
+        width: '20%',
+        textAlign: 'right',
         fontSize: 14,
         fontWeight: 'bold',
         color: '#EF4444',
     },
-    qrSection: {
-        marginTop: 20,
+
+    // QR section
+    qrContainer: {
+        marginTop: 30,
         paddingTop: 20,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
         display: 'flex',
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 15,
+        gap: 20,
+    },
+    qrImageWrapper: {
+        width: 120,
     },
     qrImage: {
-        width: 100,
-        height: 100,
+        width: 110,
+        height: 110,
         borderWidth: 1,
         borderColor: '#D1D5DB',
     },
@@ -161,24 +246,33 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     qrTitle: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 'bold',
-        marginBottom: 5,
-        color: '#1F2937',
+        marginBottom: 6,
     },
-    qrText: {
+    qrDescription: {
         fontSize: 9,
-        marginBottom: 3,
-        color: '#666666',
+        color: '#666',
+        lineHeight: 1.5,
+        marginBottom: 8,
     },
-    footer: {
+    spaydText: {
+        fontSize: 7,
+        color: '#999',
+    },
+
+    // Footer
+    footerContainer: {
         marginTop: 30,
         paddingTop: 15,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        fontSize: 8,
-        color: '#999999',
         textAlign: 'center',
+        fontSize: 8,
+        color: '#999',
+    },
+    footerLine: {
+        marginBottom: 4,
     },
 });
 
@@ -253,98 +347,96 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = ({
     return (
         <Document>
             <Page size="A4" style={styles.page}>
-                {/* Header - ISDOC Compatible */}
-                <View style={{ marginBottom: 30, paddingBottom: 20, borderBottomWidth: 2, borderBottomColor: '#EF4444' }}>
-                    <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#EF4444', marginBottom: 10, fontFamily: 'NotoSans' }}>FAKTURA</Text>
+                {/* Header */}
+                <View style={styles.headerContainer}>
+                    <Text style={styles.headerTitle}>FAKTURA</Text>
 
-                    <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <View style={styles.headerMetaRow}>
                         <View>
-                            <Text style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>Číslo faktury</Text>
-                            <Text style={{ fontSize: 12, fontWeight: 'bold', fontFamily: 'NotoSans' }}>{invoiceNumber}</Text>
+                            <Text style={styles.metaLabel}>Číslo faktury</Text>
+                            <Text style={styles.metaValueLarge}>{invoiceNumber}</Text>
                         </View>
-                        <View style={{ textAlign: 'right' }}>
-                            <Text style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>Datum vystavení</Text>
-                            <Text style={{ fontSize: 11, fontFamily: 'NotoSans' }}>{formatDate(issuedDate)}</Text>
+                        <View style={styles.textRight}>
+                            <Text style={styles.metaLabel}>Datum vystavení</Text>
+                            <Text style={styles.metaValue}>{formatDate(issuedDate)}</Text>
                         </View>
                     </View>
 
-                    <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
+                    <View style={styles.headerMetaDivider}>
                         <View>
-                            <Text style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>Splatnost</Text>
-                            <Text style={{ fontSize: 11 }}>{formatDate(dueDate)}</Text>
+                            <Text style={styles.metaLabel}>Splatnost</Text>
+                            <Text style={styles.metaValue}>{formatDate(dueDate)}</Text>
                         </View>
-                        <View style={{ textAlign: 'right' }}>
-                            <Text style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>Variabilní symbol</Text>
-                            <Text style={{ fontSize: 11, fontWeight: 'bold', fontFamily: 'NotoSans' }}>{variableSymbol}</Text>
+                        <View style={styles.textRight}>
+                            <Text style={styles.metaLabel}>Variabilní symbol</Text>
+                            <Text style={styles.metaValueBold}>{variableSymbol}</Text>
                         </View>
                     </View>
                 </View>
 
-                {/* Issuer and Customer Info - ISDOC Format */}
-                <View style={{ display: 'flex', flexDirection: 'row', gap: 40, marginBottom: 30 }}>
-                    {/* Vystavovatel */}
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#666', marginBottom: 8, fontFamily: 'NotoSans' }}>VYSTAVOVATEL:</Text>
-                        <Text style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 2, fontFamily: 'NotoSans' }}>{issuerName}</Text>
-                        <Text style={{ fontSize: 10, marginBottom: 8, lineHeight: 1.4 }}>{issuerAddress}</Text>
-                        <Text style={{ fontSize: 9 }}>IČ:  {issuerIC}</Text>
-                        {issuerDIC && <Text style={{ fontSize: 9 }}>DIČ: {issuerDIC}</Text>}
+                {/* Issuer and Customer */}
+                <View style={styles.partyColumns}>
+                    <View style={styles.partyColumn}>
+                        <Text style={styles.partyLabel}>VYSTAVOVATEL:</Text>
+                        <Text style={styles.partyName}>{issuerName}</Text>
+                        <Text style={styles.partyAddress}>{issuerAddress}</Text>
+                        <Text style={styles.partyDetail}>IČ:  {issuerIC}</Text>
+                        {issuerDIC && <Text style={styles.partyDetail}>DIČ: {issuerDIC}</Text>}
                     </View>
 
-                    {/* Odběratel */}
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#666', marginBottom: 8, fontFamily: 'NotoSans' }}>ODBĚRATEL:</Text>
-                        <Text style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 2, fontFamily: 'NotoSans' }}>{customerName}</Text>
-                        <Text style={{ fontSize: 10, marginBottom: 8, lineHeight: 1.4 }}>{customerAddress}</Text>
-                        <Text style={{ fontSize: 9 }}>IČ:  {customerIC}</Text>
-                        {customerDIC && <Text style={{ fontSize: 9 }}>DIČ: {customerDIC}</Text>}
-                        {customerEmail && <Text style={{ fontSize: 9 }}>Email: {customerEmail}</Text>}
+                    <View style={styles.partyColumn}>
+                        <Text style={styles.partyLabel}>ODBĚRATEL:</Text>
+                        <Text style={styles.partyName}>{customerName}</Text>
+                        <Text style={styles.partyAddress}>{customerAddress}</Text>
+                        <Text style={styles.partyDetail}>IČ:  {customerIC}</Text>
+                        {customerDIC && <Text style={styles.partyDetail}>DIČ: {customerDIC}</Text>}
+                        {customerEmail && <Text style={styles.partyDetail}>Email: {customerEmail}</Text>}
                     </View>
                 </View>
 
-                {/* Line Items Table - ISDOC Format */}
-                <View style={{ marginBottom: 20 }}>
-                    <View style={{ display: 'flex', flexDirection: 'row', borderBottomWidth: 2, borderBottomColor: '#1F2937', paddingBottom: 8, marginBottom: 8 }}>
-                        <Text style={{ width: '50%', fontSize: 9, fontWeight: 'bold', color: '#FFF', backgroundColor: '#1F2937', padding: 6, fontFamily: 'NotoSans' }}>Popis položky</Text>
-                        <Text style={{ width: '15%', fontSize: 9, fontWeight: 'bold', color: '#FFF', backgroundColor: '#1F2937', padding: 6, textAlign: 'center', fontFamily: 'NotoSans' }}>Počet</Text>
-                        <Text style={{ width: '18%', fontSize: 9, fontWeight: 'bold', color: '#FFF', backgroundColor: '#1F2937', padding: 6, textAlign: 'right', fontFamily: 'NotoSans' }}>Jednotková cena</Text>
-                        <Text style={{ width: '17%', fontSize: 9, fontWeight: 'bold', color: '#FFF', backgroundColor: '#1F2937', padding: 6, textAlign: 'right', fontFamily: 'NotoSans' }}>Celkem</Text>
+                {/* Line Items Table */}
+                <View style={styles.lineItemsSection} wrap>
+                    <View style={styles.tableHeaderRow} wrap={false} minPresenceAhead={20}>
+                        <Text style={[styles.tableHeaderCellBase, styles.thDescription]}>Popis položky</Text>
+                        <Text style={[styles.tableHeaderCellBase, styles.thQuantity]}>Počet</Text>
+                        <Text style={[styles.tableHeaderCellBase, styles.thUnitPrice]}>Jednotková cena</Text>
+                        <Text style={[styles.tableHeaderCellBase, styles.thTotal]}>Celkem</Text>
                     </View>
                     {lineItems.map((item, idx) => (
-                        <View key={idx} style={{ display: 'flex', flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingVertical: 6 }}>
-                            <Text style={{ width: '50%', fontSize: 10 }}>{item.description}</Text>
-                            <Text style={{ width: '15%', fontSize: 10, textAlign: 'center' }}>{item.quantity}</Text>
-                            <Text style={{ width: '18%', fontSize: 10, textAlign: 'right' }}>{formatCZK(item.unitPrice)}</Text>
-                            <Text style={{ width: '17%', fontSize: 10, textAlign: 'right', fontWeight: 'bold', fontFamily: 'NotoSans' }}>{formatCZK(item.totalPrice)}</Text>
+                        <View key={idx} style={styles.tableDataRow} wrap={false}>
+                            <Text style={styles.tdDescription}>{item.description}</Text>
+                            <Text style={styles.tdQuantity}>{item.quantity}</Text>
+                            <Text style={styles.tdUnitPrice}>{formatCZK(item.unitPrice)}</Text>
+                            <Text style={styles.tdTotal}>{formatCZK(item.totalPrice)}</Text>
                         </View>
                     ))}
                 </View>
 
-                {/* Totals - ISDOC Format */}
-                <View style={{ marginTop: 20, paddingTop: 15, borderTopWidth: 2, borderTopColor: '#EF4444' }}>
-                    <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10 }}>
-                        <Text style={{ width: '40%', textAlign: 'right', fontSize: 10, color: '#666' }}>Celkem bez DPH:</Text>
-                        <Text style={{ width: '20%', textAlign: 'right', fontSize: 10, fontFamily: 'NotoSans' }}>{formatCZK(totalAmount)}</Text>
+                {/* Totals */}
+                <View style={styles.totalsContainer}>
+                    <View style={styles.subtotalRow}>
+                        <Text style={styles.subtotalLabel}>Celkem bez DPH:</Text>
+                        <Text style={styles.subtotalValue}>{formatCZK(totalAmount)}</Text>
                     </View>
-                    <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: 12, paddingHorizontal: 10, backgroundColor: '#FEE2E2', borderLeftWidth: 3, borderLeftColor: '#EF4444' }}>
-                        <Text style={{ width: '40%', textAlign: 'right', fontSize: 11, fontWeight: 'bold', color: '#EF4444', fontFamily: 'NotoSans' }}>Celkem k úhradě:</Text>
-                        <Text style={{ width: '20%', textAlign: 'right', fontSize: 14, fontWeight: 'bold', color: '#EF4444', fontFamily: 'NotoSans' }}>{formatCZK(totalAmount)}</Text>
+                    <View style={styles.grandTotalRow}>
+                        <Text style={styles.grandTotalLabel}>Celkem k úhradě:</Text>
+                        <Text style={styles.grandTotalValue}>{formatCZK(totalAmount)}</Text>
                     </View>
                 </View>
 
-                {/* QR Code Section - ISDOC Compatible */}
+                {/* QR Code */}
                 {qrDataUrl && (
-                    <View style={{ marginTop: 30, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#E5E7EB', display: 'flex', flexDirection: 'row', gap: 20 }}>
-                        <View style={{ width: 120 }}>
-                            <Image src={qrDataUrl} style={{ width: 110, height: 110, borderWidth: 1, borderColor: '#D1D5DB' }} />
+                    <View style={styles.qrContainer} wrap={false}>
+                        <View style={styles.qrImageWrapper}>
+                            <Image src={qrDataUrl} style={styles.qrImage} />
                         </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 6, fontFamily: 'NotoSans' }}>QR Platba (SPAYD)</Text>
-                            <Text style={{ fontSize: 9, color: '#666', lineHeight: 1.5, marginBottom: 8 }}>
+                        <View style={styles.qrInfo}>
+                            <Text style={styles.qrTitle}>QR Platba (SPAYD)</Text>
+                            <Text style={styles.qrDescription}>
                                 Naskenujte QR kód ve vaší bankovní aplikaci pro okamžitou platbu. Platební údaje jsou kódovány v QR kódu.
                             </Text>
                             {spaydString && (
-                                <Text style={{ fontSize: 7, color: '#999', fontFamily: 'NotoSans', wordBreak: 'break-all' }}>
+                                <Text style={styles.spaydText}>
                                     {spaydString}
                                 </Text>
                             )}
@@ -353,9 +445,9 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = ({
                 )}
 
                 {/* Footer */}
-                <View style={{ marginTop: 30, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#E5E7EB', textAlign: 'center', fontSize: 8, color: '#999' }}>
-                    <Text style={{ marginBottom: 4 }}>Tato faktura je vystavena dle zákona č. 235/2004 Sb. (zákon o DPH) a kompatibilní s ISDOC 6.0.1</Text>
-                    <Text style={{ marginBottom: 4 }}>Číslo účtu: 2900765432/2010  |  IBAN: CZ6520100000002900765432</Text>
+                <View style={styles.footerContainer}>
+                    <Text style={styles.footerLine}>Tato faktura je vystavena dle zákona č. 235/2004 Sb. (zákon o DPH) a kompatibilní s ISDOC 6.0.1</Text>
+                    <Text style={styles.footerLine}>Číslo účtu: 2900765432/2010  |  IBAN: CZ6520100000002900765432</Text>
                     <Text>Vygenerováno systémem LAVRS Market</Text>
                 </View>
             </Page>
