@@ -396,8 +396,14 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                   </div>
 
                   <button
-                    disabled={isUpdatingStatus}
+                    disabled={isUpdatingStatus || !eventPlan}
                     onClick={async () => {
+                      // Check if data is still loading
+                      if (!eventPlan) {
+                        alert('Data se ještě načítá, prosím chvíli počkejte...');
+                        return;
+                      }
+
                       // Merge form data into application object for invoice generation
                       const appWithBillingData = activeApp ? {
                         ...activeApp,
@@ -423,41 +429,61 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                         companySettings: companySettings ? { companyName: companySettings.companyName, bankIban: companySettings.bankIban } : null,
                       });
 
-                      if (appWithBillingData && onUpdateStatus && activeEvent && eventPlan && companySettings && allApplications) {
-                        setIsUpdatingStatus(true);
-                        try {
-                          // 1. Generate invoice
-                          console.log('Generating invoice for application:', appWithBillingData.id);
-                          const { generateInvoice } = await import('../lib/invoice-generator');
-                          const { saveInvoice } = await import('../lib/invoice-storage');
+                      // Validate all required data
+                      if (!appWithBillingData) {
+                        alert('❌ Chyba: Aplikace data nejsou dostupná');
+                        return;
+                      }
+                      if (!onUpdateStatus) {
+                        alert('❌ Chyba: Funkce pro aktualizaci nejsou dostupné');
+                        return;
+                      }
+                      if (!activeEvent) {
+                        alert('❌ Chyba: Event data nejsou dostupná');
+                        return;
+                      }
+                      if (!companySettings) {
+                        alert('❌ Chyba: Nastavení společnosti nejsou dostupná');
+                        return;
+                      }
+                      if (!allApplications) {
+                        alert('❌ Chyba: Seznam aplikací není dostupný');
+                        return;
+                      }
 
-                          const generatedInvoice = await generateInvoice({
-                            application: appWithBillingData,
-                            event: activeEvent,
-                            eventPlan,
-                            selectedExtraIds: Array.from(selectedExtras),
-                            companySettings,
-                            allApplications,
-                          });
+                      setIsUpdatingStatus(true);
+                      try {
+                        // 1. Generate invoice
+                        console.log('Generating invoice for application:', appWithBillingData.id);
+                        const { generateInvoice } = await import('../lib/invoice-generator');
+                        const { saveInvoice } = await import('../lib/invoice-storage');
 
-                          await saveInvoice({
-                            result: generatedInvoice,
-                            applicationId: activeApp.id,
-                            eventId: activeEvent.id,
-                          });
+                        const generatedInvoice = await generateInvoice({
+                          application: appWithBillingData,
+                          event: activeEvent,
+                          eventPlan,
+                          selectedExtraIds: Array.from(selectedExtras),
+                          companySettings,
+                          allApplications,
+                        });
 
-                          console.log('Invoice generated and saved:', generatedInvoice.invoiceNumber);
+                        await saveInvoice({
+                          result: generatedInvoice,
+                          applicationId: activeApp.id,
+                          eventId: activeEvent.id,
+                        });
 
-                          // 2. Update status
-                          await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
-                          setConfirmedPayment(true);
-                        } catch (err: any) {
-                          console.error("Error during invoice or status update:", err);
-                          const errorMsg = err.message || err.details || JSON.stringify(err);
-                          alert(`❌ Chyba: ${errorMsg}`);
-                        } finally {
-                          setIsUpdatingStatus(false);
-                        }
+                        console.log('Invoice generated and saved:', generatedInvoice.invoiceNumber);
+
+                        // 2. Update status
+                        await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
+                        setConfirmedPayment(true);
+                      } catch (err: any) {
+                        console.error("Error during invoice or status update:", err);
+                        const errorMsg = err.message || err.details || JSON.stringify(err);
+                        alert(`❌ Chyba: ${errorMsg}`);
+                      } finally {
+                        setIsUpdatingStatus(false);
                       }
                     }}
                     className="w-full py-6 bg-lavrs-dark text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red shadow-xl disabled:opacity-50 disabled:cursor-not-allowed group"
@@ -467,6 +493,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                         <HeartLoader size={20} className="text-white" />
                         Ukládám...
                       </div>
+                    ) : !eventPlan ? (
+                      'Načítám data...'
                     ) : (
                       'Dokončit'
                     )}
