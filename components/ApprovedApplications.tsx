@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Instagram, Globe, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, ChevronDown, ChevronUp, Search, Heart } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory, MarketEvent } from '../types';
 
@@ -10,6 +10,13 @@ interface ApprovedApplicationsProps {
 
 const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack, events, applications }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
+
+  // Create a map for O(1) event lookups
+  const eventsMap = React.useMemo(() => {
+    const map = new Map<string, MarketEvent>();
+    events.forEach(e => map.set(e.id, e));
+    return map;
+  }, [events]);
 
   // Filter only approved and paid applications
   const approvedApplications = applications.filter(a => {
@@ -46,30 +53,32 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
     });
   }, [approvedApplications, events]);
 
-  const filtered = approvedApplications.filter(app => {
-    // Search filter
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      const matchesQuery =
-        app.brandName.toLowerCase().includes(q) ||
-        (app.contactPerson || '').toLowerCase().includes(q) ||
-        (app.email || '').toLowerCase().includes(q) ||
-        (events.find(e => e.id === app.eventId)?.title || '').toLowerCase().includes(q);
-      if (!matchesQuery) return false;
-    }
+  const filtered = React.useMemo(() => {
+    return approvedApplications.filter(app => {
+      // Search filter
+      if (query.trim()) {
+        const q = query.toLowerCase();
+        const matchesQuery =
+          app.brandName.toLowerCase().includes(q) ||
+          (app.contactPerson || '').toLowerCase().includes(q) ||
+          (app.email || '').toLowerCase().includes(q) ||
+          (eventsMap.get(app.eventId)?.title || '').toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
 
-    // Category filter
-    if (selectedCategory !== 'ALL' && app.zoneCategory !== selectedCategory) return false;
+      // Category filter
+      if (selectedCategory !== 'ALL' && app.zoneCategory !== selectedCategory) return false;
 
-    // Event filter
-    if (selectedEventId !== 'ALL' && app.eventId !== selectedEventId) return false;
+      // Event filter
+      if (selectedEventId !== 'ALL' && app.eventId !== selectedEventId) return false;
 
-    return true;
-  });
+      return true;
+    });
+  }, [approvedApplications, query, selectedCategory, selectedEventId, eventsMap]);
 
-  const getEventDetails = (eventId: string) => {
-    return events.find(e => e.id === eventId);
-  };
+  const getEventDetails = React.useCallback((eventId: string) => {
+    return eventsMap.get(eventId);
+  }, [eventsMap]);
 
   const getZoneCategoryLabel = (category?: ZoneCategory) => category || 'Neuvedeno';
 

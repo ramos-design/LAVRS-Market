@@ -46,10 +46,14 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
   const { plan: eventPlan } = useEventPlan(activeEvent?.id || null);
 
+  // Only run countdown timer if there's an active payment deadline
+  const hasActiveCountdown = Boolean(activeApp?.paymentDeadline);
+
   React.useEffect(() => {
+    if (!hasActiveCountdown) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [hasActiveCountdown]);
 
   const parsePrice = (priceStr: string) => {
     return parseInt(priceStr.replace(/[^\d]/g, '')) || 0;
@@ -66,21 +70,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   const selectedExtrasList = eventPlan?.extras?.filter(extra => selectedExtras.has(extra.id)) || [];
   const extrasTotal = selectedExtrasList.reduce((sum, extra) => sum + parsePrice(extra.price), 0);
   const totalAmount = basePrice + extrasTotal;
-
-  // DEBUG: Log what we're calculating (only once per component mount to avoid spam)
-  React.useMemo(() => {
-    console.log('PaymentPage pricing DEBUG:', {
-      zoneCategory: activeApp?.zoneCategory,
-      categoryPriceStr,
-      basePrice,
-      selectedExtraIds: Array.from(selectedExtras),
-      selectedExtrasList: selectedExtrasList.map(e => ({ id: e.id, label: e.label, price: e.price })),
-      extrasTotal,
-      totalAmount,
-      eventPlanExtras: eventPlan?.extras?.length || 0,
-      allPriceKeys: eventPlan?.prices ? Object.keys(eventPlan.prices) : [],
-    });
-  }, [step]); // Only log when step changes
 
   // Time remaining logic
   const getRemaining = (deadlineIso?: string) => {
@@ -414,21 +403,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                         billingEmail: billingEmail || activeApp.billingEmail,
                       } : null;
 
-                      // DEBUG LOG
-                      console.log('DEBUG - Payment data:', {
-                        appWithBillingData: appWithBillingData ? {
-                          id: appWithBillingData.id,
-                          zoneCategory: appWithBillingData.zoneCategory,
-                          billingName: appWithBillingData.billingName,
-                          billingEmail: appWithBillingData.billingEmail,
-                          ic: appWithBillingData.ic,
-                        } : null,
-                        activeEvent: activeEvent ? { id: activeEvent.id, date: activeEvent.date } : null,
-                        eventPlan: eventPlan ? { prices: Object.keys(eventPlan.prices), extrasCount: eventPlan.extras?.length } : null,
-                        selectedExtras: Array.from(selectedExtras),
-                        companySettings: companySettings ? { companyName: companySettings.companyName, bankIban: companySettings.bankIban } : null,
-                      });
-
                       // Validate all required data
                       if (!appWithBillingData) {
                         alert('❌ Chyba: Aplikace data nejsou dostupná');
@@ -454,7 +428,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       setIsUpdatingStatus(true);
                       try {
                         // 1. Generate invoice
-                        console.log('Generating invoice for application:', appWithBillingData.id);
                         const { generateInvoice } = await import('../lib/invoice-generator');
                         const { saveInvoice } = await import('../lib/invoice-storage');
 
@@ -472,8 +445,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           applicationId: activeApp.id,
                           eventId: activeEvent.id,
                         });
-
-                        console.log('Invoice generated and saved:', generatedInvoice.invoiceNumber);
 
                         // 2. Update status
                         await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);

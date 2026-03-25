@@ -13,6 +13,7 @@ import {
 } from '../lib/database';
 import { dbInvoiceToApp, dbCompanySettingsToApp } from '../lib/mappers';
 import { Invoice, CompanySettings } from '../types';
+import { queryEmitter } from '../lib/queryEmitter';
 
 /* ─── Generic hook helper ────────────────────────────────── */
 
@@ -113,6 +114,14 @@ function useQuery<T>(
         fetch();
     }, [fetch, enabled]);
 
+    // Subscribe to cache invalidation events
+    useEffect(() => {
+        const unsubscribe = queryEmitter.subscribe(queryKey, () => {
+            fetch(true); // force refresh
+        });
+        return unsubscribe;
+    }, [queryKey, fetch]);
+
     return { data, loading, error, refetch: () => (enabled ? fetch(true) : Promise.resolve()) };
 }
 
@@ -126,16 +135,16 @@ export function useEvents(enabled = true) {
         events: query.data,
         createEvent: async (event: Omit<DbEvent, 'created_at'>) => {
             const created = await eventsDb.create(event);
-            await query.refetch();
+            queryEmitter.invalidate('events');
             return created;
         },
         updateEvent: async (id: string, updates: Partial<DbEvent>) => {
             await eventsDb.update(id, updates);
-            query.refetch();
+            queryEmitter.invalidate('events');
         },
         uploadEventImage: async (file: File, eventId: string) => {
             const result = await eventsDb.uploadImage(file, eventId);
-            query.refetch();
+            queryEmitter.invalidate('events');
             return result;
         },
         uploadEventFloorplan: async (file: File, eventId: string) => {
@@ -143,7 +152,7 @@ export function useEvents(enabled = true) {
         },
         deleteEvent: async (id: string) => {
             await eventsDb.delete(id);
-            query.refetch();
+            queryEmitter.invalidate('events');
         },
     };
 }
@@ -158,15 +167,15 @@ export function useCategories(enabled = true) {
         categories: query.data,
         createCategory: async (cat: Omit<DbCategory, 'created_at'>) => {
             await categoriesDb.create(cat);
-            query.refetch();
+            queryEmitter.invalidate('categories');
         },
         updateCategory: async (id: string, updates: Partial<DbCategory>) => {
             await categoriesDb.update(id, updates);
-            query.refetch();
+            queryEmitter.invalidate('categories');
         },
         deleteCategory: async (id: string) => {
             await categoriesDb.delete(id);
-            query.refetch();
+            queryEmitter.invalidate('categories');
         },
     };
 }
@@ -190,15 +199,15 @@ export function useBrandProfiles(options: UserScopedQueryOptions = {}) {
         profiles: query.data,
         createProfile: async (profile: Omit<DbBrandProfile, 'created_at'>) => {
             await brandProfilesDb.create(profile);
-            query.refetch();
+            queryEmitter.invalidatePattern(/^brand_profiles:/);
         },
         updateProfile: async (id: string, updates: Partial<DbBrandProfile>) => {
             await brandProfilesDb.update(id, updates);
-            query.refetch();
+            queryEmitter.invalidatePattern(/^brand_profiles:/);
         },
         deleteProfile: async (id: string) => {
             await brandProfilesDb.delete(id);
-            query.refetch();
+            queryEmitter.invalidatePattern(/^brand_profiles:/);
         },
     };
 }
@@ -222,20 +231,20 @@ export function useApplications(options: UserScopedQueryOptions = {}) {
         applications: query.data,
         createApplication: async (app: Omit<DbApplication, 'created_at'>) => {
             await applicationsDb.create(app);
-            query.refetch();
+            queryEmitter.invalidatePattern(/^applications:/);
         },
         updateStatus: async (id: string, status: string, paymentDeadline?: string, approvedAt?: string) => {
             const result = await applicationsDb.updateStatus(id, status, paymentDeadline, approvedAt);
-            await query.refetch();
+            queryEmitter.invalidatePattern(/^applications:/);
             return result;
         },
         updateApplication: async (id: string, updates: Partial<DbApplication>) => {
             await applicationsDb.update(id, updates);
-            query.refetch();
+            queryEmitter.invalidatePattern(/^applications:/);
         },
         deleteApplication: async (id: string) => {
             await applicationsDb.update(id, { status: 'DELETED' });
-            query.refetch();
+            queryEmitter.invalidatePattern(/^applications:/);
         },
     };
 }
@@ -262,7 +271,7 @@ export function useEventPlan(eventId: string | null) {
         savePlan: async (planData: Parameters<typeof eventPlansDb.savePlan>[1]) => {
             if (!eventId) return;
             await eventPlansDb.savePlan(eventId, planData);
-            query.refetch();
+            queryEmitter.invalidate(`event_plan:${eventId}`);
         },
     };
 }
@@ -277,19 +286,19 @@ export function useBanners(enabled = true) {
         banners: query.data,
         createBanner: async (banner: Omit<DbBanner, 'created_at'>) => {
             await bannersDb.create(banner);
-            query.refetch();
+            queryEmitter.invalidate('banners');
         },
         updateBanner: async (id: string, updates: Partial<DbBanner>) => {
             await bannersDb.update(id, updates);
-            query.refetch();
+            queryEmitter.invalidate('banners');
         },
         deleteBanner: async (id: string) => {
             await bannersDb.delete(id);
-            query.refetch();
+            queryEmitter.invalidate('banners');
         },
         replaceAllBanners: async (banners: Omit<DbBanner, 'created_at'>[]) => {
             await bannersDb.replaceAll(banners);
-            query.refetch();
+            queryEmitter.invalidate('banners');
         },
     };
 }
@@ -304,15 +313,15 @@ export function useEmailTemplates() {
         templates: query.data,
         createTemplate: async (template: Omit<DbEmailTemplate, 'created_at'>) => {
             await emailTemplatesDb.create(template);
-            query.refetch();
+            queryEmitter.invalidate('email_templates');
         },
         updateTemplate: async (id: string, updates: Partial<DbEmailTemplate>) => {
             await emailTemplatesDb.update(id, updates);
-            query.refetch();
+            queryEmitter.invalidate('email_templates');
         },
         deleteTemplate: async (id: string) => {
             await emailTemplatesDb.delete(id);
-            query.refetch();
+            queryEmitter.invalidate('email_templates');
         },
     };
 }
@@ -334,11 +343,11 @@ export function useEmailAttachments(templateId: string | null) {
         uploadAttachment: async (file: File) => {
             if (!templateId) return;
             await emailAttachmentsDb.uploadFile(file, templateId);
-            query.refetch();
+            queryEmitter.invalidate(`email_attachments:${templateId}`);
         },
         deleteAttachment: async (id: string, storagePath: string) => {
             await emailAttachmentsDb.deleteWithFile(id, storagePath);
-            query.refetch();
+            queryEmitter.invalidate(`email_attachments:${templateId}`);
         },
     };
 }

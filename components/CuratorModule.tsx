@@ -13,6 +13,14 @@ interface CuratorModuleProps {
 
 const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
+
+  // Create a map for O(1) event lookups instead of O(n) find()
+  const eventsMap = React.useMemo(() => {
+    const map = new Map<string, MarketEvent>();
+    events.forEach(e => map.set(e.id, e));
+    return map;
+  }, [events]);
+
   const deletedApplications = applications.filter(a => normalizeStatus(a.status) === AppStatus.DELETED);
   // Filter out applications that are already paid (those move to the event manager)
   const activeApplications = applications.filter(a => {
@@ -64,9 +72,9 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
     }
   }, [activeApplications, onUpdateStatus]);
 
-  const getEventDetails = (eventId: string) => {
-    return events.find(e => e.id === eventId);
-  };
+  const getEventDetails = useCallback((eventId: string) => {
+    return eventsMap.get(eventId);
+  }, [eventsMap]);
 
   const getZoneCategoryLabel = (category?: ZoneCategory) => category || 'Neuvedeno';
 
@@ -271,9 +279,14 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                       </div>
                     </div>
                   </div>
-                  <div className={`px-4 py-2 rounded-none text-xs font-bold uppercase ${getStatusBadge(selectedApp.status).bg} ${getStatusBadge(selectedApp.status).text}`}>
-                    {getStatusBadge(selectedApp.status).label}
-                  </div>
+                  {(() => {
+                    const statusBadge = getStatusBadge(selectedApp.status);
+                    return (
+                      <div className={`px-4 py-2 rounded-none text-xs font-bold uppercase ${statusBadge.bg} ${statusBadge.text}`}>
+                        {statusBadge.label}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

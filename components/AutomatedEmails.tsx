@@ -163,6 +163,19 @@ const AutomatedEmails: React.FC = () => {
 
     const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cursorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    React.useEffect(() => {
+      return () => {
+        if (notificationTimeoutRef.current) {
+          clearTimeout(notificationTimeoutRef.current);
+        }
+        if (cursorTimeoutRef.current) {
+          clearTimeout(cursorTimeoutRef.current);
+        }
+      };
+    }, []);
 
     /* ─── Handlers ────────────────────────────────────────────── */
 
@@ -204,7 +217,10 @@ const AutomatedEmails: React.FC = () => {
         });
 
         setSaveNotification(true);
-        setTimeout(() => setSaveNotification(false), 2500);
+        if (notificationTimeoutRef.current) {
+          clearTimeout(notificationTimeoutRef.current);
+        }
+        notificationTimeoutRef.current = setTimeout(() => setSaveNotification(false), 2500);
     };
 
     const handleDelete = async (id: string) => {
@@ -254,7 +270,10 @@ const AutomatedEmails: React.FC = () => {
         setEditingTemplate(prev => prev ? { ...prev, body: newText } : prev);
 
         // Restore cursor position
-        setTimeout(() => {
+        if (cursorTimeoutRef.current) {
+          clearTimeout(cursorTimeoutRef.current);
+        }
+        cursorTimeoutRef.current = setTimeout(() => {
             textarea.selectionStart = textarea.selectionEnd = start + variable.length;
             textarea.focus();
         }, 0);

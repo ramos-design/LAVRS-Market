@@ -17,6 +17,13 @@ interface AdminDashboardProps {
   onCreateEvent?: () => void;
 }
 
+// Module-level formatters for performance
+const formatCurrency = (num: number) => new Intl.NumberFormat('cs-CZ').format(num) + ' Kč';
+const activityDateFormatter = new Intl.DateTimeFormat('cs-CZ', {
+  day: 'numeric', month: 'short',
+  hour: '2-digit', minute: '2-digit'
+});
+
 const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, applications, brands, onOpenCurator, onManageEvent, onOpenEventsConfig, onCreateEvent }) => {
   const { activities, loading: activitiesLoading } = useAdminActivity(true);
   const normalizeId = React.useCallback((value?: string | null) => (value || '').trim().toLowerCase(), []);
@@ -137,8 +144,6 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
     }, { sum: 0, count: 0 });
     return totals.count > 0 ? Math.round(totals.sum / totals.count) : 0;
   }, [eventStats]);
-
-  const formatCurrency = (num: number) => new Intl.NumberFormat('cs-CZ').format(num) + ' Kč';
 
   const totalRevenue = React.useMemo(() => {
     const parsePrice = (priceStr?: string) => {
@@ -427,10 +432,7 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
                         {' '}{activity.description}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-1">
-                        {new Intl.DateTimeFormat('cs-CZ', {
-                          day: 'numeric', month: 'short',
-                          hour: '2-digit', minute: '2-digit'
-                        }).format(new Date(activity.createdAt))}
+                        {activityDateFormatter.format(new Date(activity.createdAt))}
                       </p>
                     </div>
                   </div>

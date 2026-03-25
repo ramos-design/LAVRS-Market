@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS events (
   title TEXT NOT NULL,
   date TEXT NOT NULL,
   location TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('open', 'closed', 'waitlist', 'draft')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('open', 'closed', 'waitlist', 'draft', 'soldout')),
   image TEXT,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT now()

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Banner } from '../types';
 import { Camera, Plus, Trash2, GripVertical, CheckCircle, Info } from 'lucide-react';
 
@@ -11,10 +11,19 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
   const [localBanners, setLocalBanners] = useState<Banner[]>(banners);
   const [isSaved, setIsSaved] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setLocalBanners(banners);
   }, [banners]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleAddBanner = () => {
     if (localBanners.length >= 10) return;
@@ -57,7 +66,10 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
   const handleSave = () => {
     onUpdateBanners(localBanners);
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => setIsSaved(false), 3000);
   };
 
   return (

@@ -472,6 +472,13 @@ const App: React.FC = () => {
   // Global loading state
   const isLoading = eventsLoading || appsLoading || profilesLoading || bannersLoading || categoriesLoading;
 
+  // MUST be before any conditional returns — hooks cannot be called conditionally
+  const currentUser = useMemo(() => ({
+    name: user?.fullName || user?.email?.split('@')[0] || '',
+    role: (userRole ?? 'EXHIBITOR') as ViewMode,
+    brand: userRole === 'EXHIBITOR' ? 'Vaše značka' : undefined
+  } as UserType), [user, userRole]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center">
@@ -487,12 +494,6 @@ const App: React.FC = () => {
     return <Auth />;
   }
 
-  const currentUser: UserType = {
-    name: user.fullName || user.email.split('@')[0],
-    role: userRole as ViewMode,
-    brand: userRole === 'EXHIBITOR' ? 'Vaše značka' : undefined
-  };
-
   return (
     <ToastProvider currentUserId={user?.id ?? null} enabled={userRole === 'ADMIN'}>
     <div className="flex flex-col md:flex-row min-h-screen bg-lavrs-beige/30">
@@ -501,14 +502,14 @@ const App: React.FC = () => {
       <MobileHeader
         role={userRole as ViewMode}
         activeItem={currentScreen}
-        onNavigate={(screen) => setCurrentScreen(screen)}
+        onNavigate={setCurrentScreen}
         onSignOut={signOut}
       />
-      
+
       <Sidebar
         role={userRole as ViewMode}
         activeItem={currentScreen}
-        onNavigate={(screen) => setCurrentScreen(screen)}
+        onNavigate={setCurrentScreen}
         onSignOut={signOut}
         onlineAdmins={onlineAdmins}
       />
@@ -518,9 +519,9 @@ const App: React.FC = () => {
 
           {/* Global loading indicator */}
           {isLoading && !authError && (
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-lavrs-dark text-white px-6 py-2 rounded-none shadow-lg text-sm font-bold flex items-center gap-2">
+            <div className="fixed bottom-4 right-4 z-50 bg-lavrs-dark text-white px-6 py-3 rounded shadow-lg text-sm font-bold flex items-center gap-2">
               <HeartLoader size={16} className="text-white" />
-              Načítám data...
+              Načítám...
             </div>
           )}
 
@@ -680,11 +681,6 @@ const App: React.FC = () => {
                   return Promise.resolve();
                 }
                 return handleUpdateApplicationStatus(id, status);
-              }}
-              onSaveBilling={async (details) => {
-                if (brandProfiles.length > 0) {
-                  await handleSaveBrand({ ...brandProfiles[0], ...details });
-                }
               }}
             />
           )}

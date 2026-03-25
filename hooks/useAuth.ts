@@ -17,6 +17,14 @@ export function useAuth() {
     const [error, setError] = useState<string | null>(null);
     const hasInit = useRef(false);
 
+    const signOut = async () => {
+        setLoading(true);
+        await supabase.auth.signOut();
+        clearSupabaseQueryCache();
+        setUser(null);
+        setLoading(false);
+    };
+
     const fetchProfile = async (userId: string, email: string) => {
         // 1. OKAMŽITĚ nastavíme provizorního uživatele, aby zmizel spinner!
         // Toto zajistí, že se uživatel dostane do aplikace hned.
@@ -134,14 +142,6 @@ export function useAuth() {
             }
         };
     }, []);
-
-    const signOut = async () => {
-        setLoading(true);
-        await supabase.auth.signOut();
-        clearSupabaseQueryCache();
-        setUser(null);
-        setLoading(false);
-    };
 
     return {
         user,
