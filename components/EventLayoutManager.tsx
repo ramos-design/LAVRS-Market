@@ -192,10 +192,11 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         return map;
     }, [plan.stands]);
 
-    const getStandAtCell = (x: number, y: number) => {
+    // Memoized helper to prevent re-creation on every render
+    const getStandAtCell = React.useCallback((x: number, y: number) => {
         const id = occupancyMap.get(`${x}-${y}`);
         return id ? plan.stands.find(s => s.id === id) || null : null;
-    };
+    }, [occupancyMap, plan.stands]);
 
     const toDateInputValue = (dateStr?: string) => {
         if (!dateStr) return '';
@@ -285,7 +286,8 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         plan.stands.some(s => s.occupantId === app.id)
     );
 
-    const placeStandAt = (x: number, y: number) => {
+    // Memoized handler to prevent re-creation on every render
+    const placeStandAt = React.useCallback((x: number, y: number) => {
         if (activeTool !== 'place' || !selectedZoneId) return;
         if (!isWithinGrid(x, y)) return;
         if (occupancyMap.has(`${x}-${y}`)) return;
@@ -301,9 +303,10 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
             label: `${plan.stands.length + 1}`
         };
         setPlan(prev => ({ ...prev, stands: [...prev.stands, newStand] }));
-    };
+    }, [activeTool, selectedZoneId, occupancyMap]);
 
-    const handleCellClick = (x: number, y: number) => {
+    // Memoized handler to prevent re-creation on every render
+    const handleCellClick = React.useCallback((x: number, y: number) => {
         if (activeTool === 'place') {
             placeStandAt(x, y);
             return;
@@ -325,7 +328,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         } else {
             setSelectedStandId(null);
         }
-    };
+    }, [activeTool, placeStandAt, getStandAtCell]);
 
     const assignExhibitor = (standId: string, exhibitorId: string) => {
         setPlan(prev => ({
@@ -347,21 +350,24 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         }));
     };
 
-    const deleteStand = (standId: string) => {
+    // Memoized handler to prevent re-creation on every render
+    const deleteStand = React.useCallback((standId: string) => {
         setPlan(prev => ({
             ...prev,
             stands: prev.stands.filter(s => s.id !== standId)
         }));
         setSelectedStandId(null);
-    };
+    }, []);
 
-    const getOccupant = (stand: Stand) => {
+    // Memoized helper to prevent re-creation on every render
+    const getOccupant = React.useCallback((stand: Stand) => {
         return propApplications.find(app => app.id === stand.occupantId);
-    };
+    }, [propApplications]);
 
-    const getZone = (zoneId: string) => {
+    // Memoized helper to prevent re-creation on every render
+    const getZone = React.useCallback((zoneId: string) => {
         return plan.zones.find(z => z.id === zoneId);
-    };
+    }, [plan.zones]);
 
     const focusStandOnMap = (standId: string) => {
         setActiveTab('layout');
@@ -454,7 +460,9 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         return () => window.removeEventListener('mouseup', onMouseUp);
     }, []);
 
-    const renderGrid = () => {
+    // Memoized grid rendering - avoid recalculating 144+ cells on every render
+    // Only recalculate when actual data changes, not on every parent re-render
+    const renderGrid = React.useMemo(() => {
         const cells = [];
         for (let y = 0; y < plan.gridSize.height; y++) {
             for (let x = 0; x < plan.gridSize.width; x++) {
@@ -519,7 +527,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
             }
         }
         return cells;
-    };
+    }, [plan.gridSize, plan.stands, plan.zones, propApplications, activeTool, selectedStandId, isPainting, handleCellClick, getStandAtCell, getOccupant, getZone, placeStandAt, deleteStand]);
 
     const drawPlanCanvas = async () => {
         const cell = Math.max(20, normalizedLayoutMeta.cellSize || 28);
@@ -1126,7 +1134,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                             backgroundPosition: `${normalizedLayoutMeta.originOffset?.x || 0}px ${normalizedLayoutMeta.originOffset?.y || 0}px`
                                         }}
                                     >
-                                        {renderGrid()}
+                                        {renderGrid}
                                     </div>
                                 </div>
                             </div>
