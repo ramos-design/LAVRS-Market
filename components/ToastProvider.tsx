@@ -25,20 +25,41 @@ const ToastProvider: React.FC<{
 }> = ({ currentUserId, enabled, children }) => {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const mountedRef = useRef(true);
+    const timersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
     const removeToast = useCallback((id: string) => {
+        // Clear the specific toast's timer
+        const timer = timersRef.current.get(id);
+        if (timer) {
+            clearTimeout(timer);
+            timersRef.current.delete(id);
+        }
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
-    // Auto-dismiss
+    // Per-toast auto-dismiss with individual timers
+    // Each toast gets its own setTimeout instead of global setInterval
     useEffect(() => {
-        if (toasts.length === 0) return;
-        const timer = setInterval(() => {
-            const now = Date.now();
-            setToasts(prev => prev.filter(t => now - t.timestamp < AUTO_DISMISS_MS));
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [toasts.length]);
+        toasts.forEach(toast => {
+            // Skip if timer already exists for this toast
+            if (timersRef.current.has(toast.id)) return;
+
+            // Set individual timeout for this toast
+            const timeout = setTimeout(() => {
+                if (mountedRef.current) {
+                    removeToast(toast.id);
+                }
+            }, AUTO_DISMISS_MS);
+
+            timersRef.current.set(toast.id, timeout);
+        });
+
+        // Cleanup on unmount
+        return () => {
+            timersRef.current.forEach(timer => clearTimeout(timer));
+            timersRef.current.clear();
+        };
+    }, [toasts, removeToast]);
 
     // Subscribe to Realtime INSERTs on admin_activity_log
     useEffect(() => {
