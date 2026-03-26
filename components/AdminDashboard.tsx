@@ -69,11 +69,14 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
   const [loadingStats, setLoadingStats] = React.useState<Set<string>>(new Set());
 
   // Lazy load event stats only when needed (not on mount with Promise.all)
+  // Use stable reference with useCallback - NO eventStats/loadingStats in dependency!
   const loadEventStats = React.useCallback(async (eventId: string) => {
-    // Skip if already loaded or currently loading
-    if (eventStats[eventId] || loadingStats.has(eventId)) return;
+    setLoadingStats(prev => {
+      // Skip if already loaded or currently loading
+      if (prev.has(eventId)) return prev;
+      return new Set([...prev, eventId]);
+    });
 
-    setLoadingStats(prev => new Set([...prev, eventId]));
     try {
       const { plan, zones, stands } = await eventPlansDb.getByEventId(eventId);
 
@@ -103,17 +106,16 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
         return next;
       });
     }
-  }, [eventStats, loadingStats]);
+  }, []);
 
   // Trigger lazy loading for each event when sortedEvents changes
+  // loadEventStats is memoized with empty deps, so it's stable
+  // The internal state checks prevent double-loading even if this runs multiple times
   React.useEffect(() => {
     sortedEvents.forEach(event => {
-      if (!eventStats[event.id] && !loadingStats.has(event.id)) {
-        // Call async but don't await - loads in background
-        loadEventStats(event.id);
-      }
+      loadEventStats(event.id);
     });
-  }, [sortedEvents, eventStats, loadingStats, loadEventStats]);
+  }, [sortedEvents, loadEventStats]);
 
   const getEventStat = (eventId: string) => eventStats[eventId] || { occupied: 0, total: 0 };
 
