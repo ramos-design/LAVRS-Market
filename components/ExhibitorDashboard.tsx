@@ -3,6 +3,7 @@ import React from 'react';
 import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles, MapPin } from 'lucide-react';
 import { MarketEvent, User, AppStatus, Application, BrandProfile, Banner } from '../types';
 import { formatEventDateRange } from '../lib/mappers';
+import CountdownDisplay from './CountdownDisplay';
 
 interface ExhibitorDashboardProps {
   user: User;
@@ -213,14 +214,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 </div>
               </div>
               <div className="flex items-center gap-8">
-                {remaining && (
-                  <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Zbývá času</p>
-                    <p className={`text-xl font-black tracking-wider ${remaining.overdue ? 'text-lavrs-red' : 'text-lavrs-red'}`}>
-                      {remaining.overdue ? 'PO SPLATNOSTI' : `${remaining.days}d : ${remaining.hours}h : ${remaining.minutes}m`}
-                    </p>
-                  </div>
-                )}
+                <CountdownDisplay remaining={remaining} />
                 <button 
                   onClick={() => onPayment(app.id)}
                   className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-bold uppercase tracking-widest text-xs hover:bg-lavrs-red transition-all flex items-center gap-2 group shadow-xl"
