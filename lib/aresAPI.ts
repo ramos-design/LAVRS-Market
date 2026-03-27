@@ -29,6 +29,7 @@ export async function fetchFromARES(ico: string): Promise<AresCompanyData | null
 
   try {
     // Call backend proxy at /api/ares
+    console.log(`[aresAPI] Requesting IČO: ${normalizedIco}`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -44,16 +45,25 @@ export async function fetchFromARES(ico: string): Promise<AresCompanyData | null
     );
 
     clearTimeout(timeoutId);
+    console.log(`[aresAPI] Response status: ${response.status}`);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      let errorData = { error: `HTTP ${response.status}` };
+      try {
+        errorData = await response.json();
+        console.error(`[aresAPI] Error response:`, errorData);
+      } catch (e) {
+        console.error(`[aresAPI] Could not parse error response as JSON`);
+      }
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
     const data = await response.json();
+    console.log(`[aresAPI] Success response:`, data);
 
     // Validate response has required fields
     if (!data.ico || !data.name) {
+      console.error(`[aresAPI] Missing required fields: ico=${data.ico}, name=${data.name}`);
       throw new Error('Servere se nepodařilo načíst data z ARES');
     }
 
@@ -64,6 +74,7 @@ export async function fetchFromARES(ico: string): Promise<AresCompanyData | null
       dic: data.dic || undefined,
     };
   } catch (error) {
+    console.error(`[aresAPI] Catch block error:`, error);
     if (error instanceof Error) {
       // Handle abort/timeout
       if (error.name === 'AbortError') {

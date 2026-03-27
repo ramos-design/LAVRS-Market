@@ -33,17 +33,22 @@ export default async function handler(
   }
 
   try {
-    const response = await fetch(
-      `https://ares.gov.cz/api/v1/economic-subjects/${normalizedIco}`,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
+    const aresUrl = `https://ares.gov.cz/api/v1/economic-subjects/${normalizedIco}`;
+    console.log(`[ARES] Fetching: ${aresUrl}`);
+
+    const response = await fetch(aresUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    console.log(`[ARES] Response status: ${response.status}`);
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ARES] Error response: ${errorText}`);
+
       if (response.status === 404) {
         return res.status(404).json({
           error: 'Subjekt s daným IČO v ARES nenalezen',
@@ -55,8 +60,10 @@ export default async function handler(
     }
 
     const data = await response.json();
+    console.log(`[ARES] Received data:`, JSON.stringify(data, null, 2));
 
     if (!data.ico || !data.name) {
+      console.error(`[ARES] Missing required fields: ico=${data.ico}, name=${data.name}`);
       return res.status(400).json({
         error: 'ARES vrátilo neplatná data',
       });
@@ -69,14 +76,18 @@ export default async function handler(
       data.address_city,
     ].filter(Boolean);
 
-    return res.status(200).json({
+    const responseData = {
       ico: data.ico,
       name: data.name,
       address: addressParts.join(', ') || '',
       dic: data.dic || undefined,
-    });
+    };
+
+    console.log(`[ARES] Returning success response:`, JSON.stringify(responseData));
+    return res.status(200).json(responseData);
   } catch (error) {
-    console.error('ARES lookup error:', error);
+    console.error('[ARES] Lookup error:', error instanceof Error ? error.message : String(error));
+    console.error('[ARES] Stack:', error instanceof Error ? error.stack : 'No stack');
     return res.status(500).json({
       error: 'Chyba při komunikaci s ARES',
     });
