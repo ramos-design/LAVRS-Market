@@ -60,6 +60,7 @@ export default async function handler(
     }
 
     const data = await response.json();
+    console.log(`[ARES] Received data keys:`, Object.keys(data));
     console.log(`[ARES] Received data:`, JSON.stringify(data, null, 2));
 
     if (!data.ico || !data.name) {
@@ -69,11 +70,11 @@ export default async function handler(
       });
     }
 
-    // Build address
+    // Build address - try various possible field names
     const addressParts = [
-      data.address_street,
-      data.address_postal_code,
-      data.address_city,
+      data.address_street || data.street || data.ulice,
+      data.address_postal_code || data.postal_code || data.psc,
+      data.address_city || data.city || data.město,
     ].filter(Boolean);
 
     const responseData = {
