@@ -19,6 +19,15 @@ interface ExhibitorDashboardProps {
 }
 
 const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, events, applications, brands, showGreeting, onApply, onPayment, onDismissApp, onNavigate, banners }) => {
+  // Debug: Check banner sizes
+  React.useEffect(() => {
+    banners.forEach((b, i) => {
+      const sizeKb = (b.image?.length || 0) / 1024;
+      const isDataUrl = b.image?.startsWith('data:');
+      console.log(`Banner ${i}: ${isDataUrl ? 'DATA URL' : 'NORMAL URL'} - ${sizeKb.toFixed(1)}KB - ${b.title}`);
+    });
+  }, [banners]);
+
   const sortedEvents = React.useMemo(() => {
     const parsed = [...events];
     const parseDate = (dateStr: string) => {
@@ -130,9 +139,10 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
               <img
                 src={slide.image}
                 loading={index === 0 ? 'eager' : 'lazy'}
-                decoding="async"
+                decoding={index === 0 ? 'sync' : 'async'}
+                fetchPriority={index === 0 ? 'high' : 'low'}
                 className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]"
-                alt=""
+                alt={slide.title}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/40 to-transparent flex items-center p-12">
                 <div className="max-w-md space-y-4">
@@ -241,13 +251,14 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4 md:px-0">
             {visibleEvents.map(event => (
               <div key={event.id} className="group glass-card overflow-hidden">
-                <div className="relative h-64 overflow-hidden">
+                <div className="relative h-64 overflow-hidden bg-gray-100">
                   <img
                     src={event.image}
                     loading="lazy"
                     decoding="async"
                     alt={event.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    style={{ contentVisibility: 'auto' }}
                   />
                   <div
                     className="absolute top-4 right-4 px-3 py-1 rounded-none text-[10px] font-black uppercase tracking-widest shadow-lg text-white"

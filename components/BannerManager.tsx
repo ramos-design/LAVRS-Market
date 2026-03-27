@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Banner } from '../types';
-import { Camera, Plus, Trash2, GripVertical, CheckCircle, Info } from 'lucide-react';
+import { Camera, Plus, Trash2, GripVertical, CheckCircle, Info, Loader, AlertCircle } from 'lucide-react';
+import { uploadBannerImage, deleteBannerImage } from '../lib/storage';
+import { migrateBannersToStorage } from '../lib/migrateBanners';
 
 interface BannerManagerProps {
   banners: Banner[];
@@ -11,7 +13,13 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
   const [localBanners, setLocalBanners] = useState<Banner[]>(banners);
   const [isSaved, setIsSaved] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadingIds, setUploadingIds] = useState<Set<string>>(new Set());
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Check if any banners are data URLs
+  const hasDataUrlBanners = banners.some(b => b.image?.startsWith('data:'));
 
   useEffect(() => {
     setLocalBanners(banners);
@@ -38,7 +46,33 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
   };
 
   const handleRemoveBanner = (id: string) => {
+    const banner = localBanners.find((b) => b.id === id);
+    if (banner?.image) {
+      // Delete from storage if it's our banner image
+      void deleteBannerImage(banner.image);
+    }
     setLocalBanners(localBanners.filter((b) => b.id !== id));
+  };
+
+  const handleMigrateBanners = async () => {
+    if (!window.confirm('Toto převede všechny data URL bannery na Storage. Zajistí to 10x rychlejší načítání. Pokračovat?')) {
+      return;
+    }
+    setIsMigrating(true);
+    setMigrationResult(null);
+    try {
+      const result = await migrateBannersToStorage();
+      setMigrationResult(result);
+      if (result.success > 0) {
+        // Refresh banners from DB
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Migrace selhala';
+      setMigrationResult({ success: 0, failed: 1, errors: [msg] });
+    } finally {
+      setIsMigrating(false);
+    }
   };
 
   const handleUpdate = (id: string, field: keyof Banner, value: string) => {
@@ -48,18 +82,22 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
   const handleImageUpload = async (id: string, file?: File) => {
     if (!file) return;
     setUploadError(null);
-    try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = () => reject(reader.error || new Error('Upload selhal'));
-        reader.readAsDataURL(file);
-      });
+    setUploadingIds((prev) => new Set([...prev, id]));
 
-      setLocalBanners((prev) => prev.map((b) => (b.id === id ? { ...b, image: dataUrl } : b)));
+    try {
+      const imageUrl = await uploadBannerImage(file, id);
+      setLocalBanners((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, image: imageUrl } : b))
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Nahrani obrazku se nezdarilo.';
       setUploadError(msg);
+    } finally {
+      setUploadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -74,32 +112,76 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
 
   return (
     <div className="space-y-10 animate-fadeIn">
-      <header className="flex items-end justify-between">
-        <div>
-          <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-lavrs-dark">Sprava Banneru</h2>
-          <p className="text-gray-500 font-medium">Spravujte bannery, ktere se zobrazuji vystavovatelum na dashboardu. (Max. 10)</p>
-        </div>
-        <div className="flex gap-4">
-          <button
-            onClick={handleAddBanner}
-            disabled={localBanners.length >= 10}
-            className="px-8 py-4 bg-white border-2 border-lavrs-dark text-lavrs-dark font-black uppercase tracking-wider text-xs hover:bg-gray-50 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus size={16} /> Pridat banner
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-8 py-4 bg-lavrs-red text-white font-black uppercase tracking-wider text-xs shadow-xl hover:translate-y-[-2px] transition-all flex items-center gap-2 active:translate-y-0"
-          >
-            {isSaved ? (
-              <>
-                <CheckCircle size={16} /> Ulozeno
-              </>
-            ) : (
-              'Ulozit zmeny'
+      <header className="space-y-6">
+        <div className="flex items-end justify-between">
+          <div>
+            <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-lavrs-dark">Sprava Banneru</h2>
+            <p className="text-gray-500 font-medium">Spravujte bannery, ktere se zobrazuji vystavovatelum na dashboardu. (Max. 10)</p>
+          </div>
+          <div className="flex gap-4">
+            <button
+              onClick={handleAddBanner}
+              disabled={localBanners.length >= 10}
+              className="px-8 py-4 bg-white border-2 border-lavrs-dark text-lavrs-dark font-black uppercase tracking-wider text-xs hover:bg-gray-50 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={16} /> Pridat banner
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-8 py-4 bg-lavrs-red text-white font-black uppercase tracking-wider text-xs shadow-xl hover:translate-y-[-2px] transition-all flex items-center gap-2 active:translate-y-0"
+            >
+              {isSaved ? (
+                <>
+                  <CheckCircle size={16} /> Ulozeno
+                </>
+              ) : (
+                'Ulozit zmeny'
+              )}
+            </button>
+            {hasDataUrlBanners && (
+              <button
+                onClick={handleMigrateBanners}
+                disabled={isMigrating}
+                className="px-8 py-4 bg-red-500 text-white font-black uppercase tracking-wider text-xs hover:bg-red-600 transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {isMigrating ? (
+                  <>
+                    <Loader size={16} className="animate-spin" /> Migruju...
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={16} /> Migrovat bannery
+                  </>
+                )}
+              </button>
             )}
-          </button>
+          </div>
         </div>
+
+        {migrationResult && (
+          <div className={`p-4 rounded border ${migrationResult.success > 0 && migrationResult.failed === 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <p className={`font-bold mb-2 ${migrationResult.success > 0 && migrationResult.failed === 0 ? 'text-green-700' : 'text-red-700'}`}>
+              ✅ Migrace hotova: {migrationResult.success} úspěšně, {migrationResult.failed} selhalo
+            </p>
+            {migrationResult.errors.length > 0 && (
+              <ul className="text-red-600 text-sm">
+                {migrationResult.errors.map((err, i) => (
+                  <li key={i}>• {err}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {hasDataUrlBanners && !migrationResult && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 flex gap-3">
+            <AlertCircle size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+            <div className="text-sm text-yellow-700">
+              <p className="font-bold mb-1">⚠️ Detekováno {banners.filter(b => b.image?.startsWith('data:')).length} bannerů s pomalou kompresí</p>
+              <p>Klikněte "Migrovat bannery" pro převod na rychlý Storage - bannery se budou načítat 10x rychleji!</p>
+            </div>
+          </div>
+        )}
       </header>
 
       {localBanners.length === 0 ? (
@@ -116,19 +198,26 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
               <div className="w-full md:w-80 h-48 relative shrink-0 bg-gray-100">
                 <img src={banner.image} className="w-full h-full object-cover" alt={banner.title || 'Banner'} />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <label className="cursor-pointer bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-lavrs-red hover:text-white transition-colors">
-                    <Camera size={14} /> Zmenit foto
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        void handleImageUpload(banner.id, file);
-                        e.currentTarget.value = '';
-                      }}
-                    />
-                  </label>
+                  {uploadingIds.has(banner.id) ? (
+                    <div className="flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest">
+                      <Loader size={14} className="animate-spin" /> Nahrávám...
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-lavrs-red hover:text-white transition-colors">
+                      <Camera size={14} /> Zmenit foto
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingIds.has(banner.id)}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          void handleImageUpload(banner.id, file);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
                 <div className="absolute top-4 left-4 bg-lavrs-red text-white text-[9px] font-black px-2 py-0.5 uppercase tracking-widest">
                   {banner.tag || 'TAG'}

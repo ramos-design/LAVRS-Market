@@ -9,13 +9,17 @@ import {
   Plus,
   Minus,
   QrCode,
-  Sparkles
+  Sparkles,
+  Loader,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 
 import { BrandProfile, MarketEvent, Application, Category, ExtraItem, AppStatus, CompanySettings, EventPlan } from '../types';
 import { useEventPlan } from '../hooks/useSupabase';
 import { formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
+import { fetchFromARES, isValidIcoFormat } from '../lib/aresAPI';
 
 interface PaymentPageProps {
   onBack: () => void;
@@ -95,8 +99,48 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   const [billingEmail, setBillingEmail] = useState(initialBillingDetails?.billingEmail || '');
   const [specialNote, setSpecialNote] = useState('');
 
+  // ARES Lookup State
+  const [aresLoading, setAresLoading] = useState(false);
+  const [aresError, setAresError] = useState('');
+  const [aresSuccess, setAresSuccess] = useState(false);
+
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [confirmedPayment, setConfirmedPayment] = useState(false);
+
+  // ARES Lookup with debounce
+  React.useEffect(() => {
+    if (!ic || !isValidIcoFormat(ic)) {
+      setAresError('');
+      setAresSuccess(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      setAresLoading(true);
+      setAresError('');
+      setAresSuccess(false);
+
+      try {
+        const data = await fetchFromARES(ic);
+        if (data) {
+          // Auto-fill fields from ARES
+          setBillingName(data.name);
+          setBillingAddress(data.address);
+          if (data.dic) {
+            setDic(data.dic);
+          }
+          setAresSuccess(true);
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Chyba při komunikaci s ARES';
+        setAresError(errorMsg);
+      } finally {
+        setAresLoading(false);
+      }
+    }, 800); // Debounce 800ms
+
+    return () => clearTimeout(timeout);
+  }, [ic]);
 
   const getVariableSymbol = () => {
     if (!activeEvent) return '';
@@ -306,8 +350,35 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">IČ *</label>
-                    <input value={ic} onChange={(e) => setIc(e.target.value)} type="text" placeholder="12345678" className="w-full bg-white px-6 py-5 rounded-none border-2 border-gray-100 focus:outline-none focus:border-lavrs-red font-semibold transition-all" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">IČ * {aresLoading && <span className="text-lavrs-red">Vyhledávám v ARES...</span>}</label>
+                    <div className="relative">
+                      <input
+                        value={ic}
+                        onChange={(e) => setIc(e.target.value)}
+                        type="text"
+                        placeholder="12345678"
+                        className={`w-full bg-white px-6 py-5 rounded-none border-2 focus:outline-none font-semibold transition-all ${
+                          aresError ? 'border-red-400 focus:border-red-400' :
+                          aresSuccess ? 'border-green-400 focus:border-green-400' :
+                          'border-gray-100 focus:border-lavrs-red'
+                        }`}
+                      />
+                      {aresLoading && (
+                        <Loader size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-lavrs-red animate-spin" />
+                      )}
+                      {!aresLoading && aresSuccess && (
+                        <CheckCircle size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-green-500" />
+                      )}
+                      {!aresLoading && aresError && (
+                        <AlertCircle size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-red-500" />
+                      )}
+                    </div>
+                    {aresError && (
+                      <p className="text-xs text-red-500 ml-4 font-medium">{aresError}</p>
+                    )}
+                    {aresSuccess && (
+                      <p className="text-xs text-green-600 ml-4 font-medium">✓ Data načtena z ARES</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">DIČ</label>
