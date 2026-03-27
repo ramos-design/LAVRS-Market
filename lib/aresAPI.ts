@@ -1,6 +1,8 @@
 /**
  * ARES (Administrativní registr ekonomických subjektů) API wrapper
  * Documentation: https://ares.gov.cz/stranky/vyvojar-info
+ *
+ * NOTE: Uses Vercel Edge Function proxy to avoid CORS issues
  */
 
 export interface AresCompanyData {
@@ -13,6 +15,8 @@ export interface AresCompanyData {
 /**
  * Fetch company data from ARES by IČO (Czech company ID)
  * IČO must be 8 digits
+ *
+ * Uses backend proxy endpoint: /api/ares-lookup
  */
 export async function fetchFromARES(ico: string): Promise<AresCompanyData | null> {
   // Normalize IČO: remove spaces and non-digits
@@ -24,8 +28,10 @@ export async function fetchFromARES(ico: string): Promise<AresCompanyData | null
   }
 
   try {
+    // Call our backend proxy endpoint (Vercel Edge Function)
+    // This avoids CORS issues by doing the ARES lookup server-side
     const response = await fetch(
-      `https://ares.gov.cz/api/v1/economic-subjects/${normalizedIco}`,
+      `/api/ares-lookup?ico=${encodeURIComponent(normalizedIco)}`,
       {
         method: 'GET',
         headers: {
@@ -35,41 +41,22 @@ export async function fetchFromARES(ico: string): Promise<AresCompanyData | null
     );
 
     if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('Subjekt s daným IČO v ARES nenalezen');
-      }
-      throw new Error(`ARES API chyba: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error || `Chyba: ${response.status}`;
+      throw new Error(errorMsg);
     }
 
     const data = await response.json();
 
-    // Extract relevant fields from ARES response
-    // ARES response structure:
-    // {
-    //   ico: string
-    //   name: string
-    //   address_region: string
-    //   address_city: string
-    //   address_street: string
-    //   address_postal_code: string
-    //   dic: string
-    // }
-
+    // Validate response has required fields
     if (!data.ico || !data.name) {
-      throw new Error('ARES vrátilo neplatná data');
+      throw new Error('Servere se nepodařilo načíst data z ARES');
     }
-
-    // Build full address
-    const addressParts = [
-      data.address_street,
-      data.address_postal_code,
-      data.address_city,
-    ].filter(Boolean);
 
     return {
       ico: data.ico,
       name: data.name,
-      address: addressParts.join(', ') || '',
+      address: data.address || '',
       dic: data.dic || undefined,
     };
   } catch (error) {
