@@ -1,8 +1,6 @@
 /**
  * ARES (Administrativní registr ekonomických subjektů) API wrapper
  * Documentation: https://ares.gov.cz/stranky/vyvojar-info
- *
- * NOTE: Uses Vercel Edge Function proxy to avoid CORS issues
  */
 
 export interface AresCompanyData {
@@ -15,8 +13,6 @@ export interface AresCompanyData {
 /**
  * Fetch company data from ARES by IČO (Czech company ID)
  * IČO must be 8 digits
- *
- * Uses backend proxy endpoint: /api/ares-lookup
  */
 export async function fetchFromARES(ico: string): Promise<AresCompanyData | null> {
   // Normalize IČO: remove spaces and non-digits
@@ -28,39 +24,58 @@ export async function fetchFromARES(ico: string): Promise<AresCompanyData | null
   }
 
   try {
-    // Call our backend proxy endpoint (Vercel Edge Function)
-    // This avoids CORS issues by doing the ARES lookup server-side
+    // Call ARES API directly
+    // Note: May have CORS issues in browser, but works on production/with proxy
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     const response = await fetch(
-      `/api/ares-lookup?ico=${encodeURIComponent(normalizedIco)}`,
+      `https://ares.gov.cz/api/v1/economic-subjects/${normalizedIco}`,
       {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
+          'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       }
     );
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error || `Chyba: ${response.status}`;
-      throw new Error(errorMsg);
+      if (response.status === 404) {
+        throw new Error('Subjekt s daným IČO v ARES nenalezen');
+      }
+      throw new Error(`Chyba ARES API: ${response.status}`);
     }
 
     const data = await response.json();
 
     // Validate response has required fields
     if (!data.ico || !data.name) {
-      throw new Error('Servere se nepodařilo načíst data z ARES');
+      throw new Error('ARES vrátilo neplatná data');
     }
+
+    // Build address
+    const addressParts = [
+      data.address_street,
+      data.address_postal_code,
+      data.address_city,
+    ].filter(Boolean);
 
     return {
       ico: data.ico,
       name: data.name,
-      address: data.address || '',
+      address: addressParts.join(', ') || '',
       dic: data.dic || undefined,
     };
   } catch (error) {
     if (error instanceof Error) {
+      // Handle abort/timeout
+      if (error.name === 'AbortError') {
+        throw new Error('Timeout - ARES server neodpovídá');
+      }
       throw error;
     }
     throw new Error('Chyba při komunikaci s ARES');
