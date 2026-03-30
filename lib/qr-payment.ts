@@ -30,7 +30,8 @@ export function buildSpaydString(options: SpaydOptions): string {
     const truncatedMsg = message.substring(0, 60);
 
     // Build SPAYD string
-    const spayd = `SPD*1.0*ACC:${cleanIban}*AM:${amountDecimal}*CC:CZK*VS:${variableSymbol}*MSG:${truncatedMsg}`;
+    // X-VS is the correct SPAYD field for variable symbol (Czech extension)
+    const spayd = `SPD*1.0*ACC:${cleanIban}*AM:${amountDecimal}*CC:CZK*X-VS:${variableSymbol}*MSG:${truncatedMsg}`;
 
     return spayd;
 }
