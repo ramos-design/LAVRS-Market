@@ -252,6 +252,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
           }
         } catch (pdfErr: any) {
           console.error('PDF generation failed:', pdfErr);
+          if (!cancelled) {
+            setInvoiceError(`PDF: ${pdfErr.message || String(pdfErr)}`);
+          }
         } finally {
           if (!cancelled) setPdfGenerating(false);
         }
@@ -552,8 +555,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                     </div>
                   )}
 
-                  {/* Invoice error (Phase 1 failed) */}
-                  {invoiceError && !invoiceGenerated && (
+                  {/* Invoice error (Phase 1 or Phase 2 failed) */}
+                  {invoiceError && (
                     <div className="bg-red-50 border-2 border-red-200 p-6 flex items-start gap-4">
                       <AlertCircle size={24} className="text-red-500 shrink-0 mt-0.5" />
                       <div className="flex-1">

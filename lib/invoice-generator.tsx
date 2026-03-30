@@ -268,8 +268,17 @@ export async function generateInvoicePdf(invoiceData: GeneratedInvoice): Promise
         invoiceNote: p.companySettings.invoiceNote || undefined,
     };
 
+    console.log('[PDF] Creating React element with props:', Object.keys(props));
     const element = React.createElement(InvoicePdfComponent, props);
-    const pdfBlob = await reactPdf.pdf(element).toBlob();
+
+    console.log('[PDF] Calling pdf().toBlob()...');
+    const instance = reactPdf.pdf(element);
+    const pdfBlob = await instance.toBlob();
+    console.log('[PDF] Blob generated:', pdfBlob.size, 'bytes');
+
+    if (pdfBlob.size === 0) {
+        throw new Error('PDF blob is empty (0 bytes)');
+    }
 
     invoiceData.pdfBlob = pdfBlob;
     return pdfBlob;
