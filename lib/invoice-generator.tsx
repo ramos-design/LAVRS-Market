@@ -122,9 +122,11 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
 
     // 2. Dates
     const issuedDate = new Date().toISOString().split('T')[0];
-    const taxPointDate = issuedDate; // datum uskutečnění zdanitelného plnění = datum vystavení
+    const taxPointDate = issuedDate;
+    const dueDays = (companySettings.invoiceDueDays && companySettings.invoiceDueDays > 0)
+        ? companySettings.invoiceDueDays : 14;
     const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + (companySettings.invoiceDueDays ?? 14));
+    dueDate.setDate(dueDate.getDate() + dueDays);
     const dueDateStr = dueDate.toISOString().split('T')[0];
 
     // 3. Line items with DPH
