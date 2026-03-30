@@ -77,7 +77,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
 
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-                redirectTo: 'https://rezervace.lavrsmarket.cz/auth/reset-password',
+                redirectTo: 'https://rezervace.lavrsmarket.cz/',
             });
 
             if (error) throw error;
