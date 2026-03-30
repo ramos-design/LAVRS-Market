@@ -15,6 +15,7 @@ export function useAuth() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
     const hasInit = useRef(false);
 
     const signOut = async () => {
@@ -78,15 +79,19 @@ export function useAuth() {
 
         const initAuth = async () => {
             try {
+                // Detekce recovery tokenu v URL při prvním načtení
+                const hash = window.location.hash;
+                if (hash.includes('type=recovery') && hash.includes('access_token')) {
+                    setIsPasswordRecovery(true);
+                }
+
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
                 if (!mounted) return;
 
                 if (session) {
-                    // Máme sezení, jdeme načíst profil (nepřidáváme await, ať to neblokuje UI)
                     fetchProfile(session.user.id, session.user.email!);
                 } else {
-                    // Nemáme sezení, konec loading
                     setLoading(false);
                 }
             } catch (e: any) {
@@ -102,7 +107,10 @@ export function useAuth() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (!mounted) return;
 
-            if (event === 'SIGNED_IN' && session) {
+            if (event === 'PASSWORD_RECOVERY' && session) {
+                setIsPasswordRecovery(true);
+                fetchProfile(session.user.id, session.user.email!);
+            } else if (event === 'SIGNED_IN' && session) {
                 fetchProfile(session.user.id, session.user.email!);
             } else if (event === 'SIGNED_OUT') {
                 clearSupabaseQueryCache();
@@ -148,6 +156,8 @@ export function useAuth() {
         loading,
         error,
         signOut,
+        isPasswordRecovery,
+        clearPasswordRecovery: () => setIsPasswordRecovery(false),
         refetch: () => user && fetchProfile(user.id, user.email)
     };
 }

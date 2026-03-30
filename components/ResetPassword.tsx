@@ -20,55 +20,50 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onCancel }) =>
     const [isValidRecoveryLink, setIsValidRecoveryLink] = useState(false);
 
     useEffect(() => {
-        // Zkontroluj recovery token z URL fragmentu
         const checkRecoveryLink = async () => {
             try {
-                // Supabase přidává token do fragmentu (hash): #access_token=...&type=recovery
+                // Nejdřív zkontroluj, zda už existuje platná session (recovery už zpracován Supabase)
+                const { data: sessionData } = await supabase.auth.getSession();
+                if (sessionData.session) {
+                    setIsValidRecoveryLink(true);
+                    setSessionLoading(false);
+                    return;
+                }
+
+                // Pokud session není, zkus zpracovat recovery token z URL fragmentu
                 const hash = window.location.hash;
                 const params = new URLSearchParams(hash.substring(1));
                 const accessToken = params.get('access_token');
                 const type = params.get('type');
 
-                console.log('DEBUG - URL hash:', hash);
-                console.log('DEBUG - Has access_token:', !!accessToken);
-                console.log('DEBUG - Type:', type);
-
                 if (!accessToken || type !== 'recovery') {
-                    console.warn('DEBUG - Invalid recovery link');
                     setError('Neplatný odkaz na reset hesla. Zkuste obnovit heslo znovu.');
                     setSessionLoading(false);
                     return;
                 }
 
                 // Čekej na Supabase aby zpracoval token z URL
-                // Supabase by měl automaticky vytvořit session
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                // Zkus refresh session
-                console.log('DEBUG - Refreshing session...');
                 const { error: refreshError } = await supabase.auth.refreshSession();
                 if (refreshError) {
                     console.warn('Refresh error (non-critical):', refreshError);
                 }
 
-                // Ověř session - měl by být vytvořen automaticky z access_token
                 const { data, error: sessionError } = await supabase.auth.getSession();
 
                 if (sessionError) {
-                    console.error('Session error:', sessionError);
                     setError('Nepodařilo se ověřit relaci.');
                     setSessionLoading(false);
                     return;
                 }
 
                 if (!data.session) {
-                    console.warn('No session found after refresh');
                     setError('Relace nenalezena. Zkuste obnovit heslo znovu.');
                     setSessionLoading(false);
                     return;
                 }
 
-                console.log('DEBUG - Valid recovery session found');
                 setIsValidRecoveryLink(true);
             } catch (err) {
                 console.error('Recovery check error:', err);

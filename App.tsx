@@ -86,7 +86,7 @@ class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundary
 }
 
 const App: React.FC = () => {
-  const { user, loading: authLoading, error: authError, signOut, refetch } = useAuth();
+  const { user, loading: authLoading, error: authError, signOut, refetch, isPasswordRecovery, clearPasswordRecovery } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<string>('DASHBOARD');
   const hasLeftDashboard = React.useRef(false);
 
@@ -515,6 +515,28 @@ const App: React.FC = () => {
     }
 
     return <Auth />;
+  }
+
+  // Uživatel je přihlášen přes recovery link → zobrazit formulář pro změnu hesla
+  if (isPasswordRecovery) {
+    return (
+      <React.Suspense fallback={
+        <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center">
+          <HeartLoader size={64} className="text-lavrs-red" />
+        </div>
+      }>
+        <ResetPassword
+          onSuccess={() => {
+            clearPasswordRecovery();
+            window.location.hash = '';
+          }}
+          onCancel={() => {
+            clearPasswordRecovery();
+            window.location.hash = '';
+          }}
+        />
+      </React.Suspense>
+    );
   }
 
   return (

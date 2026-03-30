@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info } from 'lucide-react';
+import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock } from 'lucide-react';
 import { BrandProfile, ZoneType } from '../types';
 import { useBrandProfiles } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
 import { dbBrandProfileToApp, appBrandProfileToDb } from '../lib/mappers';
+import { supabase } from '../lib/supabase';
 
 interface ProfileProps {
     initialBrands: BrandProfile[];
@@ -249,6 +250,45 @@ const ProfileInner: React.FC<ProfileProps> = () => {
 
     const { user: authUser } = useAuth();
 
+    // Password change state
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const handlePasswordChange = async () => {
+        setPasswordMessage(null);
+
+        if (newPassword.length < 6) {
+            setPasswordMessage({ type: 'error', text: 'Heslo musí mít alespoň 6 znaků.' });
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordMessage({ type: 'error', text: 'Hesla se neshodují.' });
+            return;
+        }
+
+        setPasswordLoading(true);
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+            setPasswordMessage({ type: 'success', text: 'Heslo bylo úspěšně změněno.' });
+            setNewPassword('');
+            setConfirmPassword('');
+            setTimeout(() => {
+                setShowPasswordForm(false);
+                setPasswordMessage(null);
+            }, 2000);
+        } catch (e: any) {
+            setPasswordMessage({ type: 'error', text: e.message || 'Nepodařilo se změnit heslo.' });
+        } finally {
+            setPasswordLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-8 md:space-y-12 animate-fadeIn pb-40 pt-4 md:pt-0">
             <header>
@@ -375,13 +415,88 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                     </div>
                     <div className="flex items-end">
                         <button
-                            disabled
-                            className="w-full bg-gray-50 border-2 border-gray-100 text-gray-300 px-6 py-4 rounded-none text-xs font-bold cursor-not-allowed"
+                            onClick={() => setShowPasswordForm(prev => !prev)}
+                            className="w-full bg-white border-2 border-gray-200 text-lavrs-dark px-6 py-4 rounded-none text-xs font-bold hover:border-lavrs-red hover:text-lavrs-red transition-all flex items-center justify-center gap-2"
                         >
-                            Změnit heslo (připravujeme)
+                            <Key size={16} /> Změnit heslo
                         </button>
                     </div>
                 </div>
+
+                {/* Password Change Form */}
+                {showPasswordForm && (
+                    <div className="border-t border-gray-100 pt-6 mt-2 space-y-4 animate-fadeIn">
+                        <div className="flex items-center gap-2 pb-2">
+                            <Lock size={16} className="text-lavrs-red" />
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Změna hesla</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Nové heslo</label>
+                                <div className="relative">
+                                    <input
+                                        type={showNewPassword ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="Minimálně 6 znaků"
+                                        className="w-full bg-gray-50 px-6 py-4 pr-14 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewPassword(v => !v)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-lavrs-red transition-colors"
+                                    >
+                                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Potvrzení hesla</label>
+                                <div className="relative">
+                                    <input
+                                        type={showConfirmPassword ? 'text' : 'password'}
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        placeholder="Zopakujte nové heslo"
+                                        className="w-full bg-gray-50 px-6 py-4 pr-14 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(v => !v)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-lavrs-red transition-colors"
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {passwordMessage && (
+                            <p className={`text-sm font-medium ml-1 ${passwordMessage.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                                {passwordMessage.text}
+                            </p>
+                        )}
+                        <div className="flex gap-4 pt-2">
+                            <button
+                                onClick={() => {
+                                    setShowPasswordForm(false);
+                                    setNewPassword('');
+                                    setConfirmPassword('');
+                                    setPasswordMessage(null);
+                                }}
+                                className="px-6 py-3 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-all text-sm"
+                            >
+                                Zrušit
+                            </button>
+                            <button
+                                onClick={handlePasswordChange}
+                                disabled={passwordLoading || !newPassword || !confirmPassword}
+                                className="bg-lavrs-red text-white px-8 py-3 rounded-none font-bold hover:bg-lavrs-dark transition-all shadow-lg flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {passwordLoading ? 'Ukládám...' : <><Check size={16} /> Uložit nové heslo</>}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </section>
 
             {/* Delete Confirmation Modal */}
