@@ -151,7 +151,8 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
     const eventDd = String(eventDate.getDate()).padStart(2, '0');
     const eventMm = String(eventDate.getMonth() + 1).padStart(2, '0');
     const eventYyyy = eventDate.getFullYear();
-    const qrMessage = `${event.title} ${eventDd}.${eventMm}.${eventYyyy}`.substring(0, 60);
+    const category = application.zoneCategory || '';
+    const qrMessage = `${event.title} ${eventDd}.${eventMm}.${eventYyyy} ${category}`.trim().substring(0, 60);
 
     const bankAccount = companySettings.bankAccount || '';
     const bankIban = companySettings.bankIban || '';

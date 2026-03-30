@@ -75,7 +75,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
   const selectedExtrasList = eventPlan?.extras?.filter(extra => selectedExtras.has(extra.id)) || [];
   const extrasTotal = selectedExtrasList.reduce((sum, extra) => sum + parsePrice(extra.price), 0);
-  const totalAmount = basePrice + extrasTotal;
+  const totalBase = basePrice + extrasTotal;
+  const totalDph = Math.round(totalBase * 0.21);
+  const totalAmount = totalBase + totalDph;
 
   // Time remaining logic
   const getRemaining = (deadlineIso?: string) => {
@@ -324,6 +326,15 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-gray-500 text-sm font-medium">Základní vybavení</span>
                 <span className="text-green-600 text-xs font-bold uppercase">V CENĚ</span>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-gray-50">
+                <span className="text-gray-400 text-xs font-medium">Základ bez DPH</span>
+                <span className="text-gray-500 text-sm">{formatPrice(totalBase)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs font-medium">DPH 21 %</span>
+                <span className="text-gray-500 text-sm">{formatPrice(totalDph)}</span>
               </div>
             </div>
 
@@ -575,11 +586,15 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Částka (vč. DPH)</span>
-                            <span className="font-black tracking-wider">{formatPrice(Math.round(totalAmount * 1.21))}</span>
+                            <span className="font-black tracking-wider">{formatPrice(totalAmount)}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Zpráva pro příjemce</span>
-                            <span className="font-medium text-xs text-gray-600">{activeEvent?.title || 'LAVRS Market'}</span>
+                            <span className="font-medium text-xs text-gray-600 text-right max-w-[200px]">
+                              {activeEvent?.title || 'LAVRS Market'}{' '}
+                              {activeEvent ? formatEventDateRange(activeEvent.date, activeEvent.endDate) : ''}{' '}
+                              {activeApp?.zoneCategory || ''}
+                            </span>
                           </div>
                         </div>
                       </div>
