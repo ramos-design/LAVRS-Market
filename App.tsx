@@ -496,7 +496,10 @@ const App: React.FC = () => {
     const isResetPasswordPage = window.location.pathname.includes('/auth/reset-password') ||
                               window.location.pathname.includes('/reset-password');
 
-    if (isResetPasswordPage) {
+    // Zkontroluj, zda v URL je recovery token
+    const hasRecoveryToken = window.location.hash.includes('type=recovery') && window.location.hash.includes('access_token');
+
+    if (isResetPasswordPage || hasRecoveryToken) {
       return (
         <React.Suspense fallback={
           <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center">

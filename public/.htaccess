@@ -1,0 +1,31 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Skip rewriting if the file/folder exists
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Skip if it's a direct file request (css, js, images, etc)
+  RewriteCond %{REQUEST_URI} !\.css$ [NC]
+  RewriteCond %{REQUEST_URI} !\.js$ [NC]
+  RewriteCond %{REQUEST_URI} !\.map$ [NC]
+  RewriteCond %{REQUEST_URI} !\.png$ [NC]
+  RewriteCond %{REQUEST_URI} !\.jpg$ [NC]
+  RewriteCond %{REQUEST_URI} !\.gif$ [NC]
+  RewriteCond %{REQUEST_URI} !\.webp$ [NC]
+  RewriteCond %{REQUEST_URI} !\.svg$ [NC]
+  RewriteCond %{REQUEST_URI} !\.woff$ [NC]
+  RewriteCond %{REQUEST_URI} !\.woff2$ [NC]
+  RewriteCond %{REQUEST_URI} !\.ttf$ [NC]
+  RewriteCond %{REQUEST_URI} !\.eot$ [NC]
+
+  # Rewrite all other requests to index.html
+  RewriteRule ^(.*)$ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires 0
+</IfModule>
