@@ -256,14 +256,6 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         if (!currentEvent) return;
         const nextDateInput = toDateInputValue(currentEvent.date);
         setDateInput(nextDateInput);
-        setEventDetails({
-            title: currentEvent.title || '',
-            date: nextDateInput || currentEvent.date || '',
-            location: currentEvent.location || '',
-            description: currentEvent.description || 'LAVRS market je výběrový prodejní event, který propojuje lokální tvůrce, vintage shopy a milovníky udržitelné módy.',
-            image: currentEvent.image || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
-            status: currentEvent.status === 'closed' ? 'waitlist' : (currentEvent.status || 'draft')
-        });
     }, [currentEvent]);
 
     const previewImage =
@@ -650,6 +642,22 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                 return;
                             }
 
+                            // Validate prices before allowing "open" status
+                            if (eventDetails.status === 'open') {
+                                const missingPrices = categories.filter(cat => {
+                                    const price = plan.prices[cat.id];
+                                    if (!price) return true;
+                                    const numericValue = parseInt(price.replace(/[^\d]/g, ''));
+                                    return !numericValue || numericValue <= 0;
+                                });
+                                if (missingPrices.length > 0) {
+                                    alert(
+                                        `Nelze spustit event bez nastavených cen.\n\nChybí ceny pro: ${missingPrices.map(c => c.name).join(', ')}\n\nNastavte ceny v záložce "Ceník a Extra" a uložte znovu.`
+                                    );
+                                    return;
+                                }
+                            }
+
                             const savePayload = {
                                 title: eventDetails.title,
                                 date: eventDetails.date,
@@ -742,7 +750,21 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                             ].map((status) => (
                                                 <button
                                                     key={status.id}
-                                                    onClick={() => setEventDetails(prev => ({ ...prev, status: status.id as any }))}
+                                                    onClick={() => {
+                                                        if (status.id === 'open') {
+                                                            const missing = categories.filter(cat => {
+                                                                const price = plan.prices[cat.id];
+                                                                if (!price) return true;
+                                                                const num = parseInt(price.replace(/[^\d]/g, ''));
+                                                                return !num || num <= 0;
+                                                            });
+                                                            if (missing.length > 0) {
+                                                                alert(`Nejprve nastavte ceny pro všechny kategorie v záložce "Ceník a Extra".\n\nChybí: ${missing.map(c => c.name).join(', ')}`);
+                                                                return;
+                                                            }
+                                                        }
+                                                        setEventDetails(prev => ({ ...prev, status: status.id as any }));
+                                                    }}
                                                     className={`flex items-center justify-center gap-3 py-3 px-4 border-2 transition-all ${eventDetails.status === status.id
                                                         ? 'border-lavrs-red bg-lavrs-red/5'
                                                         : 'border-gray-100 hover:border-gray-200 bg-white'

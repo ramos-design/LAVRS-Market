@@ -94,20 +94,10 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
   const getCategoryPrice = (cat: ZoneCategory | null) => {
     if (!cat) return 0;
-
-    // Use price from eventPlan if available
     if (eventPlan?.prices?.[cat]) {
       return parseInt(eventPlan.prices[cat].replace(/[^\d]/g, '')) || 0;
     }
-
-    const mapping: { [key: string]: number } = {
-      'Secondhands': 2500,
-      'České značky': 3800,
-      'Designers': 4200,
-      'Beauty ZONE': 3500,
-      'TATTOO': 5500
-    };
-    return mapping[cat] || 0;
+    return 0;
   };
 
   const calculateTotal = () => {

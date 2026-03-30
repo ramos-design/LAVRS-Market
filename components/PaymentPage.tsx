@@ -12,7 +12,9 @@ import {
   Sparkles,
   Loader,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Download,
+  FileText
 } from 'lucide-react';
 
 import { BrandProfile, MarketEvent, Application, Category, ExtraItem, AppStatus, CompanySettings, EventPlan } from '../types';
@@ -106,6 +108,13 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [confirmedPayment, setConfirmedPayment] = useState(false);
+  const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
+  const [generatedInvoiceNumber, setGeneratedInvoiceNumber] = useState('');
+  const [invoiceQrDataUrl, setInvoiceQrDataUrl] = useState('');
+  const [invoiceGenerating, setInvoiceGenerating] = useState(false);
+  const [invoiceGenerated, setInvoiceGenerated] = useState(false);
+  const [invoiceError, setInvoiceError] = useState('');
+  const generatedInvoiceRef = React.useRef<any>(null);
 
   // ARES Lookup with debounce
   React.useEffect(() => {
@@ -158,7 +167,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   };
 
   const handleNextStep = () => {
-    if (step === 2 && onSaveBilling) {
+    if (step === 3 && onSaveBilling) {
       onSaveBilling({ billingName, ic, dic, billingAddress, billingEmail });
     }
     setStep(step + 1);
@@ -177,6 +186,71 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   };
 
   const variableSymbol = getVariableSymbol();
+
+  // Auto-generate invoice + QR when entering step 4
+  // Runs when step=4 AND all required data is available (eventPlan may load async)
+  const canGenerateInvoice = step === 4 && !invoiceGenerated && !invoiceGenerating && !invoiceError
+    && !!eventPlan && !!activeEvent && !!companySettings && !!allApplications && !!activeApp;
+
+  React.useEffect(() => {
+    if (!canGenerateInvoice) return;
+
+    let cancelled = false;
+
+    const generate = async () => {
+      setInvoiceGenerating(true);
+      setInvoiceError('');
+      try {
+        const appWithBillingData = {
+          ...activeApp!,
+          billingName: billingName || activeApp!.billingName,
+          ic: ic || activeApp!.ic,
+          dic: dic || activeApp!.dic,
+          billingAddress: billingAddress || activeApp!.billingAddress,
+          billingEmail: billingEmail || activeApp!.billingEmail,
+        };
+
+        const { generateInvoice } = await import('../lib/invoice-generator');
+        const result = await generateInvoice({
+          application: appWithBillingData,
+          event: activeEvent!,
+          eventPlan: eventPlan!,
+          selectedExtraIds: Array.from(selectedExtras),
+          companySettings: companySettings!,
+          allApplications: allApplications!,
+        });
+
+        if (cancelled) return;
+
+        generatedInvoiceRef.current = result;
+        setGeneratedPdfBlob(result.pdfBlob);
+        setGeneratedInvoiceNumber(result.invoiceNumber);
+        setInvoiceQrDataUrl(result.qrDataUrl);
+        setInvoiceGenerated(true);
+      } catch (err: any) {
+        if (cancelled) return;
+        console.error('Invoice generation failed:', err);
+        setInvoiceError(err.message || 'Chyba při generování faktury');
+      } finally {
+        if (!cancelled) setInvoiceGenerating(false);
+      }
+    };
+
+    generate();
+    return () => { cancelled = true; };
+  }, [canGenerateInvoice]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDownloadPdf = () => {
+    if (!generatedPdfBlob) return;
+    const url = window.URL.createObjectURL(generatedPdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${generatedInvoiceNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-12">
@@ -419,128 +493,142 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
             <div className="space-y-8 animate-fadeIn">
               {!confirmedPayment ? (
                 <>
-                  <div className="bg-white border-2 border-gray-100 p-8 space-y-8">
-                    <div className="flex flex-col items-center gap-6 text-center">
-                      <div className="w-48 h-48 bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center relative group">
-                        <QrCode size={80} className="text-gray-300" />
-                        <div className="absolute inset-0 bg-lavrs-red/10 animate-pulse" />
-                        <p className="absolute bottom-2 text-[8px] font-bold uppercase tracking-widest text-lavrs-red">Generuji QR...</p>
-                      </div>
+                  {/* Waiting for data (eventPlan, companySettings etc.) */}
+                  {!invoiceGenerating && !invoiceGenerated && !invoiceError && (
+                    <div className="bg-white border-2 border-gray-100 p-12 text-center space-y-4">
+                      <HeartLoader size={40} className="text-lavrs-red mx-auto" />
+                      <p className="font-bold text-lavrs-dark">Načítám data...</p>
+                      <p className="text-xs text-gray-400">Připravuji podklady pro generování faktury.</p>
+                    </div>
+                  )}
+
+                  {/* Invoice generating state */}
+                  {invoiceGenerating && (
+                    <div className="bg-white border-2 border-gray-100 p-12 text-center space-y-4">
+                      <HeartLoader size={40} className="text-lavrs-red mx-auto" />
+                      <p className="font-bold text-lavrs-dark">Generuji fakturu a QR platbu...</p>
+                      <p className="text-xs text-gray-400">Počkejte prosím, připravujeme váš daňový doklad.</p>
+                    </div>
+                  )}
+
+                  {/* Invoice error */}
+                  {invoiceError && (
+                    <div className="bg-red-50 border-2 border-red-200 p-6 flex items-start gap-4">
+                      <AlertCircle size={24} className="text-red-500 shrink-0 mt-0.5" />
                       <div>
-                        <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Platba převodem</h3>
-                        <p className="text-sm text-gray-400 font-medium">Naskenujte QR kód ve své bankovní aplikaci.</p>
+                        <p className="font-bold text-red-700 mb-1">Chyba při generování faktury</p>
+                        <p className="text-sm text-red-600">{invoiceError}</p>
                       </div>
                     </div>
+                  )}
 
-                    <div className="space-y-4 pt-8 border-t border-gray-100">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Číslo účtu</span>
-                        <span className="font-black tracking-wider">2900765432 / 2010</span>
+                  {/* Invoice generated — show QR + bank info + PDF download */}
+                  {invoiceGenerated && (
+                    <>
+                      <div className="bg-white border-2 border-gray-100 p-8 space-y-8">
+                        <div className="flex flex-col items-center gap-6 text-center">
+                          {invoiceQrDataUrl ? (
+                            <img
+                              src={invoiceQrDataUrl}
+                              alt="QR platba"
+                              className="w-48 h-48 border border-gray-200"
+                            />
+                          ) : (
+                            <div className="w-48 h-48 bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                              <QrCode size={80} className="text-gray-300" />
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Platba převodem</h3>
+                            <p className="text-sm text-gray-400 font-medium">Naskenujte QR kód ve své bankovní aplikaci.</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 pt-8 border-t border-gray-100">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Číslo účtu</span>
+                            <span className="font-black tracking-wider">{companySettings?.bankAccount || '—'}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">IBAN</span>
+                            <span className="font-bold tracking-wider text-xs">{companySettings?.bankIban || '—'}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Variabilní symbol</span>
+                            <span className="font-black text-lavrs-red tracking-wider">{variableSymbol}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Částka (vč. DPH)</span>
+                            <span className="font-black tracking-wider">{formatPrice(Math.round(totalAmount * 1.21))}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Zpráva pro příjemce</span>
+                            <span className="font-medium text-xs text-gray-600">{activeEvent?.title || 'LAVRS Market'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Variabilní symbol</span>
-                        <span className="font-black text-lavrs-red tracking-wider">{variableSymbol}</span>
+
+                      {/* PDF Download */}
+                      {generatedPdfBlob && (
+                        <button
+                          onClick={handleDownloadPdf}
+                          className="w-full py-5 bg-white border-2 border-lavrs-red text-lavrs-red rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red hover:text-white shadow-sm flex items-center justify-center gap-3"
+                        >
+                          <Download size={20} />
+                          <span>Stáhnout fakturu — {generatedInvoiceNumber}.pdf</span>
+                        </button>
+                      )}
+
+                      <div className="flex gap-4 p-6 bg-lavrs-beige/20 border border-lavrs-pink/50">
+                        <CheckCircle2 size={24} className="text-green-500 shrink-0" />
+                        <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                          Faktura byla vygenerována. Stáhněte si ji a proveďte platbu převodem. Po připsání platby vám potvrdíme rezervaci místa.
+                        </p>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Částka</span>
-                        <span className="font-black tracking-wider">{formatPrice(totalAmount)}</span>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="flex gap-4 p-6 bg-lavrs-beige/20 border border-lavrs-pink/50">
-                    <CheckCircle2 size={24} className="text-green-500 shrink-0" />
-                    <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                      Po obdržení platby vám zašleme potvrzení a daňový doklad na e-mail. Vaše místo bude definitivně potvrzeno.
-                    </p>
-                  </div>
+                      <button
+                        disabled={isUpdatingStatus}
+                        onClick={async () => {
+                          if (!activeApp || !onUpdateStatus || !activeEvent) return;
+                          if (!generatedInvoiceRef.current) {
+                            alert('❌ Faktura nebyla vygenerována. Zkuste obnovit stránku.');
+                            return;
+                          }
 
-                  <button
-                    disabled={isUpdatingStatus || !eventPlan}
-                    onClick={async () => {
-                      // Check if data is still loading
-                      if (!eventPlan) {
-                        alert('Data se ještě načítá, prosím chvíli počkejte...');
-                        return;
-                      }
+                          setIsUpdatingStatus(true);
+                          try {
+                            // Save already-generated invoice to Supabase (no re-generation)
+                            const { saveInvoice } = await import('../lib/invoice-storage');
 
-                      // Merge form data into application object for invoice generation
-                      const appWithBillingData = activeApp ? {
-                        ...activeApp,
-                        billingName: billingName || activeApp.billingName,
-                        ic: ic || activeApp.ic,
-                        dic: dic || activeApp.dic,
-                        billingAddress: billingAddress || activeApp.billingAddress,
-                        billingEmail: billingEmail || activeApp.billingEmail,
-                      } : null;
+                            await saveInvoice({
+                              result: generatedInvoiceRef.current,
+                              applicationId: activeApp.id,
+                              eventId: activeEvent.id,
+                            });
 
-                      // Validate all required data
-                      if (!appWithBillingData) {
-                        alert('❌ Chyba: Aplikace data nejsou dostupná');
-                        return;
-                      }
-                      if (!onUpdateStatus) {
-                        alert('❌ Chyba: Funkce pro aktualizaci nejsou dostupné');
-                        return;
-                      }
-                      if (!activeEvent) {
-                        alert('❌ Chyba: Event data nejsou dostupná');
-                        return;
-                      }
-                      if (!companySettings) {
-                        alert('❌ Chyba: Nastavení společnosti nejsou dostupná');
-                        return;
-                      }
-                      if (!allApplications) {
-                        alert('❌ Chyba: Seznam aplikací není dostupný');
-                        return;
-                      }
-
-                      setIsUpdatingStatus(true);
-                      try {
-                        // 1. Generate invoice
-                        const { generateInvoice } = await import('../lib/invoice-generator');
-                        const { saveInvoice } = await import('../lib/invoice-storage');
-
-                        const generatedInvoice = await generateInvoice({
-                          application: appWithBillingData,
-                          event: activeEvent,
-                          eventPlan,
-                          selectedExtraIds: Array.from(selectedExtras),
-                          companySettings,
-                          allApplications,
-                        });
-
-                        await saveInvoice({
-                          result: generatedInvoice,
-                          applicationId: activeApp.id,
-                          eventId: activeEvent.id,
-                        });
-
-                        // 2. Update status
-                        await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
-                        setConfirmedPayment(true);
-                      } catch (err: any) {
-                        console.error("Error during invoice or status update:", err);
-                        const errorMsg = err.message || err.details || JSON.stringify(err);
-                        alert(`❌ Chyba: ${errorMsg}`);
-                      } finally {
-                        setIsUpdatingStatus(false);
-                      }
-                    }}
-                    className="w-full py-6 bg-lavrs-dark text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red shadow-xl disabled:opacity-50 disabled:cursor-not-allowed group"
-                  >
-                    {isUpdatingStatus ? (
-                      <div className="flex items-center justify-center gap-3">
-                        <HeartLoader size={20} className="text-white" />
-                        Ukládám...
-                      </div>
-                    ) : !eventPlan ? (
-                      'Načítám data...'
-                    ) : (
-                      'Dokončit'
-                    )}
-                  </button>
+                            // Update status
+                            await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
+                            setConfirmedPayment(true);
+                          } catch (err: any) {
+                            console.error('Error saving invoice:', err);
+                            alert(`❌ Chyba: ${err.message || err.details || JSON.stringify(err)}`);
+                          } finally {
+                            setIsUpdatingStatus(false);
+                          }
+                        }}
+                        className="w-full py-6 bg-lavrs-dark text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isUpdatingStatus ? (
+                          <div className="flex items-center justify-center gap-3">
+                            <HeartLoader size={20} className="text-white" />
+                            Odesílám...
+                          </div>
+                        ) : (
+                          'Potvrdit a odeslat'
+                        )}
+                      </button>
+                    </>
+                  )}
                 </>
               ) : (
                 <div className="space-y-8 animate-fadeIn">
@@ -549,16 +637,29 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       <CheckCircle2 size={48} className="text-green-500" />
                     </div>
                     <div className="space-y-6">
-                      <h3 className="text-2xl font-black uppercase tracking-tight">Děkujeme za vaši platbu!</h3>
-                      <div className="py-8 border-y-2 border-gray-100 max-w-sm mx-auto">
+                      <h3 className="text-2xl font-black uppercase tracking-tight">Děkujeme za vaši objednávku!</h3>
+                      <div className="py-8 border-y-2 border-gray-100 max-w-sm mx-auto space-y-3">
                         <p className="text-sm text-lavrs-dark font-bold leading-relaxed">
-                          Jakmile vaši platbu schválíme a zpracujeme, <br /> zašleme vám finální fakturu na váš email.
+                          Vaše objednávka byla potvrzena.
+                        </p>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          Proveďte platbu dle údajů na faktuře. Po připsání platby vám potvrdíme rezervaci místa na e-mail.
                         </p>
                       </div>
                     </div>
+
+                    {/* Invoice download (also available after confirmation) */}
+                    {generatedPdfBlob && (
+                      <button
+                        onClick={handleDownloadPdf}
+                        className="w-full py-5 bg-lavrs-red text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-red-700 shadow-lg flex items-center justify-center gap-3"
+                      >
+                        <Download size={20} /> Stáhnout fakturu (PDF)
+                      </button>
+                    )}
                   </div>
-                  
-                  <button 
+
+                  <button
                     onClick={onBack}
                     className="w-full py-6 bg-green-600 text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-green-700 shadow-xl flex items-center justify-center gap-2"
                   >

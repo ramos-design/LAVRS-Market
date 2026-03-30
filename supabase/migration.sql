@@ -610,3 +610,9 @@ VALUES (
   14
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- 15. Add end_date and capacity columns to events
+-- ============================================
+ALTER TABLE events ADD COLUMN IF NOT EXISTS end_date TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS capacity INT;

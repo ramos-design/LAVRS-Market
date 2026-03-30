@@ -145,7 +145,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 alt={slide.title}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/40 to-transparent flex items-center p-12">
-                <div className="max-w-md space-y-4">
+                <div className="max-w-2xl space-y-4">
                   <span className="px-3 py-1 bg-lavrs-red text-white text-[10px] font-black tracking-widest uppercase">
                     {slide.tag}
                   </span>

@@ -197,5 +197,9 @@ export interface CompanySettings {
   bankSwift?: string;
   invoiceDueDays: number;
   invoiceNote?: string;
+  phone?: string;
+  email?: string;
+  registrationInfo?: string;
+  issuedBy?: string;
   updatedAt: string;
 }
