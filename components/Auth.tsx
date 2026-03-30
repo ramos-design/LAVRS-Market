@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import HeartLoader from './HeartLoader';
 
 interface AuthProps {
@@ -15,6 +15,11 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showResetPassword, setShowResetPassword] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetLoading, setResetLoading] = useState(false);
+    const [resetSuccess, setResetSuccess] = useState(false);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,6 +70,27 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
         }
     };
 
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setResetLoading(true);
+        setError(null);
+
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                redirectTo: 'https://rezervace.lavrsmarket.cz/auth/reset-password',
+            });
+
+            if (error) throw error;
+            setResetSuccess(true);
+            setResetEmail('');
+        } catch (err: any) {
+            console.error('Reset password error:', err);
+            setError(err.message || 'Nepodařilo se odeslat odkaz na reset hesla.');
+        } finally {
+            setResetLoading(false);
+        }
+    };
+
 
     return (
         <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center p-6 relative overflow-hidden">
@@ -73,6 +99,95 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-lavrs-pink/20 blur-[120px] rounded-full animate-pulse delay-700" />
 
             <div className="w-full max-w-md z-10">
+                {showResetPassword && (
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 md:p-10 shadow-3xl w-full max-w-md">
+                            <h2 className="text-2xl font-black text-white mb-8">Obnovit heslo</h2>
+
+                            {resetSuccess ? (
+                                <div className="text-center space-y-6">
+                                    <div className="relative mx-auto w-24 h-24">
+                                        <div className="absolute inset-0 bg-green-500/20 blur-2xl rounded-full animate-pulse" />
+                                        <div className="relative flex items-center justify-center w-24 h-24 bg-green-500/10 border border-green-500/20 rounded-full">
+                                            <CheckCircle className="text-green-500" size={48} />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <p className="text-gray-300 font-medium">
+                                            Odkaz na obnovení hesla jsme odeslali na <span className="text-white font-bold">{resetEmail}</span>.
+                                        </p>
+                                        <p className="text-gray-400 text-sm">
+                                            Zkontrolujte svou schránku a postupujte podle pokynů v e-mailu.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            setShowResetPassword(false);
+                                            setResetSuccess(false);
+                                            setIsLogin(true);
+                                        }}
+                                        className="w-full bg-lavrs-red text-white py-4 rounded-none font-black uppercase tracking-widest text-xs hover:bg-lavrs-dark transition-all"
+                                    >
+                                        Zpět na přihlášení
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleResetPassword} className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-4">E-mail</label>
+                                        <div className="relative group">
+                                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-lavrs-red transition-colors" size={18} />
+                                            <input
+                                                required
+                                                type="email"
+                                                value={resetEmail}
+                                                onChange={(e) => setResetEmail(e.target.value)}
+                                                placeholder="vystavovatel@seznam.cz"
+                                                className="w-full bg-white/5 border border-white/10 text-white pl-14 pr-6 py-4 focus:outline-none focus:border-lavrs-red/50 transition-all font-medium placeholder:text-gray-600"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {error && (
+                                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex items-center gap-3 animate-fadeIn">
+                                            <AlertCircle size={16} />
+                                            {error}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        disabled={resetLoading}
+                                        type="submit"
+                                        className="w-full bg-lavrs-red text-white py-4 rounded-none font-black uppercase tracking-widest text-xs hover:bg-lavrs-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                                    >
+                                        {resetLoading ? (
+                                            <>
+                                                <HeartLoader size={16} className="text-white" />
+                                                Odesílání...
+                                            </>
+                                        ) : (
+                                            'Odeslat odkaz'
+                                        )}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowResetPassword(false);
+                                            setError(null);
+                                        }}
+                                        className="w-full text-gray-400 py-2 text-xs font-bold uppercase tracking-widest hover:text-gray-200 transition-colors"
+                                    >
+                                        Zrušit
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <div className="text-center mb-10">
                     <img
                         src="/media/LAVRSmarket_logo_white_transp1.png"
@@ -169,14 +284,33 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                                         <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-lavrs-red transition-colors" size={18} />
                                         <input
                                             required
-                                            type="password"
+                                            type={showPassword ? 'text' : 'password'}
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             placeholder="••••••••"
-                                            className="w-full bg-white/5 border border-white/10 text-white pl-14 pr-6 py-4 focus:outline-none focus:border-lavrs-red/50 transition-all font-medium placeholder:text-gray-600"
+                                            className="w-full bg-white/5 border border-white/10 text-white pl-14 pr-14 py-4 focus:outline-none focus:border-lavrs-red/50 transition-all font-medium placeholder:text-gray-600"
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500 hover:text-lavrs-red transition-colors group-focus-within:text-gray-400"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
                                     </div>
                                 </div>
+
+                                {isLogin && (
+                                    <div className="text-right">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowResetPassword(true)}
+                                            className="text-xs font-bold text-gray-400 hover:text-lavrs-red transition-colors uppercase tracking-widest"
+                                        >
+                                            Zapomenuté heslo?
+                                        </button>
+                                    </div>
+                                )}
 
                                 {error && (
                                     <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex items-center gap-3 animate-fadeIn">

@@ -35,6 +35,7 @@ const EventLayoutManager = React.lazy(() => import('./components/EventLayoutMana
 const BannerManager = React.lazy(() => import('./components/BannerManager'));
 const CategoryManager = React.lazy(() => import('./components/CategoryManager'));
 const ToastProvider = React.lazy(() => import('./components/ToastProvider'));
+const ResetPassword = React.lazy(() => import('./components/ResetPassword'));
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -491,6 +492,25 @@ const App: React.FC = () => {
   }
 
   if (!user) {
+    // Zkontroluj, zda je na stránce reset hesla
+    const isResetPasswordPage = window.location.pathname.includes('/auth/reset-password') ||
+                              window.location.pathname.includes('/reset-password');
+
+    if (isResetPasswordPage) {
+      return (
+        <React.Suspense fallback={
+          <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center">
+            <HeartLoader size={64} className="text-lavrs-red" />
+          </div>
+        }>
+          <ResetPassword
+            onSuccess={() => window.location.href = '/'}
+            onCancel={() => window.location.href = '/'}
+          />
+        </React.Suspense>
+      );
+    }
+
     return <Auth />;
   }
 

@@ -10,10 +10,32 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 type ResponseData = {
   success?: boolean;
   aresStatus?: number;
-  aresData?: any;
+  rawAresData?: any;
+  extractedFields?: any;
   aresError?: string;
   error?: string;
 };
+
+function extractAddress(data: any): string {
+  const parts: string[] = [];
+
+  if (data.sídlo && typeof data.sídlo === 'object') {
+    const sid = data.sídlo;
+    if (sid.ulice) parts.push(sid.ulice);
+    if (sid.číslo_popisné) parts.push(sid.číslo_popisné);
+    if (sid.číslo_orientační) parts.push(`/${sid.číslo_orientační}`);
+    if (sid.poštovní_směrovací_číslo) parts.push(sid.poštovní_směrovací_číslo);
+    if (sid.obec || sid.město) parts.push(sid.obec || sid.město);
+  } else {
+    if (data.ulice) parts.push(data.ulice);
+    if (data.číslo_popisné) parts.push(data.číslo_popisné);
+    if (data.číslo_orientační) parts.push(`/${data.číslo_orientační}`);
+    if (data.psc) parts.push(data.psc);
+    if (data.město || data.obec) parts.push(data.město || data.obec);
+  }
+
+  return parts.join(', ');
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -68,10 +90,19 @@ export default async function handler(
     console.log(`[ares-test] ARES response keys:`, Object.keys(data));
     console.log(`[ares-test] Data:`, JSON.stringify(data, null, 2));
 
+    // Try to extract standard fields
+    const extracted = {
+      ico: data.ico,
+      name: data.obchodní_jméno || data.nazev_obchodniho_jmena || data.name,
+      dic: data.dic || data.daňové_identifikační_číslo,
+      address: extractAddress(data),
+    };
+
     return res.status(200).json({
       success: true,
       aresStatus: response.status,
-      aresData: data,
+      rawAresData: data,
+      extractedFields: extracted,
     });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);

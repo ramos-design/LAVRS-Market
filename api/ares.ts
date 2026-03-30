@@ -61,20 +61,21 @@ export default async function handler(
 
     const data = await response.json();
     console.log(`[ARES] Received data keys:`, Object.keys(data));
-    console.log(`[ARES] Received data:`, JSON.stringify(data, null, 2));
+    console.log(`[ARES] Full response:`, JSON.stringify(data, null, 2));
 
     if (!data.ico || !data.name) {
       console.error(`[ARES] Missing required fields: ico=${data.ico}, name=${data.name}`);
+      console.error(`[ARES] Available fields:`, Object.keys(data));
       return res.status(400).json({
         error: 'ARES vrátilo neplatná data',
       });
     }
 
-    // Build address - try various possible field names
+    // Build address - try various field combinations
     const addressParts = [
-      data.address_street || data.street || data.ulice,
-      data.address_postal_code || data.postal_code || data.psc,
-      data.address_city || data.city || data.město,
+      data.address_street || data.ulice || data.street,
+      data.address_postal_code || data.psc || data.poštovní_směrovací_číslo,
+      data.address_city || data.město || data.obec || data.city,
     ].filter(Boolean);
 
     const responseData = {
