@@ -229,9 +229,10 @@ export function useApplications(options: UserScopedQueryOptions = {}) {
     return {
         ...query,
         applications: query.data,
-        createApplication: async (app: Omit<DbApplication, 'created_at'>) => {
-            await applicationsDb.create(app);
+        createApplication: async (app: Omit<DbApplication, 'created_at'>): Promise<DbApplication> => {
+            const created = await applicationsDb.create(app);
             queryEmitter.invalidatePattern(/^applications:/);
+            return created;
         },
         updateStatus: async (id: string, status: string, paymentDeadline?: string, approvedAt?: string) => {
             const result = await applicationsDb.updateStatus(id, status, paymentDeadline, approvedAt);
