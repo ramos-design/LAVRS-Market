@@ -46,7 +46,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   companySettings,
   allApplications,
 }) => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(2);
   const [now, setNow] = React.useState(Date.now());
   const [selectedExtras, setSelectedExtras] = useState<Set<string>>(new Set());
 
@@ -181,7 +181,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
   const getStepTitle = () => {
     switch (step) {
-      case 1: return 'Doplňkové vybavení';
       case 2: return 'Speciální požadavky';
       case 3: return 'Fakturační údaje';
       case 4: return 'Způsob platby';
@@ -303,7 +302,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     <div className="max-w-5xl mx-auto space-y-12">
       <header className="flex items-center gap-4">
         <button 
-          onClick={step === 1 ? onBack : () => {
+          onClick={step === 2 ? onBack : () => {
             if (step === 4 && confirmedPayment) {
               setConfirmedPayment(false);
             } else {
@@ -319,7 +318,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
             {getStepTitle()}
           </h2>
           <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
-            OBJEDNÁVKA Č. LVRS-2026-{activeApp?.id.slice(0, 4)} — KROK {step} ZE 4
+            KROK {step - 1} ZE 3
           </p>
         </div>
       </header>
@@ -640,7 +639,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                         className="w-full py-5 bg-white border-2 border-lavrs-red text-lavrs-red rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red hover:text-white shadow-sm flex items-center justify-center gap-3"
                       >
                         <Download size={20} />
-                        <span>Stáhnout fakturu — {generatedInvoiceNumber}.pdf</span>
+                        <span>Stáhnout fakturu</span>
                       </button>
 
                       <div className="flex gap-4 p-6 bg-lavrs-beige/20 border border-lavrs-pink/50">
@@ -725,7 +724,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       onClick={handleDownloadPdf}
                       className="w-full py-5 bg-lavrs-red text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-red-700 shadow-lg flex items-center justify-center gap-3"
                     >
-                      <Download size={20} /> Stáhnout fakturu (PDF)
+                      <Download size={20} /> Stáhnout fakturu
                     </button>
                   </div>
 
