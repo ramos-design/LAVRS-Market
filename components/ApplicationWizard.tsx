@@ -233,7 +233,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   const isZoneFull = selectedZoneCategory ? checkIsFull(selectedZoneCategory) : false;
 
   const isZoneCategoryEmpty = !isWaitlist && step === 2 && !selectedZoneCategory;
-  const isBrandIncomplete = !isWaitlist && step === 4 && (!brandName.trim() || !contactPerson.trim() || !email.trim() || !billingEmail.trim());
+  const isBrandIncomplete = !isWaitlist && step === 4 && (!brandName.trim() || !contactPerson.trim() || !email.trim());
   const nextStep = () => {
     if (isZoneCategoryEmpty) {
       setShowCatError(true);
@@ -715,52 +715,9 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   </div>
                 </div>
 
-                {/* Billing Details Section */}
-                <div className="space-y-4 md:space-y-6 pt-4 md:pt-6 border-t border-gray-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CreditCard size={16} className="text-lavrs-red" />
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fakturační údaje</h4>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Název firmy / Jméno</label>
-                    <div className="relative">
-                      <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input value={billingName} onChange={(e) => setBillingName(e.target.value)} type="text" placeholder="Název firmy nebo jméno" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">IČ</label>
-                      <input value={ic} onChange={(e) => setIc(e.target.value)} type="text" placeholder="12345678" className="w-full bg-white p-4 md:p-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">DIČ (volitelné)</label>
-                      <input value={dic} onChange={(e) => setDic(e.target.value)} type="text" placeholder="CZ12345678" className="w-full bg-white p-4 md:p-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Fakturační adresa</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} type="text" placeholder="Ulice 123, 110 00 Praha" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">E-mail pro fakturaci <span className="text-lavrs-red">*</span></label>
-                    <div className="relative">
-                      <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} type="email" placeholder="fakturace@firma.cz" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
-                    </div>
-                  </div>
-                </div>
-
-                {showBrandError && (!brandName.trim() || !contactPerson.trim() || !email.trim() || !billingEmail.trim()) && (
+                {showBrandError && (!brandName.trim() || !contactPerson.trim() || !email.trim()) && (
                   <p className="text-center text-sm text-lavrs-red font-bold animate-bounce pt-4">
-                    Vyplňte prosím všechna povinná pole (název značky, kontaktní osoba, e-mail, fakturační e-mail).
+                    Vyplňte prosím všechna povinná pole (název značky, kontaktní osoba, e-mail).
                   </p>
                 )}
               </div>

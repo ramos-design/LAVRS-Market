@@ -668,6 +668,49 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                               eventId: activeEvent.id,
                             });
 
+                            // Fire-and-forget: send invoice notification email
+                            (async () => {
+                              try {
+                                // Generate PDF blob for email attachment
+                                let pdfBase64 = '';
+                                if (invoiceResult.pdfBlob && invoiceResult.pdfBlob.size > 0) {
+                                  const ab = await invoiceResult.pdfBlob.arrayBuffer();
+                                  const bytes = new Uint8Array(ab);
+                                  let binary = '';
+                                  const chunk = 0x8000;
+                                  for (let i = 0; i < bytes.length; i += chunk) {
+                                    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+                                  }
+                                  pdfBase64 = btoa(binary);
+                                }
+
+                                // Format event date
+                                const evDate = new Date(activeEvent.date);
+                                const dd = String(evDate.getDate()).padStart(2, '0');
+                                const mm = String(evDate.getMonth() + 1).padStart(2, '0');
+                                const yyyy = evDate.getFullYear();
+
+                                const { supabase } = await import('../lib/supabase');
+                                await supabase.functions.invoke('send-invoice-notification', {
+                                  body: {
+                                    brandName: activeApp.brandName || '',
+                                    contactPerson: activeApp.contactPerson || '',
+                                    eventName: activeEvent.title || '',
+                                    eventDate: `${dd}.${mm}.${yyyy}`,
+                                    zoneCategory: activeApp.zoneCategory || '',
+                                    invoiceNumber: invoiceResult.invoiceNumber,
+                                    totalAmountCzk: (invoiceResult.totalAmountWithDph / 100).toLocaleString('cs-CZ'),
+                                    pdfBase64,
+                                    xmlString: invoiceResult.xmlString,
+                                    recipientEmail: 'info@lavrs.cz',
+                                  },
+                                });
+                                console.log('[Invoice email] Notification sent to info@lavrs.cz');
+                              } catch (emailErr) {
+                                console.error('[Invoice email] Failed (non-blocking):', emailErr);
+                              }
+                            })();
+
                             // Update status
                             await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
 

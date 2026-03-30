@@ -10,8 +10,6 @@ import HeartLoader from './components/HeartLoader';
 import { useAuth } from './hooks/useAuth';
 import { useEvents, useApplications, useBrandProfiles, useEventPlan, useBanners, useCategories, useCompanySettings } from './hooks/useSupabase';
 import { logAdminAction, checkVersionConflict } from './lib/activityLog';
-import { supabase } from './lib/supabase';
-import { prepareInvoiceData, generateInvoicePdf } from './lib/invoice-generator';
 import { useAdminPresence } from './hooks/useAdminPresence';
 import {
   dbEventToApp, dbApplicationToApp, dbBrandProfileToApp,
@@ -303,76 +301,8 @@ const App: React.FC = () => {
   const handleAddApplication = async (newApp: Application) => {
     try {
       const dbApp = appApplicationToDb(newApp, user?.id);
-      const createdDbApp = await createApplication(dbApp);
+      await createApplication(dbApp);
       setCurrentScreen('APPLICATIONS');
-
-      // Fire-and-forget: generate invoice + send notification email
-      (async () => {
-        try {
-          if (!companySettings || !currentEventPlan || !currentEvent) {
-            console.warn('[Invoice auto-send] Missing companySettings/eventPlan/event, skipping');
-            return;
-          }
-
-          // Map the created DB record back to Application type for invoice generator
-          const createdApp = dbApplicationToApp(createdDbApp);
-          const allAppsIncludingNew = [...applications, createdApp];
-
-          console.log('[Invoice auto-send] Generating invoice...');
-          const invoiceData = await prepareInvoiceData({
-            application: createdApp,
-            event: currentEvent,
-            eventPlan: currentEventPlan,
-            selectedExtraIds: [],
-            companySettings,
-            allApplications: allAppsIncludingNew,
-          });
-
-          // Generate PDF
-          await generateInvoicePdf(invoiceData);
-
-          // Convert PDF blob to base64
-          const pdfArrayBuffer = await invoiceData.pdfBlob.arrayBuffer();
-          const pdfBytes = new Uint8Array(pdfArrayBuffer);
-          let pdfBase64 = '';
-          const chunkSize = 0x8000;
-          for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-            pdfBase64 += String.fromCharCode(...pdfBytes.subarray(i, i + chunkSize));
-          }
-          pdfBase64 = btoa(pdfBase64);
-
-          // Format event date for the email
-          const eventDate = new Date(currentEvent.date);
-          const dd = String(eventDate.getDate()).padStart(2, '0');
-          const mm = String(eventDate.getMonth() + 1).padStart(2, '0');
-          const yyyy = eventDate.getFullYear();
-          const formattedDate = `${dd}.${mm}.${yyyy}`;
-
-          console.log('[Invoice auto-send] Calling Edge Function...');
-          const { error: fnError } = await supabase.functions.invoke('send-invoice-notification', {
-            body: {
-              brandName: createdApp.brandName,
-              contactPerson: createdApp.contactPerson,
-              eventName: currentEvent.title,
-              eventDate: formattedDate,
-              zoneCategory: createdApp.zoneCategory || '',
-              invoiceNumber: invoiceData.invoiceNumber,
-              totalAmountCzk: (invoiceData.totalAmountWithDph / 100).toLocaleString('cs-CZ'),
-              pdfBase64,
-              xmlString: invoiceData.xmlString,
-              recipientEmail: 'info@lavrs.cz', // TEST — change to billingEmail later
-            },
-          });
-
-          if (fnError) {
-            console.error('[Invoice auto-send] Edge Function error:', fnError);
-          } else {
-            console.log('[Invoice auto-send] Notification email sent successfully!');
-          }
-        } catch (invoiceErr) {
-          console.error('[Invoice auto-send] Failed (non-blocking):', invoiceErr);
-        }
-      })();
     } catch (err: any) {
       console.error("Submission failed:", err);
       alert(`Odeslání přihlášky selhalo: ${err.message || "Zkuste to prosím znovu."}`);
