@@ -45,11 +45,13 @@ function getVariableSymbol(application: Application, event: MarketEvent): string
 }
 
 /**
- * Parse price string like "4 900 Kč" or "4900" to CZK number (not halers).
+ * Parse price string like "6.900 Kč", "6 900 Kč" or "4900" to whole CZK number.
+ * Czech prices use dot/space as thousands separator, NOT decimal.
  */
 function parsePriceCzk(priceStr: string): number {
-    const cleaned = priceStr.replace(/[^\d.,]/g, '').replace(',', '.');
-    return parseFloat(cleaned) || 0;
+    // Remove everything except digits — "6.900 Kč" → "6900", "6 900 Kč" → "6900"
+    const digits = priceStr.replace(/[^\d]/g, '');
+    return parseInt(digits, 10) || 0;
 }
 
 /**
