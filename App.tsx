@@ -187,7 +187,7 @@ const App: React.FC = () => {
   } = useEventPlan(selectedEventId);
   const {
     data: dbCompanySettings, loading: companySettingsLoading,
-  } = useCompanySettings(canFetchUserData && userRole === 'ADMIN');
+  } = useCompanySettings(canFetchUserData);
 
   // ─── Map DB data to app types ─────────────────────────────
   const events = useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);

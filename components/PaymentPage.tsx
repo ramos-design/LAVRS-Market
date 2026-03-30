@@ -159,7 +159,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     const date = new Date(activeEvent.date);
     const dd = date.getDate().toString().padStart(2, '0');
     const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-    return `${dd}${mm}${ic}`;
+    const icoFirst6 = (ic || '000000').replace(/\D/g, '').substring(0, 6).padEnd(6, '0');
+    return `${dd}${mm}${icoFirst6}`;
   };
 
   const toggleExtra = (id: string) => {

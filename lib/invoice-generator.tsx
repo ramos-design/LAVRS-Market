@@ -36,12 +36,12 @@ export interface GeneratedInvoice {
     dueDate: string;
 }
 
-function getVariableSymbol(application: Application): string {
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const ic = application.ic || '00000000';
-    return `${day}${month}${ic}`;
+function getVariableSymbol(application: Application, event: MarketEvent): string {
+    const date = new Date(event.date);
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const icoFirst6 = (application.ic || '000000').replace(/\D/g, '').substring(0, 6).padEnd(6, '0');
+    return `${dd}${mm}${icoFirst6}`;
 }
 
 /**
@@ -127,7 +127,7 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
 
     // 3. Line items with DPH
     const lineItems = buildLineItems(application, event, eventPlan, selectedExtraIds);
-    const variableSymbol = getVariableSymbol(application);
+    const variableSymbol = getVariableSymbol(application, event);
 
     // 4. Calculate totals
     let totalBaseCzk = 0;
