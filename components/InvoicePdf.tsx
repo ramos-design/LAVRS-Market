@@ -211,7 +211,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
 
     const grandTotal = Math.round((totalBase + totalTax) * 100) / 100;
 
-    const defaultNote = 'Rezervace vašeho prodejniho mista se stava zavaznou az po uhrazeni teto faktury. V pripade, ze nebude faktura uhrazena do data splatnosti, rezervace automaticky zanika a misto bude nabidnuto dalsimu vystavovateli.\nPri zruseni ucasti mene nez 14 dni pred terminem akce cini storno poplatek 100 % z celkove castky.';
+    const defaultNote = 'Rezervace vašeho prodejního místa se stává závaznou až po uhrazení této faktury. V případě, že nebude faktura uhrazena do data splatnosti, rezervace automaticky zaniká a místo bude nabídnuto dalšímu vystavovateli.\nPři zrušení účasti méně než 14 dní před termínem akce činí storno poplatek 100 % z celkové částky.';
 
     const note = invoiceNote || defaultNote;
 
@@ -223,18 +223,18 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
             <Page size="A4" style={s.page}>
 
                 {/* Header */}
-                <Text style={s.title}>FAKTURA - DANOVY DOKLAD</Text>
-                <Text style={s.subtitle}>cislo: {safe(invoiceNumber)}</Text>
+                <Text style={s.title}>FAKTURA - DAŇOVÝ DOKLAD</Text>
+                <Text style={s.subtitle}>číslo: {safe(invoiceNumber)}</Text>
 
                 {/* Meta */}
                 <View style={s.metaBlock}>
                     <View style={s.metaLeft}>
                         <View style={s.row}>
-                            <Text style={s.label}>Datum vystaveni:</Text>
+                            <Text style={s.label}>Datum vystavení:</Text>
                             <Text style={s.value}>{fmtDate(issuedDate)}</Text>
                         </View>
                         <View style={s.row}>
-                            <Text style={s.label}>Datum u.zd.plneni:</Text>
+                            <Text style={s.label}>Datum u.zd.plnění:</Text>
                             <Text style={s.value}>{fmtDate(taxPointDate)}</Text>
                         </View>
                         <View style={s.row}>
@@ -244,11 +244,11 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
                     </View>
                     <View style={s.metaRight}>
                         <View style={s.row}>
-                            <Text style={s.label}>Zpusob uhrady:</Text>
-                            <Text style={s.value}>Prevodnim prikazem</Text>
+                            <Text style={s.label}>Způsob úhrady:</Text>
+                            <Text style={s.value}>Převodem příkazem</Text>
                         </View>
                         <View style={s.row}>
-                            <Text style={s.label}>Bankovni spojeni:</Text>
+                            <Text style={s.label}>Bankovní spojení:</Text>
                             <Text style={s.value}>{safe(bankAccount)}</Text>
                         </View>
                         <View style={s.row}>
@@ -256,7 +256,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
                             <Text style={s.value}>{safe(bankIban)}</Text>
                         </View>
                         <View style={s.row}>
-                            <Text style={s.label}>Variabilni symbol:</Text>
+                            <Text style={s.label}>Variabilní symbol:</Text>
                             <Text style={s.valueBold}>{safe(variableSymbol)}</Text>
                         </View>
                     </View>
@@ -275,7 +275,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
                     </View>
                     <View style={s.partyCol}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={s.partyTitle}>Odberatel:</Text>
+                            <Text style={s.partyTitle}>Odběratel:</Text>
                             <Text style={[s.partyTitle, { color: '#888' }]}>#{sequenceNumber}</Text>
                         </View>
                         <Text style={s.partyName}>{safe(customerName)}</Text>
@@ -294,8 +294,8 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
                 {/* Items table */}
                 <View style={s.tableHeader}>
                     <Text style={[s.th, s.colId]}>ID</Text>
-                    <Text style={[s.th, s.colDesc]}>Polozka</Text>
-                    <Text style={[s.th, s.colQty]}>Mnozstvi</Text>
+                    <Text style={[s.th, s.colDesc]}>Položka</Text>
+                    <Text style={[s.th, s.colQty]}>Množství</Text>
                     <Text style={[s.th, s.colUnit]}>Jed.</Text>
                     <Text style={[s.th, s.colDph]}>% DPH</Text>
                     <Text style={[s.th, s.colPrice]}>Cena/jed.</Text>
@@ -322,13 +322,13 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
                         <View style={s.dphHeader}>
                             <Text style={[s.dphLabel, s.bold]}>Sazba</Text>
                             <Text style={[s.dphRate, s.bold]}>% DPH</Text>
-                            <Text style={[s.dphBase, s.bold]}>Zaklad</Text>
-                            <Text style={[s.dphTax, s.bold]}>Dan</Text>
+                            <Text style={[s.dphBase, s.bold]}>Základ</Text>
+                            <Text style={[s.dphTax, s.bold]}>Daň</Text>
                             <Text style={[s.dphTotal, s.bold]}>Celkem</Text>
                         </View>
                         {Array.from(dphGroups.entries()).map(([rate, g]) => (
                             <View key={rate} style={s.dphRow}>
-                                <Text style={s.dphLabel}>{rate === 21 ? 'Zakladni' : rate + '%'}</Text>
+                                <Text style={s.dphLabel}>{rate === 21 ? 'Základní' : rate + '%'}</Text>
                                 <Text style={s.dphRate}>{rate} %</Text>
                                 <Text style={s.dphBase}>{fmt(g.base)}</Text>
                                 <Text style={s.dphTax}>{fmt(g.tax)}</Text>
@@ -347,7 +347,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
 
                 {/* Grand total */}
                 <View style={s.grandTotal}>
-                    <Text style={s.grandTotalText}>Celkem k uhrade: {fmt(grandTotal)} CZK</Text>
+                    <Text style={s.grandTotalText}>Celkem k úhradě: {fmt(grandTotal)} CZK</Text>
                 </View>
 
                 {/* QR + Signature */}
