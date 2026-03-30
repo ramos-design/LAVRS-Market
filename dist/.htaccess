@@ -20,8 +20,8 @@
   RewriteCond %{REQUEST_URI} !\.ttf$ [NC]
   RewriteCond %{REQUEST_URI} !\.eot$ [NC]
 
-  # Rewrite all other requests to index.html
-  RewriteRule ^(.*)$ index.html [L]
+  # Rewrite all other requests to /index.html (preserves fragments)
+  RewriteRule ^(.*)$ /index.html [QSA,L]
 </IfModule>
 
 <IfModule mod_headers.c>
