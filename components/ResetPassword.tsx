@@ -40,6 +40,17 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onCancel }) =>
                     return;
                 }
 
+                // Čekej na Supabase aby zpracoval token z URL
+                // Supabase by měl automaticky vytvořit session
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Zkus refresh session
+                console.log('DEBUG - Refreshing session...');
+                const { error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError) {
+                    console.warn('Refresh error (non-critical):', refreshError);
+                }
+
                 // Ověř session - měl by být vytvořen automaticky z access_token
                 const { data, error: sessionError } = await supabase.auth.getSession();
 
@@ -51,7 +62,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onCancel }) =>
                 }
 
                 if (!data.session) {
-                    console.warn('No session found');
+                    console.warn('No session found after refresh');
                     setError('Relace nenalezena. Zkuste obnovit heslo znovu.');
                     setSessionLoading(false);
                     return;
