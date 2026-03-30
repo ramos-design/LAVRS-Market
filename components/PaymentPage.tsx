@@ -192,8 +192,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   const variableSymbol = getVariableSymbol();
 
   // Auto-generate invoice + QR when entering step 4
-  // Runs when step=4 AND all required data is available (eventPlan may load async)
-  const canGenerateInvoice = step === 4 && !invoiceGenerated && !invoiceGenerating && !invoiceError
+  const canGenerateInvoice = step === 4 && !invoiceGenerated && !invoiceGenerating
     && !!eventPlan && !!activeEvent && !!companySettings && !!allApplications && !!activeApp;
 
   React.useEffect(() => {
@@ -204,6 +203,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     const generate = async () => {
       setInvoiceGenerating(true);
       setInvoiceError('');
+      setPdfGenerating(false);
+      setGeneratedPdfBlob(null);
+
       try {
         const appWithBillingData = {
           ...activeApp!,
@@ -214,16 +216,18 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
           billingEmail: billingEmail || activeApp!.billingEmail,
         };
 
-        // Phase 1: FAST — QR + numbers + XML (no PDF yet)
-        const { prepareInvoiceData } = await import('../lib/invoice-generator');
-        const result = await prepareInvoiceData({
+        const invoiceParams = {
           application: appWithBillingData,
           event: activeEvent!,
           eventPlan: eventPlan!,
           selectedExtraIds: Array.from(selectedExtras),
           companySettings: companySettings!,
           allApplications: allApplications!,
-        });
+        };
+
+        // Phase 1: FAST — QR + numbers + XML (no PDF yet)
+        const { prepareInvoiceData } = await import('../lib/invoice-generator');
+        const result = await prepareInvoiceData(invoiceParams);
 
         if (cancelled) return;
 
@@ -233,19 +237,20 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
         setInvoiceGenerated(true);
         setInvoiceGenerating(false);
 
-        // Phase 2: SLOW — PDF in background (UI already shows QR + bank info)
+        // Phase 2: SLOW — PDF in background
         setPdfGenerating(true);
         try {
           const { generateInvoicePdf } = await import('../lib/invoice-generator');
           const pdfBlob = await generateInvoicePdf(result);
           if (!cancelled) {
+            // Update both state AND ref so "Potvrdit" uses the real PDF
+            result.pdfBlob = pdfBlob;
+            generatedInvoiceRef.current = result;
             setGeneratedPdfBlob(pdfBlob);
           }
         } catch (pdfErr: any) {
           console.error('PDF generation failed:', pdfErr);
-          if (!cancelled) {
-            setInvoiceError(`PDF se nepodařilo vygenerovat: ${pdfErr.message || 'Neznámá chyba'}`);
-          }
+          // Don't block — user can still confirm, PDF will be generated server-side or re-tried
         } finally {
           if (!cancelled) setPdfGenerating(false);
         }
@@ -541,13 +546,19 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                     </div>
                   )}
 
-                  {/* Invoice error */}
-                  {invoiceError && (
+                  {/* Invoice error (Phase 1 failed) */}
+                  {invoiceError && !invoiceGenerated && (
                     <div className="bg-red-50 border-2 border-red-200 p-6 flex items-start gap-4">
                       <AlertCircle size={24} className="text-red-500 shrink-0 mt-0.5" />
-                      <div>
+                      <div className="flex-1">
                         <p className="font-bold text-red-700 mb-1">Chyba při generování faktury</p>
-                        <p className="text-sm text-red-600">{invoiceError}</p>
+                        <p className="text-sm text-red-600 mb-3">{invoiceError}</p>
+                        <button
+                          onClick={() => { setInvoiceError(''); setInvoiceGenerated(false); }}
+                          className="px-4 py-2 bg-red-600 text-white text-xs font-bold uppercase tracking-widest hover:bg-red-700 transition-colors"
+                        >
+                          Zkusit znovu
+                        </button>
                       </div>
                     </div>
                   )}
@@ -626,7 +637,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       </div>
 
                       <button
-                        disabled={isUpdatingStatus}
+                        disabled={isUpdatingStatus || pdfGenerating}
                         onClick={async () => {
                           if (!activeApp || !onUpdateStatus || !activeEvent) return;
                           if (!generatedInvoiceRef.current) {
@@ -636,11 +647,24 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
                           setIsUpdatingStatus(true);
                           try {
-                            // Save already-generated invoice to Supabase (no re-generation)
-                            const { saveInvoice } = await import('../lib/invoice-storage');
+                            const invoiceResult = generatedInvoiceRef.current;
 
+                            // If PDF wasn't generated yet, try one more time synchronously
+                            if (!invoiceResult.pdfBlob || invoiceResult.pdfBlob.size === 0) {
+                              try {
+                                const { generateInvoicePdf } = await import('../lib/invoice-generator');
+                                const pdfBlob = await generateInvoicePdf(invoiceResult);
+                                invoiceResult.pdfBlob = pdfBlob;
+                                setGeneratedPdfBlob(pdfBlob);
+                              } catch (pdfErr) {
+                                console.warn('PDF generation failed during save, continuing without PDF:', pdfErr);
+                              }
+                            }
+
+                            // Save invoice to Supabase
+                            const { saveInvoice } = await import('../lib/invoice-storage');
                             await saveInvoice({
-                              result: generatedInvoiceRef.current,
+                              result: invoiceResult,
                               applicationId: activeApp.id,
                               eventId: activeEvent.id,
                             });

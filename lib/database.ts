@@ -114,6 +114,7 @@ export interface DbApplication {
     payment_deadline?: string | null;
     approved_at?: string | null;
     brand_profile_id: string | null;
+    invoice_id?: string | null;
     created_at?: string;
     updated_at?: string;
 }

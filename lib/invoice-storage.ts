@@ -40,24 +40,29 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
             return existingInvoice;
         }
 
-        // 1. Upload PDF to Storage
+        // 1. Upload PDF to Storage (skip if blob is empty/missing)
         const pdfPath = `invoices/${applicationId}/${result.invoiceNumber}.pdf`;
-        const { error: pdfError } = await supabase.storage
-            .from('attachments')
-            .upload(pdfPath, result.pdfBlob, {
-                contentType: 'application/pdf',
-                upsert: true,
-            });
+        let pdfUrl: string | null = null;
 
-        if (pdfError) {
-            throw new Error(`PDF upload failed: ${pdfError.message}`);
+        if (result.pdfBlob && result.pdfBlob.size > 0) {
+            const { error: pdfError } = await supabase.storage
+                .from('attachments')
+                .upload(pdfPath, result.pdfBlob, {
+                    contentType: 'application/pdf',
+                    upsert: true,
+                });
+
+            if (pdfError) {
+                console.warn(`PDF upload failed (non-blocking): ${pdfError.message}`);
+            } else {
+                const { data: pdfUrlData } = supabase.storage
+                    .from('attachments')
+                    .getPublicUrl(pdfPath);
+                pdfUrl = pdfUrlData?.publicUrl || null;
+            }
+        } else {
+            console.warn('PDF blob is empty, skipping PDF upload');
         }
-
-        // Get public URL for PDF
-        const { data: pdfUrlData } = supabase.storage
-            .from('attachments')
-            .getPublicUrl(pdfPath);
-        const pdfUrl = pdfUrlData?.publicUrl || null;
 
         // 2. Upload ISDOC XML to Storage
         const xmlPath = `invoices/${applicationId}/${result.invoiceNumber}.isdoc`;
@@ -96,10 +101,14 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
             xml_url: xmlUrl,
         });
 
-        // 4. Link invoice to application
-        await applicationsDb.update(applicationId, {
-            invoice_id: invoice.id, // Use the new UUID, not the invoice number
-        });
+        // 4. Link invoice to application (non-blocking if it fails)
+        try {
+            await applicationsDb.update(applicationId, {
+                invoice_id: invoice.id,
+            });
+        } catch (linkErr) {
+            console.warn('Failed to link invoice to application (non-blocking):', linkErr);
+        }
 
         return invoice;
     } catch (error) {
