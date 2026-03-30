@@ -240,24 +240,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
         setInvoiceGenerated(true);
         setInvoiceGenerating(false);
 
-        // Phase 2: SLOW — PDF in background
-        setPdfGenerating(true);
-        try {
-          const { generateInvoicePdf } = await import('../lib/invoice-generator');
-          const pdfBlob = await generateInvoicePdf(result);
-          if (!cancelled) {
-            result.pdfBlob = pdfBlob;
-            generatedInvoiceRef.current = result;
-            setGeneratedPdfBlob(pdfBlob);
-          }
-        } catch (pdfErr: any) {
-          console.error('PDF generation failed:', pdfErr);
-          if (!cancelled) {
-            setInvoiceError(`PDF: ${pdfErr.message || String(pdfErr)}`);
-          }
-        } finally {
-          if (!cancelled) setPdfGenerating(false);
-        }
+        // PDF is now generated on-demand via HTML print dialog (no background generation needed)
+        if (!cancelled) setPdfGenerating(false);
       } catch (err: any) {
         if (cancelled) return;
         console.error('Invoice preparation failed:', err);
@@ -275,16 +259,44 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     };
   }, [needsGeneration]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDownloadPdf = () => {
-    if (!generatedPdfBlob) return;
-    const url = window.URL.createObjectURL(generatedPdfBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${generatedInvoiceNumber}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+  // Build invoice props for HTML-based download
+  const getInvoiceHtmlProps = () => {
+    if (!generatedInvoiceRef.current || !activeApp || !activeEvent || !companySettings) return null;
+    const r = generatedInvoiceRef.current;
+    const p = (r as any)._pdfParams;
+    if (!p) return null;
+    return {
+      invoiceNumber: p.invoiceNumber,
+      sequenceNumber: p.sequenceNumber,
+      issuedDate: p.issuedDate,
+      taxPointDate: p.taxPointDate,
+      dueDate: p.dueDate,
+      variableSymbol: p.variableSymbol,
+      issuerName: companySettings.companyName || 'LAVRS market',
+      issuerAddress: companySettings.companyAddress || '',
+      issuerIC: companySettings.ic || '',
+      issuerDIC: companySettings.dic,
+      issuerRegistration: companySettings.registrationInfo,
+      issuerPhone: companySettings.phone,
+      issuerEmail: companySettings.email,
+      issuedBy: companySettings.issuedBy,
+      bankAccount: p.bankAccount,
+      bankIban: p.bankIban,
+      customerName: billingName || activeApp.billingName || '',
+      customerAddress: billingAddress || activeApp.billingAddress || '',
+      customerIC: ic || activeApp.ic || '',
+      customerDIC: dic || activeApp.dic,
+      lineItems: p.lineItems,
+      qrDataUrl: r.qrDataUrl,
+      invoiceNote: companySettings.invoiceNote,
+    };
+  };
+
+  const handleDownloadPdf = async () => {
+    const props = getInvoiceHtmlProps();
+    if (!props) return;
+    const { downloadInvoiceAsPdf } = await import('../lib/invoice-html');
+    downloadInvoiceAsPdf(props, `${generatedInvoiceNumber}.pdf`);
   };
 
   return (
@@ -622,21 +634,14 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                         </div>
                       </div>
 
-                      {/* PDF Download */}
-                      {pdfGenerating ? (
-                        <div className="w-full py-5 bg-gray-50 border-2 border-gray-200 rounded-none flex items-center justify-center gap-3 text-gray-400">
-                          <Loader size={18} className="animate-spin" />
-                          <span className="font-bold uppercase tracking-[0.15em] text-xs">Připravuji PDF fakturu...</span>
-                        </div>
-                      ) : generatedPdfBlob ? (
-                        <button
-                          onClick={handleDownloadPdf}
-                          className="w-full py-5 bg-white border-2 border-lavrs-red text-lavrs-red rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red hover:text-white shadow-sm flex items-center justify-center gap-3"
-                        >
-                          <Download size={20} />
-                          <span>Stáhnout fakturu — {generatedInvoiceNumber}.pdf</span>
-                        </button>
-                      ) : null}
+                      {/* PDF Download — instant via browser print dialog */}
+                      <button
+                        onClick={handleDownloadPdf}
+                        className="w-full py-5 bg-white border-2 border-lavrs-red text-lavrs-red rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red hover:text-white shadow-sm flex items-center justify-center gap-3"
+                      >
+                        <Download size={20} />
+                        <span>Stáhnout fakturu — {generatedInvoiceNumber}.pdf</span>
+                      </button>
 
                       <div className="flex gap-4 p-6 bg-lavrs-beige/20 border border-lavrs-pink/50">
                         <CheckCircle2 size={24} className="text-green-500 shrink-0" />
@@ -646,7 +651,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       </div>
 
                       <button
-                        disabled={isUpdatingStatus || pdfGenerating}
+                        disabled={isUpdatingStatus}
                         onClick={async () => {
                           if (!activeApp || !onUpdateStatus || !activeEvent) return;
                           if (!generatedInvoiceRef.current) {
@@ -658,16 +663,11 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           try {
                             const invoiceResult = generatedInvoiceRef.current;
 
-                            // If PDF wasn't generated yet, try one more time synchronously
-                            if (!invoiceResult.pdfBlob || invoiceResult.pdfBlob.size === 0) {
-                              try {
-                                const { generateInvoicePdf } = await import('../lib/invoice-generator');
-                                const pdfBlob = await generateInvoicePdf(invoiceResult);
-                                invoiceResult.pdfBlob = pdfBlob;
-                                setGeneratedPdfBlob(pdfBlob);
-                              } catch (pdfErr) {
-                                console.warn('PDF generation failed during save, continuing without PDF:', pdfErr);
-                              }
+                            // Generate HTML blob for storage (instead of PDF)
+                            const htmlProps = getInvoiceHtmlProps();
+                            if (htmlProps) {
+                              const { generateInvoiceBlobFromHtml } = await import('../lib/invoice-html');
+                              invoiceResult.pdfBlob = await generateInvoiceBlobFromHtml(htmlProps);
                             }
 
                             // Save invoice to Supabase
@@ -721,14 +721,12 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                     </div>
 
                     {/* Invoice download (also available after confirmation) */}
-                    {generatedPdfBlob && (
-                      <button
-                        onClick={handleDownloadPdf}
-                        className="w-full py-5 bg-lavrs-red text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-red-700 shadow-lg flex items-center justify-center gap-3"
-                      >
-                        <Download size={20} /> Stáhnout fakturu (PDF)
-                      </button>
-                    )}
+                    <button
+                      onClick={handleDownloadPdf}
+                      className="w-full py-5 bg-lavrs-red text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-red-700 shadow-lg flex items-center justify-center gap-3"
+                    >
+                      <Download size={20} /> Stáhnout fakturu (PDF)
+                    </button>
                   </div>
 
                   <button
