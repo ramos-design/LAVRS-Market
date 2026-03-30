@@ -114,13 +114,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 .header .inv-num { font-size: 10pt; font-weight: 700; color: #444; margin-top: 2pt; }
 
 /* ===== META ===== */
-.meta { display: flex; gap: 16pt; margin-bottom: 14pt; }
+.meta { display: flex; gap: 12pt; margin-bottom: 14pt; }
 .meta-col { flex: 1; }
 .meta-row { display: flex; align-items: baseline; margin-bottom: 1.5pt; }
-.meta-label { width: 105pt; color: #333; font-size: 7.5pt; flex-shrink: 0; }
-.meta-val { font-size: 8.5pt; color: #000; }
+.meta-label { width: 90pt; color: #333; font-size: 7pt; flex-shrink: 0; }
+.meta-val { font-size: 7.5pt; color: #000; }
 .meta-val.bold { font-weight: 700; }
-.meta-val.sm { font-size: 7.5pt; word-break: break-all; }
+.meta-val.sm { font-size: 6.5pt; white-space: nowrap; }
 
 /* ===== PARTIES ===== */
 .parties { display: flex; gap: 0; margin-bottom: 12pt; border: 2px solid #222; }
@@ -136,24 +136,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 .note { background: #fafafa; border-left: 3px solid #D32F2F; padding: 6pt 10pt; margin-bottom: 12pt; font-size: 6.5pt; color: #333; line-height: 1.5; }
 
 /* ===== ITEMS TABLE ===== */
-.items { width: 100%; border-collapse: collapse; margin-bottom: 6pt; border: 1px solid #333; }
-.items th { background: #D32F2F; color: #fff; font-size: 7pt; font-weight: 600; padding: 5pt 6pt; text-transform: uppercase; letter-spacing: 0.3pt; border: 1px solid #D32F2F; }
+.items { width: 100%; border-collapse: collapse; margin-bottom: 6pt; border: 1px solid #000; }
+.items th { background: #f0f0f0; color: #000; font-size: 7pt; font-weight: 700; padding: 5pt 6pt; text-transform: uppercase; letter-spacing: 0.3pt; border: 1px solid #000; }
 .items th.c { text-align: center; }
 .items th.r { text-align: right; }
-.items td { font-size: 8.5pt; padding: 6pt; border: 1px solid #ddd; text-align: center; color: #000; }
+.items td { font-size: 8.5pt; padding: 6pt; border: 1px solid #000; text-align: center; color: #000; }
 .items td.desc { text-align: left; }
 .items td.r { text-align: right; }
 
 /* ===== DPH TABLE ===== */
 .dph-wrap { display: flex; justify-content: flex-end; margin-bottom: 10pt; }
-.dph { width: 280pt; border-collapse: collapse; border: 1px solid #333; }
-.dph th { font-size: 7pt; font-weight: 700; color: #000; padding: 4pt 5pt; border: 1px solid #333; background: #f5f5f5; text-align: left; }
+.dph { width: 280pt; border-collapse: collapse; border: 1px solid #000; }
+.dph th { font-size: 7pt; font-weight: 700; color: #000; padding: 4pt 5pt; border: 1px solid #000; background: #f0f0f0; text-align: left; }
 .dph th.c { text-align: center; }
 .dph th.r { text-align: right; }
-.dph td { font-size: 8pt; padding: 4pt 5pt; border: 1px solid #ddd; text-align: center; color: #000; }
+.dph td { font-size: 8pt; padding: 4pt 5pt; border: 1px solid #000; text-align: center; color: #000; }
 .dph td.r { text-align: right; }
 .dph td:first-child { text-align: left; }
-.dph .totals td { border-top: 2px solid #333; font-weight: 700; font-size: 8.5pt; }
+.dph .totals td { border-top: 2px solid #000; font-weight: 700; font-size: 8.5pt; }
 
 /* ===== GRAND TOTAL ===== */
 .grand-total { text-align: right; margin-bottom: 16pt; padding: 8pt 12pt; background: #FFF5F5; border: 2px solid #D32F2F; border-left: 5px solid #D32F2F; }
