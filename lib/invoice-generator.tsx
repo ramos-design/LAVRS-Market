@@ -124,7 +124,7 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
     const issuedDate = new Date().toISOString().split('T')[0];
     const taxPointDate = issuedDate;
     const dueDays = (companySettings.invoiceDueDays && companySettings.invoiceDueDays > 0)
-        ? companySettings.invoiceDueDays : 14;
+        ? companySettings.invoiceDueDays : 5;
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + dueDays);
     const dueDateStr = dueDate.toISOString().split('T')[0];
