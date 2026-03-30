@@ -633,19 +633,10 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                         </div>
                       </div>
 
-                      {/* PDF Download — instant via browser print dialog */}
-                      <button
-                        onClick={handleDownloadPdf}
-                        className="w-full py-5 bg-white border-2 border-lavrs-red text-lavrs-red rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red hover:text-white shadow-sm flex items-center justify-center gap-3"
-                      >
-                        <Download size={20} />
-                        <span>Stáhnout fakturu</span>
-                      </button>
-
                       <div className="flex gap-4 p-6 bg-lavrs-beige/20 border border-lavrs-pink/50">
                         <CheckCircle2 size={24} className="text-green-500 shrink-0" />
                         <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                          Faktura byla vygenerována. Stáhněte si ji a proveďte platbu převodem. Po připsání platby vám potvrdíme rezervaci místa.
+                          Po potvrzení se vám automaticky stáhne faktura. Proveďte platbu převodem dle údajů na faktuře.
                         </p>
                       </div>
 
@@ -662,7 +653,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           try {
                             const invoiceResult = generatedInvoiceRef.current;
 
-                            // Generate HTML blob for storage (instead of PDF)
+                            // Generate HTML blob for storage
                             const htmlProps = getInvoiceHtmlProps();
                             if (htmlProps) {
                               const { generateInvoiceBlobFromHtml } = await import('../lib/invoice-html');
@@ -679,6 +670,10 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
                             // Update status
                             await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
+
+                            // Auto-download invoice after confirmation
+                            handleDownloadPdf();
+
                             setConfirmedPayment(true);
                           } catch (err: any) {
                             console.error('Error saving invoice:', err);
@@ -687,15 +682,20 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                             setIsUpdatingStatus(false);
                           }
                         }}
-                        className="w-full py-6 bg-lavrs-dark text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-6 bg-lavrs-dark text-white rounded-none transition-all hover:bg-lavrs-red shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
                       >
                         {isUpdatingStatus ? (
                           <div className="flex items-center justify-center gap-3">
                             <HeartLoader size={20} className="text-white" />
-                            Odesílám...
+                            <span className="font-black uppercase tracking-[0.2em]">Odesílám...</span>
                           </div>
                         ) : (
-                          'Potvrdit a odeslat'
+                          <>
+                            <span className="font-black uppercase tracking-[0.2em] text-base">Potvrdit</span>
+                            <span className="flex items-center gap-2 text-white/80 text-xs font-medium">
+                              <Download size={14} /> Stáhnout fakturu
+                            </span>
+                          </>
                         )}
                       </button>
                     </>
