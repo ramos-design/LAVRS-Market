@@ -1,7 +1,7 @@
 /**
- * Invoice HTML Generator
+ * Invoice HTML Generator — LAVRS Market branded
  * Generates a complete HTML document for Czech ISDOC-compliant invoices.
- * Uses browser print (Save as PDF) instead of @react-pdf/renderer.
+ * Uses browser print (Save as PDF).
  */
 
 import type { InvoicePdfProps, InvoiceLineItem } from '../components/InvoicePdf';
@@ -14,24 +14,20 @@ function fmt(n: number): string {
     const fixed = Math.round(n * 100) / 100;
     const str = fixed.toFixed(2);
     const parts = str.split('.');
-    const whole = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0'); // non-breaking space
+    const whole = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
     return whole + ',' + parts[1];
 }
 
 function fmtDate(iso: string): string {
     if (!iso || iso.length < 10) return iso || '';
-    const parts = iso.split('-');
-    if (parts.length !== 3) return iso;
-    return parts[2] + '.' + parts[1] + '.' + parts[0];
+    const p = iso.split('-');
+    if (p.length !== 3) return iso;
+    return p[2] + '.' + p[1] + '.' + p[0];
 }
 
 function esc(val: string | undefined | null): string {
     if (!val) return '';
-    return val
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    return val.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /* ------------------------------------------------------------------ */
@@ -69,6 +65,7 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
 
     const defaultNote = 'Rezervace vašeho prodejního místa se stává závaznou až po uhrazení této faktury. V případě, že nebude faktura uhrazena do data splatnosti, rezervace automaticky zaniká a místo bude nabídnuto dalšímu vystavovateli.\nPři zrušení účasti méně než 14 dní před termínem akce činí storno poplatek 100 % z celkové částky.';
     const note = invoiceNote || defaultNote;
+    const noteHtml = esc(note).replace(/\n/g, '<br>');
 
     const issuerLines = (issuerAddress || '').split('\n').filter(Boolean);
     const customerLines = (customerAddress || '').split('\n').filter(Boolean);
@@ -76,35 +73,29 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
     // Build DPH summary rows
     let dphRowsHtml = '';
     for (const [rate, g] of dphGroups.entries()) {
-        const label = rate === 21 ? 'Základní' : rate + '%';
-        dphRowsHtml += `
-            <tr>
-                <td>${esc(label)}</td>
-                <td class="center">${rate} %</td>
-                <td class="right">${fmt(g.base)}</td>
-                <td class="right">${fmt(g.tax)}</td>
-                <td class="right">${fmt(g.total)}</td>
-            </tr>`;
+        dphRowsHtml += `<tr>
+            <td>${rate === 21 ? 'Základní' : rate + '%'}</td>
+            <td>${rate}\u00A0%</td>
+            <td class="r">${fmt(g.base)}</td>
+            <td class="r">${fmt(g.tax)}</td>
+            <td class="r">${fmt(g.total)}</td>
+        </tr>`;
     }
 
     // Build line item rows
     let itemRowsHtml = '';
     (lineItems || []).forEach((item, idx) => {
         const lineTotal = item.unitPriceCzk * item.quantity;
-        itemRowsHtml += `
-            <tr>
-                <td class="center">${idx + 1}</td>
-                <td>${esc(item.description)}</td>
-                <td class="center">${item.quantity}</td>
-                <td class="center">ks</td>
-                <td class="center">${item.dphRate}</td>
-                <td class="right">${fmt(item.unitPriceCzk)}</td>
-                <td class="right">${fmt(lineTotal)}</td>
-            </tr>`;
+        itemRowsHtml += `<tr>
+            <td>${idx + 1}</td>
+            <td class="desc">${esc(item.description)}</td>
+            <td>${item.quantity}</td>
+            <td>ks</td>
+            <td>${item.dphRate}</td>
+            <td class="r">${fmt(item.unitPriceCzk)}</td>
+            <td class="r">${fmt(lineTotal)}</td>
+        </tr>`;
     });
-
-    // Note: replace newlines with <br>
-    const noteHtml = esc(note).replace(/\n/g, '<br>');
 
     return `<!DOCTYPE html>
 <html lang="cs">
@@ -112,374 +103,174 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
 <meta charset="UTF-8">
 <title>Faktura ${esc(invoiceNumber)}</title>
 <style>
-    @page {
-        size: A4;
-        margin: 15mm 18mm 18mm 18mm;
-    }
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-        font-size: 9pt;
-        color: #1a1a1a;
-        line-height: 1.4;
-        background: #fff;
-    }
-    .page {
-        width: 210mm;
-        min-height: 297mm;
-        padding: 15mm 18mm 18mm 18mm;
-        margin: 0 auto;
-        background: #fff;
-    }
+@page { size: A4; margin: 12mm 16mm 14mm 16mm; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 8.5pt; color: #222; line-height: 1.35; background: #fff; }
+.page { width: 210mm; min-height: 297mm; padding: 12mm 16mm 14mm 16mm; margin: 0 auto; background: #fff; }
 
-    /* Header */
-    h1 {
-        font-size: 15pt;
-        font-weight: 700;
-        margin-bottom: 1pt;
-        color: #1a1a1a;
-    }
-    h2 {
-        font-size: 11pt;
-        font-weight: 700;
-        margin-bottom: 14pt;
-        color: #1a1a1a;
-    }
+/* ===== HEADER ===== */
+.header { border-bottom: 3px solid #D32F2F; padding-bottom: 10pt; margin-bottom: 12pt; }
+.header h1 { font-size: 18pt; font-weight: 800; color: #D32F2F; letter-spacing: -0.5pt; margin: 0; }
+.header .inv-num { font-size: 10pt; font-weight: 700; color: #444; margin-top: 2pt; }
 
-    /* Meta section */
-    .meta {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 16pt;
-    }
-    .meta-col {
-        flex: 1;
-    }
-    .meta-row {
-        display: flex;
-        margin-bottom: 2pt;
-    }
-    .meta-label {
-        width: 120pt;
-        color: #666;
-        font-size: 8pt;
-    }
-    .meta-value {
-        font-size: 9pt;
-    }
-    .meta-value.bold {
-        font-weight: 700;
-    }
+/* ===== META ===== */
+.meta { display: flex; gap: 16pt; margin-bottom: 14pt; }
+.meta-col { flex: 1; }
+.meta-row { display: flex; align-items: baseline; margin-bottom: 1.5pt; }
+.meta-label { width: 100pt; color: #777; font-size: 7.5pt; flex-shrink: 0; }
+.meta-val { font-size: 8.5pt; }
+.meta-val.bold { font-weight: 700; }
+.meta-val.sm { font-size: 7.5pt; word-break: break-all; }
 
-    /* Parties */
-    .parties {
-        display: flex;
-        gap: 20px;
-        padding-top: 10pt;
-        border-top: 1px solid #ccc;
-        margin-bottom: 14pt;
-    }
-    .party {
-        flex: 1;
-    }
-    .party-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-    }
-    .party-title {
-        font-size: 9pt;
-        font-weight: 700;
-        margin-bottom: 4pt;
-    }
-    .party-seq {
-        font-size: 9pt;
-        font-weight: 700;
-        color: #888;
-    }
-    .party-name {
-        font-size: 10pt;
-        font-weight: 700;
-        margin-bottom: 2pt;
-    }
-    .party-line {
-        font-size: 8pt;
-        color: #333;
-        margin-bottom: 1pt;
-    }
+/* ===== PARTIES ===== */
+.parties { display: flex; gap: 0; margin-bottom: 12pt; border: 1px solid #e0e0e0; }
+.party { flex: 1; padding: 10pt 12pt; }
+.party:first-child { border-right: 1px solid #e0e0e0; }
+.party-label { font-size: 7pt; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1pt; margin-bottom: 4pt; }
+.party-name { font-size: 10pt; font-weight: 700; color: #111; margin-bottom: 3pt; }
+.party-line { font-size: 8pt; color: #444; line-height: 1.4; }
+.party-ic { font-size: 7.5pt; color: #555; margin-top: 4pt; }
+.party-seq { float: right; font-size: 10pt; font-weight: 700; color: #D32F2F; }
 
-    /* Note */
-    .note {
-        margin-bottom: 12pt;
-        padding-bottom: 6pt;
-        border-bottom: 0.5pt solid #ddd;
-    }
-    .note p {
-        font-size: 7pt;
-        color: #555;
-        line-height: 1.5;
-    }
+/* ===== NOTE ===== */
+.note { background: #fafafa; border-left: 3px solid #D32F2F; padding: 6pt 10pt; margin-bottom: 12pt; font-size: 6.5pt; color: #666; line-height: 1.5; }
 
-    /* Tables */
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .items-table th {
-        font-size: 7pt;
-        font-weight: 700;
-        color: #444;
-        text-align: left;
-        padding-bottom: 4pt;
-        border-bottom: 1pt solid #333;
-    }
-    .items-table td {
-        font-size: 9pt;
-        padding: 5pt 2pt;
-        border-bottom: 0.5pt solid #ddd;
-        vertical-align: top;
-    }
-    .items-table .col-id { width: 6%; }
-    .items-table .col-desc { width: 38%; }
-    .items-table .col-qty { width: 10%; }
-    .items-table .col-unit { width: 8%; }
-    .items-table .col-dph { width: 10%; }
-    .items-table .col-price { width: 14%; }
-    .items-table .col-total { width: 14%; }
+/* ===== ITEMS TABLE ===== */
+.items { width: 100%; border-collapse: collapse; margin-bottom: 6pt; }
+.items th { background: #333; color: #fff; font-size: 7pt; font-weight: 600; padding: 5pt 6pt; text-transform: uppercase; letter-spacing: 0.3pt; }
+.items th.c { text-align: center; }
+.items th.r { text-align: right; }
+.items td { font-size: 8.5pt; padding: 6pt; border-bottom: 1px solid #eee; text-align: center; }
+.items td.desc { text-align: left; }
+.items td.r { text-align: right; }
+.items tbody tr:hover { background: #fafafa; }
 
-    .center { text-align: center; }
-    .right { text-align: right; }
+/* ===== DPH TABLE ===== */
+.dph-wrap { display: flex; justify-content: flex-end; margin-bottom: 10pt; }
+.dph { width: 280pt; border-collapse: collapse; }
+.dph th { font-size: 7pt; font-weight: 700; color: #666; padding: 3pt 5pt; border-bottom: 1.5pt solid #999; text-align: left; }
+.dph th.c { text-align: center; }
+.dph th.r { text-align: right; }
+.dph td { font-size: 8pt; padding: 4pt 5pt; border-bottom: 1px solid #e5e5e5; text-align: center; }
+.dph td.r { text-align: right; }
+.dph td:first-child { text-align: left; }
+.dph .totals td { border-top: 1.5pt solid #333; border-bottom: none; font-weight: 700; font-size: 8.5pt; }
 
-    /* DPH summary */
-    .dph-wrapper {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 8pt;
-        margin-bottom: 12pt;
-    }
-    .dph-table {
-        width: 300pt;
-    }
-    .dph-table th {
-        font-size: 8pt;
-        font-weight: 700;
-        padding-bottom: 3pt;
-        border-bottom: 1pt solid #999;
-        text-align: left;
-    }
-    .dph-table td {
-        font-size: 8pt;
-        padding: 3pt 2pt;
-        border-bottom: 0.5pt solid #ddd;
-    }
-    .dph-table .totals-row td {
-        border-top: 1pt solid #999;
-        border-bottom: none;
-        font-weight: 700;
-    }
+/* ===== GRAND TOTAL ===== */
+.grand-total { text-align: right; margin-bottom: 16pt; padding: 8pt 12pt; background: #FFF5F5; border: 1px solid #FFCDD2; border-left: 4px solid #D32F2F; }
+.grand-total span { font-size: 15pt; font-weight: 800; color: #D32F2F; }
 
-    /* Grand total */
-    .grand-total {
-        text-align: right;
-        font-size: 14pt;
-        font-weight: 700;
-        margin-bottom: 20pt;
-    }
+/* ===== BOTTOM ===== */
+.bottom { display: flex; align-items: flex-end; gap: 20pt; margin-top: 6pt; }
+.qr-col { width: 110pt; }
+.qr-col img { width: 105pt; height: 105pt; border: 1px solid #eee; }
+.qr-label { font-size: 6.5pt; color: #888; text-align: center; margin-top: 2pt; }
+.sign-col { flex: 1; display: flex; justify-content: flex-end; align-items: flex-end; padding-bottom: 4pt; }
+.sign-line { width: 130pt; border-top: 1px solid #bbb; padding-top: 4pt; text-align: center; font-size: 7.5pt; color: #888; }
 
-    /* Bottom section */
-    .bottom {
-        display: flex;
-        align-items: flex-end;
-        margin-top: 10pt;
-    }
-    .qr-col {
-        width: 130pt;
-        margin-right: 10pt;
-    }
-    .qr-col img {
-        width: 115pt;
-        height: 115pt;
-    }
-    .qr-label {
-        font-size: 7pt;
-        color: #666;
-        text-align: center;
-        margin-top: 3pt;
-    }
-    .sign-col {
-        flex: 1;
-        display: flex;
-        justify-content: flex-end;
-        align-items: flex-end;
-    }
-    .sign-line {
-        width: 140pt;
-        border-top: 1pt solid #aaa;
-        padding-top: 4pt;
-        text-align: center;
-        font-size: 8pt;
-        color: #666;
-    }
+/* ===== FOOTER ===== */
+.footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; padding-top: 6pt; margin-top: 16pt; }
+.footer-text { font-size: 6pt; color: #aaa; }
+.footer-bold { font-size: 6pt; color: #aaa; font-weight: 700; }
+.footer-isdoc { font-size: 7pt; font-weight: 700; color: #D32F2F; letter-spacing: 1pt; }
 
-    /* Footer */
-    .footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        border-top: 0.5pt solid #ccc;
-        padding-top: 6pt;
-        margin-top: 20pt;
-    }
-    .footer-text {
-        font-size: 6pt;
-        color: #999;
-    }
-    .footer-bold {
-        font-size: 6pt;
-        color: #999;
-        font-weight: 700;
-    }
-
-    /* Print-specific */
-    @media print {
-        body {
-            background: #fff;
-        }
-        .page {
-            width: auto;
-            min-height: auto;
-            padding: 0;
-            margin: 0;
-        }
-    }
-
-    /* Screen preview styling */
-    @media screen {
-        body {
-            background: #e5e5e5;
-            padding: 20px 0;
-        }
-        .page {
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-        }
-    }
+@media print {
+    body { background: #fff; }
+    .page { width: auto; min-height: auto; padding: 0; margin: 0; }
+    .items tbody tr:hover { background: transparent; }
+}
+@media screen {
+    body { background: #e5e5e5; padding: 20px 0; }
+    .page { box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+}
 </style>
 </head>
 <body>
 <div class="page">
 
     <!-- Header -->
-    <h1>FAKTURA - DAŇOVÝ DOKLAD</h1>
-    <h2>číslo: ${esc(invoiceNumber)}</h2>
+    <div class="header">
+        <h1>FAKTURA - DAŇOVÝ DOKLAD</h1>
+        <div class="inv-num">číslo: ${esc(invoiceNumber)}</div>
+    </div>
 
     <!-- Meta -->
     <div class="meta">
         <div class="meta-col">
-            <div class="meta-row">
-                <span class="meta-label">Datum vystavení:</span>
-                <span class="meta-value">${fmtDate(issuedDate)}</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">Datum úč.zd.plnění:</span>
-                <span class="meta-value">${fmtDate(taxPointDate)}</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">Datum splatnosti:</span>
-                <span class="meta-value bold">${fmtDate(dueDate)}</span>
-            </div>
+            <div class="meta-row"><span class="meta-label">Datum vystavení:</span><span class="meta-val">${fmtDate(issuedDate)}</span></div>
+            <div class="meta-row"><span class="meta-label">Datum úč.zd.plnění:</span><span class="meta-val">${fmtDate(taxPointDate)}</span></div>
+            <div class="meta-row"><span class="meta-label">Datum splatnosti:</span><span class="meta-val bold">${fmtDate(dueDate)}</span></div>
         </div>
         <div class="meta-col">
-            <div class="meta-row">
-                <span class="meta-label">Způsob úhrady:</span>
-                <span class="meta-value">Převodním příkazem</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">Bankovní spojení:</span>
-                <span class="meta-value">${esc(bankAccount)}</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">IBAN:</span>
-                <span class="meta-value">${esc(bankIban)}</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">Variabilní symbol:</span>
-                <span class="meta-value bold">${esc(variableSymbol)}</span>
-            </div>
+            <div class="meta-row"><span class="meta-label">Způsob úhrady:</span><span class="meta-val">Převodním příkazem</span></div>
+            <div class="meta-row"><span class="meta-label">Bankovní spojení:</span><span class="meta-val">${esc(bankAccount)}</span></div>
+            <div class="meta-row"><span class="meta-label">IBAN:</span><span class="meta-val sm">${esc(bankIban)}</span></div>
+            <div class="meta-row"><span class="meta-label">Variabilní symbol:</span><span class="meta-val bold">${esc(variableSymbol)}</span></div>
         </div>
     </div>
 
     <!-- Parties -->
     <div class="parties">
         <div class="party">
-            <div class="party-title">Dodavatel:</div>
+            <div class="party-label">Dodavatel</div>
             <div class="party-name">${esc(issuerName)}</div>
-            ${issuerLines.map(line => `<div class="party-line">${esc(line)}</div>`).join('\n            ')}
-            <div class="party-line">IČ: ${esc(issuerIC)}${issuerDIC ? '&nbsp;&nbsp;DIČ: ' + esc(issuerDIC) : ''}</div>
-            ${issuerRegistration ? `<div class="party-line">${esc(issuerRegistration)}</div>` : ''}
+            ${issuerLines.map(l => `<div class="party-line">${esc(l)}</div>`).join('')}
+            <div class="party-ic">IČ: ${esc(issuerIC)}${issuerDIC ? '\u00A0\u00A0DIČ: ' + esc(issuerDIC) : ''}</div>
+            ${issuerRegistration ? `<div class="party-line" style="font-size:7pt;color:#888;margin-top:2pt">${esc(issuerRegistration)}</div>` : ''}
         </div>
         <div class="party">
-            <div class="party-header">
-                <span class="party-title">Odběratel:</span>
-                <span class="party-seq">#${sequenceNumber}</span>
-            </div>
+            <span class="party-seq">#${sequenceNumber}</span>
+            <div class="party-label">Odběratel</div>
             <div class="party-name">${esc(customerName)}</div>
-            ${customerLines.map(line => `<div class="party-line">${esc(line)}</div>`).join('\n            ')}
-            <div class="party-line">IČ: ${esc(customerIC)}${customerDIC ? '&nbsp;&nbsp;DIČ: ' + esc(customerDIC) : ''}</div>
+            ${customerLines.map(l => `<div class="party-line">${esc(l)}</div>`).join('')}
+            <div class="party-ic">IČ: ${esc(customerIC)}${customerDIC ? '\u00A0\u00A0DIČ: ' + esc(customerDIC) : ''}</div>
         </div>
     </div>
 
     <!-- Note -->
-    <div class="note">
-        <p>${noteHtml}</p>
-    </div>
+    <div class="note">${noteHtml}</div>
 
     <!-- Items table -->
-    <table class="items-table">
-        <thead>
-            <tr>
-                <th class="col-id center">ID</th>
-                <th class="col-desc">Položka</th>
-                <th class="col-qty center">Množství</th>
-                <th class="col-unit center">Jed.</th>
-                <th class="col-dph center">% DPH</th>
-                <th class="col-price right">Cena/jed.</th>
-                <th class="col-total right">Cena celkem</th>
-            </tr>
-        </thead>
-        <tbody>${itemRowsHtml}
-        </tbody>
+    <table class="items">
+        <thead><tr>
+            <th class="c" style="width:5%">ID</th>
+            <th style="width:37%;text-align:left">Položka</th>
+            <th class="c" style="width:9%">Množství</th>
+            <th class="c" style="width:7%">Jed.</th>
+            <th class="c" style="width:8%">% DPH</th>
+            <th class="r" style="width:17%">Cena/jed.</th>
+            <th class="r" style="width:17%">Cena celkem</th>
+        </tr></thead>
+        <tbody>${itemRowsHtml}</tbody>
     </table>
 
     <!-- DPH summary -->
-    <div class="dph-wrapper">
-        <table class="dph-table">
-            <thead>
-                <tr>
-                    <th>Sazba</th>
-                    <th class="center">% DPH</th>
-                    <th class="right">Základ</th>
-                    <th class="right">Daň</th>
-                    <th class="right">Celkem</th>
-                </tr>
-            </thead>
-            <tbody>${dphRowsHtml}
-                <tr class="totals-row">
+    <div class="dph-wrap">
+        <table class="dph">
+            <thead><tr>
+                <th style="width:22%">Sazba</th>
+                <th class="c" style="width:14%">% DPH</th>
+                <th class="r" style="width:22%">Základ</th>
+                <th class="r" style="width:20%">Daň</th>
+                <th class="r" style="width:22%">Celkem</th>
+            </tr></thead>
+            <tbody>
+                ${dphRowsHtml}
+                <tr class="totals">
                     <td><strong>Celkem CZK</strong></td>
                     <td></td>
-                    <td class="right">${fmt(totalBase)}</td>
-                    <td class="right">${fmt(totalTax)}</td>
-                    <td class="right">${fmt(grandTotal)}</td>
+                    <td class="r">${fmt(totalBase)}</td>
+                    <td class="r">${fmt(totalTax)}</td>
+                    <td class="r">${fmt(grandTotal)}</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
     <!-- Grand total -->
-    <div class="grand-total">Celkem k úhradě: ${fmt(grandTotal)} CZK</div>
+    <div class="grand-total">
+        Celkem k úhradě: <span>${fmt(grandTotal)} CZK</span>
+    </div>
 
     <!-- QR + Signature -->
     <div class="bottom">
@@ -494,11 +285,11 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
     <!-- Footer -->
     <div class="footer">
         <div>
-            ${issuerPhone ? `<div class="footer-bold">Telefon: ${esc(issuerPhone)}</div>` : ''}
-            ${issuerEmail ? `<div class="footer-text">Email: ${esc(issuerEmail)}</div>` : ''}
+            ${issuerPhone ? `<div class="footer-bold">Tel: ${esc(issuerPhone)}</div>` : ''}
+            ${issuerEmail ? `<div class="footer-text">${esc(issuerEmail)}</div>` : ''}
         </div>
-        <div class="footer-bold">ISDOC 6.0.1</div>
-        <div>
+        <div class="footer-isdoc">ISDOC 6.0.1</div>
+        <div style="text-align:right">
             ${issuedBy ? `<div class="footer-text">Vystavil: ${esc(issuedBy)}</div>` : ''}
             <div class="footer-text">Strana 1</div>
         </div>
@@ -515,55 +306,30 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
 
 export function downloadInvoiceAsPdf(props: InvoicePdfProps, filename: string): void {
     const html = generateInvoiceHtml(props);
-
     const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    iframe.style.opacity = '0';
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;opacity:0';
     document.body.appendChild(iframe);
 
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) {
-        console.error('[Invoice] Could not access iframe document');
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
         document.body.removeChild(iframe);
         return;
     }
 
-    iframeDoc.open();
-    iframeDoc.write(html);
-    iframeDoc.close();
+    doc.open();
+    doc.write(html);
+    doc.close();
 
-    // Wait for images (QR code) to load before printing
-    const images = iframeDoc.querySelectorAll('img');
-    const imagePromises = Array.from(images).map(
-        (img) =>
-            new Promise<void>((resolve) => {
-                if (img.complete) {
-                    resolve();
-                } else {
-                    img.onload = () => resolve();
-                    img.onerror = () => resolve();
-                }
-            })
+    const images = doc.querySelectorAll('img');
+    const loaded = Array.from(images).map(img =>
+        new Promise<void>(r => img.complete ? r() : (img.onload = () => r(), img.onerror = () => r()))
     );
 
-    Promise.all(imagePromises).then(() => {
-        // Small delay to ensure CSS is fully applied
+    Promise.all(loaded).then(() => {
         setTimeout(() => {
-            try {
-                iframe.contentWindow?.print();
-            } catch (e) {
-                console.error('[Invoice] Print failed:', e);
-            }
-            // Remove iframe after a delay to allow print dialog to complete
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-            }, 1000);
-        }, 250);
+            try { iframe.contentWindow?.print(); } catch (e) { console.error('[Invoice] Print failed:', e); }
+            setTimeout(() => document.body.removeChild(iframe), 1000);
+        }, 200);
     });
 }
 
@@ -572,6 +338,5 @@ export function downloadInvoiceAsPdf(props: InvoicePdfProps, filename: string): 
 /* ------------------------------------------------------------------ */
 
 export async function generateInvoiceBlobFromHtml(props: InvoicePdfProps): Promise<Blob> {
-    const html = generateInvoiceHtml(props);
-    return new Blob([html], { type: 'text/html' });
+    return new Blob([generateInvoiceHtml(props)], { type: 'text/html' });
 }
