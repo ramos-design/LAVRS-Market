@@ -238,36 +238,38 @@ export async function generateInvoicePdf(invoiceData: GeneratedInvoice): Promise
     const p = (invoiceData as any)._pdfParams;
     if (!p) throw new Error('Missing PDF params — call prepareInvoiceData first');
 
-    const { pdf: pdfRenderer } = await import('@react-pdf/renderer');
-    const { default: InvoicePdfComponent } = await import('../components/InvoicePdf');
+    const reactPdf = await import('@react-pdf/renderer');
+    const invoicePdfModule = await import('../components/InvoicePdf');
+    const InvoicePdfComponent = invoicePdfModule.default;
 
-    const pdfBlob = await pdfRenderer(
-        <InvoicePdfComponent
-            invoiceNumber={p.invoiceNumber}
-            sequenceNumber={p.sequenceNumber}
-            issuedDate={p.issuedDate}
-            taxPointDate={p.taxPointDate}
-            dueDate={p.dueDate}
-            variableSymbol={p.variableSymbol}
-            issuerName={p.companySettings.companyName || 'LAVRS market'}
-            issuerAddress={p.companySettings.companyAddress || ''}
-            issuerIC={p.companySettings.ic || ''}
-            issuerDIC={p.companySettings.dic}
-            issuerRegistration={p.companySettings.registrationInfo}
-            issuerPhone={p.companySettings.phone}
-            issuerEmail={p.companySettings.email}
-            issuedBy={p.companySettings.issuedBy}
-            bankAccount={p.bankAccount}
-            bankIban={p.bankIban}
-            customerName={p.application.billingName}
-            customerAddress={p.application.billingAddress}
-            customerIC={p.application.ic}
-            customerDIC={p.application.dic}
-            lineItems={p.lineItems}
-            qrDataUrl={p.qrDataUrl}
-            invoiceNote={p.companySettings.invoiceNote}
-        />
-    ).toBlob();
+    const props = {
+        invoiceNumber: p.invoiceNumber,
+        sequenceNumber: p.sequenceNumber,
+        issuedDate: p.issuedDate,
+        taxPointDate: p.taxPointDate,
+        dueDate: p.dueDate,
+        variableSymbol: p.variableSymbol,
+        issuerName: p.companySettings.companyName || 'LAVRS market',
+        issuerAddress: p.companySettings.companyAddress || '',
+        issuerIC: p.companySettings.ic || '',
+        issuerDIC: p.companySettings.dic || undefined,
+        issuerRegistration: p.companySettings.registrationInfo || undefined,
+        issuerPhone: p.companySettings.phone || undefined,
+        issuerEmail: p.companySettings.email || undefined,
+        issuedBy: p.companySettings.issuedBy || undefined,
+        bankAccount: p.bankAccount,
+        bankIban: p.bankIban,
+        customerName: p.application.billingName || '',
+        customerAddress: p.application.billingAddress || '',
+        customerIC: p.application.ic || '',
+        customerDIC: p.application.dic || undefined,
+        lineItems: p.lineItems,
+        qrDataUrl: p.qrDataUrl,
+        invoiceNote: p.companySettings.invoiceNote || undefined,
+    };
+
+    const element = React.createElement(InvoicePdfComponent, props);
+    const pdfBlob = await reactPdf.pdf(element).toBlob();
 
     invoiceData.pdfBlob = pdfBlob;
     return pdfBlob;

@@ -243,7 +243,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
           }
         } catch (pdfErr: any) {
           console.error('PDF generation failed:', pdfErr);
-          // Not blocking — QR + bank info are already visible
+          if (!cancelled) {
+            setInvoiceError(`PDF se nepodařilo vygenerovat: ${pdfErr.message || 'Neznámá chyba'}`);
+          }
         } finally {
           if (!cancelled) setPdfGenerating(false);
         }

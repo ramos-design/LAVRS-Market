@@ -15,13 +15,19 @@ import {
     Font,
 } from '@react-pdf/renderer';
 
+// Use absolute URL for fonts so @react-pdf/renderer can fetch them in any context
+const fontBase = typeof window !== 'undefined' ? window.location.origin : '';
+
 Font.register({
     family: 'LiberationSans',
     fonts: [
-        { src: '/fonts/LiberationSans-Regular.ttf', fontWeight: 400 },
-        { src: '/fonts/LiberationSans-Bold.ttf', fontWeight: 700 },
+        { src: `${fontBase}/fonts/LiberationSans-Regular.ttf`, fontWeight: 400 },
+        { src: `${fontBase}/fonts/LiberationSans-Bold.ttf`, fontWeight: 700 },
     ],
 });
+
+// Disable hyphenation (causes issues with Czech text)
+Font.registerHyphenationCallback((word) => [word]);
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -77,7 +83,11 @@ export interface InvoicePdfProps {
 /* ------------------------------------------------------------------ */
 
 function fmtCZK(n: number): string {
-    return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fixed = n.toFixed(2);
+    const [whole, dec] = fixed.split('.');
+    // Add space as thousands separator (Czech style)
+    const formatted = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return `${formatted},${dec}`;
 }
 
 function fmtDate(iso: string): string {
