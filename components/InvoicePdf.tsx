@@ -1,6 +1,6 @@
 /**
  * Invoice PDF — "FAKTURA - DAŇOVÝ DOKLAD"
- * Uses built-in Helvetica font (no external font loading = no network failures)
+ * Uses Roboto font (supports full Czech diacritics)
  * Compliant with Czech tax law (zákon č. 235/2004 Sb.) and ISDOC 6.0.1
  */
 
@@ -12,7 +12,29 @@ import {
     View,
     StyleSheet,
     Image,
+    Font,
 } from '@react-pdf/renderer';
+
+/* ------------------------------------------------------------------ */
+/*  Font Registration — Roboto supports full Czech diacritics          */
+/* ------------------------------------------------------------------ */
+
+Font.register({
+    family: 'Roboto',
+    fonts: [
+        {
+            src: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf',
+            fontWeight: 'normal',
+        },
+        {
+            src: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf',
+            fontWeight: 'bold',
+        },
+    ],
+});
+
+// Disable hyphenation (breaks Czech words incorrectly)
+Font.registerHyphenationCallback(word => [word]);
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -84,15 +106,15 @@ const s = StyleSheet.create({
         paddingTop: 40,
         paddingBottom: 50,
         paddingHorizontal: 40,
-        fontFamily: 'Helvetica',
+        fontFamily: 'Roboto',
         fontSize: 9,
         color: '#1a1a1a',
     },
-    bold: { fontFamily: 'Helvetica-Bold' },
+    bold: { fontFamily: 'Roboto', fontWeight: 'bold' },
 
     // Header
-    title: { fontSize: 14, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
-    subtitle: { fontSize: 11, fontFamily: 'Helvetica-Bold', marginBottom: 14 },
+    title: { fontSize: 14, fontFamily: 'Roboto', fontWeight: 'bold', marginBottom: 2 },
+    subtitle: { fontSize: 11, fontFamily: 'Roboto', fontWeight: 'bold', marginBottom: 14 },
 
     // Meta
     row: { flexDirection: 'row', marginBottom: 2 },
@@ -101,13 +123,13 @@ const s = StyleSheet.create({
     metaRight: { flex: 1 },
     label: { width: 105, color: '#666', fontSize: 8 },
     value: { fontSize: 9 },
-    valueBold: { fontSize: 9, fontFamily: 'Helvetica-Bold' },
+    valueBold: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold' },
 
     // Parties
     partiesRow: { flexDirection: 'row', marginBottom: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#ccc' },
     partyCol: { flex: 1, paddingRight: 10 },
-    partyTitle: { fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-    partyName: { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
+    partyTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', marginBottom: 4 },
+    partyName: { fontSize: 10, fontFamily: 'Roboto', fontWeight: 'bold', marginBottom: 2 },
     partyLine: { fontSize: 8, marginBottom: 1, color: '#333' },
 
     // Note
@@ -117,7 +139,7 @@ const s = StyleSheet.create({
     // Table
     tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 4, marginBottom: 4 },
     tableRow: { flexDirection: 'row', paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: '#ddd' },
-    th: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#444' },
+    th: { fontSize: 7, fontFamily: 'Roboto', fontWeight: 'bold', color: '#444' },
     td: { fontSize: 9 },
     colId: { width: '6%' },
     colDesc: { width: '38%' },
@@ -140,7 +162,7 @@ const s = StyleSheet.create({
 
     // Grand total
     grandTotal: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 },
-    grandTotalText: { fontSize: 14, fontFamily: 'Helvetica-Bold' },
+    grandTotalText: { fontSize: 14, fontFamily: 'Roboto', fontWeight: 'bold' },
 
     // Bottom section
     bottomRow: { flexDirection: 'row', marginTop: 10 },
@@ -153,7 +175,7 @@ const s = StyleSheet.create({
     // Footer
     footerRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.5, borderTopColor: '#ccc', paddingTop: 6, marginTop: 20 },
     footerText: { fontSize: 6, color: '#999' },
-    footerBold: { fontSize: 6, color: '#999', fontFamily: 'Helvetica-Bold' },
+    footerBold: { fontSize: 6, color: '#999', fontFamily: 'Roboto', fontWeight: 'bold' },
 });
 
 /* ------------------------------------------------------------------ */
