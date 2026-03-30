@@ -13,7 +13,7 @@ import { logAdminAction, checkVersionConflict } from './lib/activityLog';
 import { useAdminPresence } from './hooks/useAdminPresence';
 import {
   dbEventToApp, dbApplicationToApp, dbBrandProfileToApp,
-  dbBannerToApp, dbCategoryToApp, dbEventPlanToApp, dbCompanySettingsToApp,
+  dbBannerToApp, dbCategoryToApp, dbEventPlanToApp,
   appApplicationToDb, appBrandProfileToDb, appBannerToDb, appCategoryToDb,
 } from './lib/mappers';
 
@@ -187,7 +187,7 @@ const App: React.FC = () => {
   } = useEventPlan(selectedEventId);
   const {
     data: dbCompanySettings, loading: companySettingsLoading,
-  } = useCompanySettings(canFetchUserData);
+  } = useCompanySettings({ enabled: canFetchUserData });
 
   // ─── Map DB data to app types ─────────────────────────────
   const events = useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
@@ -227,10 +227,8 @@ const App: React.FC = () => {
     return events.find(e => e.id === selectedEventId);
   }, [selectedEventId, events]);
 
-  const companySettings = useMemo(() => {
-    if (!dbCompanySettings) return null;
-    return dbCompanySettingsToApp(dbCompanySettings);
-  }, [dbCompanySettings]);
+  // useCompanySettings already returns mapped CompanySettings (not raw DB type)
+  const companySettings = dbCompanySettings ?? null;
 
   const activeAppForExhibitor = useMemo(() => {
     if (userRole !== 'EXHIBITOR') return null;
