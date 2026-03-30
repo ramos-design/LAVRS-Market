@@ -668,21 +668,23 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                               eventId: activeEvent.id,
                             });
 
-                            // Fire-and-forget: send invoice notification email
+                            // Fire-and-forget: send invoice notification email with real PDF
                             (async () => {
                               try {
-                                // Generate PDF blob for email attachment
+                                // Generate real PDF via @react-pdf/renderer
+                                const { generateInvoicePdf } = await import('../lib/invoice-generator');
+                                const pdfBlob = await generateInvoicePdf(invoiceResult);
+                                console.log('[Invoice email] Real PDF generated:', pdfBlob.size, 'bytes');
+
+                                // Convert PDF blob to base64
+                                const ab = await pdfBlob.arrayBuffer();
+                                const bytes = new Uint8Array(ab);
                                 let pdfBase64 = '';
-                                if (invoiceResult.pdfBlob && invoiceResult.pdfBlob.size > 0) {
-                                  const ab = await invoiceResult.pdfBlob.arrayBuffer();
-                                  const bytes = new Uint8Array(ab);
-                                  let binary = '';
-                                  const chunk = 0x8000;
-                                  for (let i = 0; i < bytes.length; i += chunk) {
-                                    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-                                  }
-                                  pdfBase64 = btoa(binary);
+                                const chunk = 0x8000;
+                                for (let i = 0; i < bytes.length; i += chunk) {
+                                  pdfBase64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
                                 }
+                                pdfBase64 = btoa(pdfBase64);
 
                                 // Format event date
                                 const evDate = new Date(activeEvent.date);
@@ -691,7 +693,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                                 const yyyy = evDate.getFullYear();
 
                                 const { supabase } = await import('../lib/supabase');
-                                await supabase.functions.invoke('send-invoice-notification', {
+                                const { error: fnError } = await supabase.functions.invoke('send-invoice-notification', {
                                   body: {
                                     brandName: activeApp.brandName || '',
                                     contactPerson: activeApp.contactPerson || '',
@@ -705,7 +707,11 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                                     recipientEmail: 'info@lavrs.cz',
                                   },
                                 });
-                                console.log('[Invoice email] Notification sent to info@lavrs.cz');
+                                if (fnError) {
+                                  console.error('[Invoice email] Edge Function error:', fnError);
+                                } else {
+                                  console.log('[Invoice email] Notification sent to info@lavrs.cz');
+                                }
                               } catch (emailErr) {
                                 console.error('[Invoice email] Failed (non-blocking):', emailErr);
                               }
