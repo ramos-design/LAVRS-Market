@@ -192,20 +192,25 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   const variableSymbol = getVariableSymbol();
 
   // Auto-generate invoice + QR when entering step 4
-  const canGenerateInvoice = step === 4 && !invoiceGenerated && !invoiceGenerating
+  // Use ref to prevent deadlock: state-based guards cause issues when useEffect cleanup
+  // cancels a running generation (invoiceGenerating stays true forever)
+  const generatingRef = React.useRef(false);
+
+  const needsGeneration = step === 4 && !invoiceGenerated
     && !!eventPlan && !!activeEvent && !!companySettings && !!allApplications && !!activeApp;
 
   React.useEffect(() => {
-    if (!canGenerateInvoice) return;
+    if (!needsGeneration || generatingRef.current) return;
 
+    generatingRef.current = true;
     let cancelled = false;
 
-    const generate = async () => {
-      setInvoiceGenerating(true);
-      setInvoiceError('');
-      setPdfGenerating(false);
-      setGeneratedPdfBlob(null);
+    setInvoiceGenerating(true);
+    setInvoiceError('');
+    setPdfGenerating(false);
+    setGeneratedPdfBlob(null);
 
+    const generate = async () => {
       try {
         const appWithBillingData = {
           ...activeApp!,
@@ -216,18 +221,16 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
           billingEmail: billingEmail || activeApp!.billingEmail,
         };
 
-        const invoiceParams = {
+        // Phase 1: FAST — QR + numbers + XML (no PDF yet)
+        const { prepareInvoiceData } = await import('../lib/invoice-generator');
+        const result = await prepareInvoiceData({
           application: appWithBillingData,
           event: activeEvent!,
           eventPlan: eventPlan!,
           selectedExtraIds: Array.from(selectedExtras),
           companySettings: companySettings!,
           allApplications: allApplications!,
-        };
-
-        // Phase 1: FAST — QR + numbers + XML (no PDF yet)
-        const { prepareInvoiceData } = await import('../lib/invoice-generator');
-        const result = await prepareInvoiceData(invoiceParams);
+        });
 
         if (cancelled) return;
 
@@ -243,28 +246,31 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
           const { generateInvoicePdf } = await import('../lib/invoice-generator');
           const pdfBlob = await generateInvoicePdf(result);
           if (!cancelled) {
-            // Update both state AND ref so "Potvrdit" uses the real PDF
             result.pdfBlob = pdfBlob;
             generatedInvoiceRef.current = result;
             setGeneratedPdfBlob(pdfBlob);
           }
         } catch (pdfErr: any) {
           console.error('PDF generation failed:', pdfErr);
-          // Don't block — user can still confirm, PDF will be generated server-side or re-tried
         } finally {
           if (!cancelled) setPdfGenerating(false);
         }
       } catch (err: any) {
         if (cancelled) return;
-        console.error('Invoice data preparation failed:', err);
+        console.error('Invoice preparation failed:', err);
         setInvoiceError(err.message || 'Chyba při generování faktury');
         setInvoiceGenerating(false);
       }
     };
 
     generate();
-    return () => { cancelled = true; };
-  }, [canGenerateInvoice]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return () => {
+      cancelled = true;
+      // Reset ref so generation can restart on next mount/render
+      generatingRef.current = false;
+    };
+  }, [needsGeneration]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDownloadPdf = () => {
     if (!generatedPdfBlob) return;
