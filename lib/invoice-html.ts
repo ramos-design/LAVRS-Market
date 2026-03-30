@@ -136,7 +136,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 .note { background: #fafafa; border-left: 3px solid #D32F2F; padding: 6pt 10pt; margin-bottom: 12pt; font-size: 6.5pt; color: #333; line-height: 1.5; }
 
 /* ===== ITEMS TABLE ===== */
-.items { width: 100%; border-collapse: collapse; margin-bottom: 6pt; border: 1px solid #000; }
+.items { width: 100%; border-collapse: collapse; margin-bottom: 8pt; border: 2px solid #000; }
 .items th { background: #f0f0f0; color: #000; font-size: 7pt; font-weight: 700; padding: 5pt 6pt; text-transform: uppercase; letter-spacing: 0.3pt; border: 1px solid #000; }
 .items th.c { text-align: center; }
 .items th.r { text-align: right; }
