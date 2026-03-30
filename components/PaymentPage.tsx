@@ -114,6 +114,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   const [invoiceGenerating, setInvoiceGenerating] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
   const [invoiceError, setInvoiceError] = useState('');
+  const [pdfGenerating, setPdfGenerating] = useState(false);
   const generatedInvoiceRef = React.useRef<any>(null);
 
   // ARES Lookup with debounce
@@ -210,8 +211,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
           billingEmail: billingEmail || activeApp!.billingEmail,
         };
 
-        const { generateInvoice } = await import('../lib/invoice-generator');
-        const result = await generateInvoice({
+        // Phase 1: FAST — QR + numbers + XML (no PDF yet)
+        const { prepareInvoiceData } = await import('../lib/invoice-generator');
+        const result = await prepareInvoiceData({
           application: appWithBillingData,
           event: activeEvent!,
           eventPlan: eventPlan!,
@@ -223,16 +225,30 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
         if (cancelled) return;
 
         generatedInvoiceRef.current = result;
-        setGeneratedPdfBlob(result.pdfBlob);
         setGeneratedInvoiceNumber(result.invoiceNumber);
         setInvoiceQrDataUrl(result.qrDataUrl);
         setInvoiceGenerated(true);
+        setInvoiceGenerating(false);
+
+        // Phase 2: SLOW — PDF in background (UI already shows QR + bank info)
+        setPdfGenerating(true);
+        try {
+          const { generateInvoicePdf } = await import('../lib/invoice-generator');
+          const pdfBlob = await generateInvoicePdf(result);
+          if (!cancelled) {
+            setGeneratedPdfBlob(pdfBlob);
+          }
+        } catch (pdfErr: any) {
+          console.error('PDF generation failed:', pdfErr);
+          // Not blocking — QR + bank info are already visible
+        } finally {
+          if (!cancelled) setPdfGenerating(false);
+        }
       } catch (err: any) {
         if (cancelled) return;
-        console.error('Invoice generation failed:', err);
+        console.error('Invoice data preparation failed:', err);
         setInvoiceError(err.message || 'Chyba při generování faktury');
-      } finally {
-        if (!cancelled) setInvoiceGenerating(false);
+        setInvoiceGenerating(false);
       }
     };
 
@@ -569,7 +585,12 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       </div>
 
                       {/* PDF Download */}
-                      {generatedPdfBlob && (
+                      {pdfGenerating ? (
+                        <div className="w-full py-5 bg-gray-50 border-2 border-gray-200 rounded-none flex items-center justify-center gap-3 text-gray-400">
+                          <Loader size={18} className="animate-spin" />
+                          <span className="font-bold uppercase tracking-[0.15em] text-xs">Připravuji PDF fakturu...</span>
+                        </div>
+                      ) : generatedPdfBlob ? (
                         <button
                           onClick={handleDownloadPdf}
                           className="w-full py-5 bg-white border-2 border-lavrs-red text-lavrs-red rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-lavrs-red hover:text-white shadow-sm flex items-center justify-center gap-3"
@@ -577,7 +598,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           <Download size={20} />
                           <span>Stáhnout fakturu — {generatedInvoiceNumber}.pdf</span>
                         </button>
-                      )}
+                      ) : null}
 
                       <div className="flex gap-4 p-6 bg-lavrs-beige/20 border border-lavrs-pink/50">
                         <CheckCircle2 size={24} className="text-green-500 shrink-0" />

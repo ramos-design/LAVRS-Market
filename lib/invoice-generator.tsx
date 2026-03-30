@@ -5,12 +5,11 @@
  */
 
 import React from 'react';
-import { pdf } from '@react-pdf/renderer';
 import { Application, MarketEvent, EventPlan, CompanySettings } from '../types';
 import { generateQrPayment } from './qr-payment';
 import { buildIsdocXml } from './isdoc';
 import { calculateInvoiceNumber, getApplicationSequenceForEvent } from './invoice-number';
-import InvoicePdf, { InvoiceLineItem } from '../components/InvoicePdf';
+import type { InvoiceLineItem } from '../components/InvoicePdf';
 
 const DPH_RATE = 21; // %
 
@@ -102,9 +101,10 @@ function buildLineItems(
 }
 
 /**
- * Main invoice generation function.
+ * Phase 1: Fast — calculates all numbers, QR, XML. No PDF rendering.
+ * Returns everything except pdfBlob (null).
  */
-export async function generateInvoice(params: GenerateInvoiceParams): Promise<GeneratedInvoice> {
+export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise<GeneratedInvoice> {
     const {
         application,
         event,
@@ -197,46 +197,9 @@ export async function generateInvoice(params: GenerateInvoiceParams): Promise<Ge
         bankIban,
     });
 
-    // 7. Generate PDF
-    const pdfBlob = await pdf(
-        <InvoicePdf
-            invoiceNumber={invoiceNumber}
-            sequenceNumber={sequenceNumber}
-            issuedDate={issuedDate}
-            taxPointDate={taxPointDate}
-            dueDate={dueDateStr}
-            variableSymbol={variableSymbol}
-            issuerName={companySettings.companyName || 'LAVRS market'}
-            issuerAddress={companySettings.companyAddress || ''}
-            issuerIC={companySettings.ic || ''}
-            issuerDIC={companySettings.dic}
-            issuerRegistration={companySettings.registrationInfo}
-            issuerPhone={companySettings.phone}
-            issuerEmail={companySettings.email}
-            issuedBy={companySettings.issuedBy}
-            bankAccount={bankAccount}
-            bankIban={bankIban}
-            customerName={application.billingName}
-            customerAddress={application.billingAddress}
-            customerIC={application.ic}
-            customerDIC={application.dic}
-            lineItems={lineItems}
-            qrDataUrl={qrDataUrl}
-            invoiceNote={companySettings.invoiceNote}
-        />
-    ).toBlob();
-
-    console.log('=== INVOICE GENERATED ===', {
-        invoiceNumber,
-        baseCzk: totalBaseCzk,
-        dphCzk: totalTaxCzk,
-        totalCzk: totalWithDphCzk,
-        lineItemsCount: lineItems.length,
-        variableSymbol,
-    });
-
+    // PDF is NOT generated here — use generateInvoicePdf() separately
     return {
-        pdfBlob,
+        pdfBlob: new Blob(), // placeholder, will be replaced by generateInvoicePdf
         xmlString,
         invoiceNumber,
         totalAmount: totalAmountHalers,
@@ -247,5 +210,71 @@ export async function generateInvoice(params: GenerateInvoiceParams): Promise<Ge
         spaydString,
         issuedDate,
         dueDate: dueDateStr,
-    };
+        // Store params needed for PDF generation
+        _pdfParams: {
+            invoiceNumber,
+            sequenceNumber,
+            issuedDate,
+            taxPointDate,
+            dueDate: dueDateStr,
+            variableSymbol,
+            companySettings,
+            application,
+            lineItems,
+            qrDataUrl,
+            bankAccount,
+            bankIban,
+        },
+    } as GeneratedInvoice;
+}
+
+/**
+ * Phase 2: Slow — renders the PDF. Call after prepareInvoiceData().
+ */
+export async function generateInvoicePdf(invoiceData: GeneratedInvoice): Promise<Blob> {
+    const p = (invoiceData as any)._pdfParams;
+    if (!p) throw new Error('Missing PDF params — call prepareInvoiceData first');
+
+    const { pdf: pdfRenderer } = await import('@react-pdf/renderer');
+    const { default: InvoicePdfComponent } = await import('../components/InvoicePdf');
+
+    const pdfBlob = await pdfRenderer(
+        <InvoicePdfComponent
+            invoiceNumber={p.invoiceNumber}
+            sequenceNumber={p.sequenceNumber}
+            issuedDate={p.issuedDate}
+            taxPointDate={p.taxPointDate}
+            dueDate={p.dueDate}
+            variableSymbol={p.variableSymbol}
+            issuerName={p.companySettings.companyName || 'LAVRS market'}
+            issuerAddress={p.companySettings.companyAddress || ''}
+            issuerIC={p.companySettings.ic || ''}
+            issuerDIC={p.companySettings.dic}
+            issuerRegistration={p.companySettings.registrationInfo}
+            issuerPhone={p.companySettings.phone}
+            issuerEmail={p.companySettings.email}
+            issuedBy={p.companySettings.issuedBy}
+            bankAccount={p.bankAccount}
+            bankIban={p.bankIban}
+            customerName={p.application.billingName}
+            customerAddress={p.application.billingAddress}
+            customerIC={p.application.ic}
+            customerDIC={p.application.dic}
+            lineItems={p.lineItems}
+            qrDataUrl={p.qrDataUrl}
+            invoiceNote={p.companySettings.invoiceNote}
+        />
+    ).toBlob();
+
+    invoiceData.pdfBlob = pdfBlob;
+    return pdfBlob;
+}
+
+/**
+ * Full generation (both phases). Used by save flow.
+ */
+export async function generateInvoice(params: GenerateInvoiceParams): Promise<GeneratedInvoice> {
+    const data = await prepareInvoiceData(params);
+    await generateInvoicePdf(data);
+    return data;
 }
