@@ -24,9 +24,11 @@ interface EventLayoutManagerProps {
     categories: Category[];
 }
 
-const DEFAULT_GRID_WIDTH = 24;
-const DEFAULT_GRID_HEIGHT = 16;
+const DEFAULT_GRID_COLS = 24;
 const CATEGORY_COLORS = ['#EF4444', '#8B5CF6', '#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#6B7280', '#14B8A6'];
+
+// Always maintain 16:9 aspect with square cells: rows = cols * 9/16
+const calcGridRows = (cols: number) => Math.round(cols * 9 / 16);
 
 // Build auto-zones from categories (one zone per category, deterministic colors)
 function buildAutoZones(categories: Category[]): Zone[] {
@@ -82,7 +84,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         id: `plan-${eventId}-${Date.now()}`,
         name,
         eventId,
-        gridSize: { width: DEFAULT_GRID_WIDTH, height: DEFAULT_GRID_HEIGHT },
+        gridSize: { width: DEFAULT_GRID_COLS, height: calcGridRows(DEFAULT_GRID_COLS) },
         layoutMeta: {
             backgroundImageUrl: '',
             backgroundOpacity: 0.35,
@@ -246,6 +248,19 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
             }
         }));
     };
+
+    // Auto-save a single plan's layout_meta to DB immediately (for floorplan upload)
+    const autoSaveCurrentPlan = React.useCallback(async (updatedPlan: EventPlan) => {
+        try {
+            if (onSavePlans) {
+                await onSavePlans(plans.map((p, i) => i === activePlanIdx ? updatedPlan : p));
+            } else if (onSavePlan) {
+                await onSavePlan(updatedPlan);
+            }
+        } catch (err) {
+            console.error('Auto-save floorplan failed:', err);
+        }
+    }, [plans, activePlanIdx, onSavePlans, onSavePlan]);
 
     const isWithinGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < plan.gridSize.width && y < plan.gridSize.height;
 
@@ -517,7 +532,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                         }}
                         onMouseUp={() => setIsPainting(false)}
                         className={`
-                            relative aspect-square border border-gray-200/60 flex items-center justify-center transition-all cursor-pointer
+                            relative border border-gray-200/60 flex items-center justify-center transition-all cursor-pointer
                             ${!stand && activeTool === 'place' ? 'hover:bg-lavrs-beige/40' : ''}
                             ${!stand && activeTool === 'erase' ? 'hover:bg-red-50' : ''}
                             ${stand && selectedStandId === stand.id ? 'ring-2 ring-lavrs-red ring-inset z-10' : ''}
@@ -552,12 +567,16 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     }, [plan.gridSize, plan.stands, plan.zones, propApplications, activeTool, selectedStandId, isPainting, handleCellClick, getStandAtCell, getOccupant, getZone, placeStandAt, deleteStand]);
 
     const drawPlanCanvas = async () => {
-        const cell = Math.max(20, normalizedLayoutMeta.cellSize || 28);
+        // A4 landscape at 300 DPI = 3508 × 2480
+        const A4_W = 3508;
+        const A4_H = 2480;
+        const legendHeight = 160;
+        const cell = Math.floor(Math.min(A4_W / plan.gridSize.width, (A4_H - legendHeight) / plan.gridSize.height));
         const width = plan.gridSize.width * cell;
         const height = plan.gridSize.height * cell;
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height + 120;
+        canvas.width = Math.max(width, A4_W);
+        canvas.height = height + legendHeight;
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
 
@@ -599,23 +618,34 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
             ctx.strokeRect(px + 1, py + 1, cell - 2, cell - 2);
             if (occ) {
                 ctx.fillStyle = '#111827';
-                ctx.font = '9px sans-serif';
-                ctx.fillText(occ.brandName.slice(0, 12), px + 3, py + cell / 2 + 3);
+                const fontSize = Math.max(10, Math.floor(cell * 0.18));
+                ctx.font = `bold ${fontSize}px sans-serif`;
+                // Clip text to cell boundaries
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(px + 2, py + 2, cell - 4, cell - 4);
+                ctx.clip();
+                ctx.fillText(occ.brandName, px + 4, py + cell / 2 + fontSize / 3);
+                ctx.restore();
             }
         });
 
-        let legendY = height + 20;
+        // Legend - horizontal layout
+        const legendTop = height + 50;
         ctx.fillStyle = '#111827';
-        ctx.font = 'bold 14px sans-serif';
-        ctx.fillText(`${eventDetails.title || 'LAVRS layout'} - legenda`, 10, legendY);
-        legendY += 18;
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillText(`${eventDetails.title || 'LAVRS layout'} — ${plan.name || 'Plán'}`, 30, legendTop);
+
+        let legendX = 30;
+        const legendItemY = legendTop + 55;
         plan.zones.forEach(zone => {
             ctx.fillStyle = zone.color;
-            ctx.fillRect(10, legendY - 10, 10, 10);
+            ctx.fillRect(legendX, legendItemY - 18, 24, 24);
             ctx.fillStyle = '#111827';
-            ctx.font = '12px sans-serif';
-            ctx.fillText(`${zone.name} (${zone.category})`, 26, legendY);
-            legendY += 16;
+            ctx.font = '26px sans-serif';
+            const textWidth = ctx.measureText(zone.name).width;
+            ctx.fillText(zone.name, legendX + 32, legendItemY);
+            legendX += 32 + textWidth + 40;
         });
         return canvas;
     };
@@ -1008,69 +1038,26 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                     </p>
                                 )}
 
-                                {/* Grid Size - editable */}
+                                {/* Grid Size - +/- buttons */}
                                 <div className="space-y-2 border-t border-gray-100 pt-4">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Velikost mřížky</p>
                                     <div className="flex items-center gap-2">
-                                        <input type="number" min={4} max={60}
-                                            value={plan.gridSize.width}
-                                            onChange={(e) => setPlan(prev => ({ ...prev, gridSize: { ...prev.gridSize, width: Math.max(4, Math.min(60, parseInt(e.target.value) || 4)) } }))}
-                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-white" />
-                                        <span className="text-gray-400 font-bold">×</span>
-                                        <input type="number" min={4} max={60}
-                                            value={plan.gridSize.height}
-                                            onChange={(e) => setPlan(prev => ({ ...prev, gridSize: { ...prev.gridSize, height: Math.max(4, Math.min(60, parseInt(e.target.value) || 4)) } }))}
-                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-white" />
+                                        <button onClick={() => setPlan(prev => {
+                                                const cols = Math.max(8, prev.gridSize.width - 2);
+                                                return { ...prev, gridSize: { width: cols, height: calcGridRows(cols) } };
+                                            })}
+                                            className="px-3 py-1.5 text-sm font-bold border border-gray-200 hover:border-lavrs-red">-</button>
+                                        <span className="text-sm font-bold text-gray-600 w-20 text-center">{plan.gridSize.width} × {plan.gridSize.height}</span>
+                                        <button onClick={() => setPlan(prev => {
+                                                const cols = Math.min(60, prev.gridSize.width + 2);
+                                                return { ...prev, gridSize: { width: cols, height: calcGridRows(cols) } };
+                                            })}
+                                            className="px-3 py-1.5 text-sm font-bold border border-gray-200 hover:border-lavrs-red">+</button>
                                     </div>
                                 </div>
 
-                                {/* Zoom + Export */}
-                                <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
-                                    <button onClick={() => setLayoutZoom(prev => Math.max(0.5, Number((prev - 0.1).toFixed(2))))}
-                                        className="px-2 py-1.5 text-[10px] font-bold border border-gray-200">-</button>
-                                    <span className="text-[10px] font-black text-gray-500 w-10 text-center">{Math.round(layoutZoom * 100)}%</span>
-                                    <button onClick={() => setLayoutZoom(prev => Math.min(2.5, Number((prev + 0.1).toFixed(2))))}
-                                        className="px-2 py-1.5 text-[10px] font-bold border border-gray-200">+</button>
-                                    <div className="flex-1" />
-                                    <button onClick={exportPng} className="px-2 py-1.5 text-[10px] font-black uppercase border border-gray-200 hover:border-lavrs-red flex items-center gap-1">
-                                        <FileImage size={11} /> PNG
-                                    </button>
-                                    <button onClick={exportPdf} className="px-2 py-1.5 text-[10px] font-black uppercase border border-gray-200 hover:border-lavrs-red flex items-center gap-1">
-                                        <FileText size={11} /> PDF
-                                    </button>
-                                </div>
 
-                                {/* Floorplan Background */}
-                                <div className="space-y-2 border-t border-gray-100 pt-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Podklad mapy</p>
-                                    <button type="button" onClick={() => floorplanInputRef.current?.click()}
-                                        className="w-full py-2 px-3 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center justify-center gap-2">
-                                        <ImageIcon size={12} /> {normalizedLayoutMeta.backgroundImageUrl ? 'Změnit floorplan' : 'Nahrát floorplan'}
-                                    </button>
-                                    <input ref={floorplanInputRef} type="file" accept="image/*" className="hidden"
-                                        onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (!file) return;
-                                            setIsUploadingImage(true);
-                                            setUploadError(null);
-                                            try {
-                                                const { url } = await uploadEventFloorplan(file, eventId);
-                                                updateLayoutMeta({ backgroundImageUrl: url });
-                                            } catch (err) {
-                                                const msg = err instanceof Error ? err.message : 'Nahrání floorplanu selhalo.';
-                                                setUploadError(msg);
-                                            } finally {
-                                                setIsUploadingImage(false);
-                                                e.currentTarget.value = '';
-                                            }
-                                        }}
-                                    />
-                                    <label className="text-[9px] font-bold uppercase text-gray-400">Opacity: {Math.round((normalizedLayoutMeta.backgroundOpacity || 0) * 100)}%</label>
-                                    <input type="range" min={0} max={100}
-                                        value={Math.round((normalizedLayoutMeta.backgroundOpacity || 0) * 100)}
-                                        onChange={(e) => updateLayoutMeta({ backgroundOpacity: Number(e.target.value) / 100 })}
-                                        className="w-full" />
-                                </div>
+
 
                                 {/* Category Selector */}
                                 <div className="space-y-3 border-t border-gray-100 pt-4">
@@ -1107,28 +1094,6 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                 </div>
                             </div>
 
-                            {/* Summary */}
-                            <div className="bg-lavrs-dark text-white p-6 space-y-4 shadow-2xl relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><BarChart3 size={80} /></div>
-                                <header className="flex justify-between items-center border-b border-white/10 pb-3">
-                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 bg-lavrs-red animate-pulse" /> Přehled
-                                    </h3>
-                                </header>
-
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <p className="text-2xl font-black">{totalStands}</p>
-                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Umístěno celkem</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xl font-black text-green-400">
-                                            {plan.stands.filter(s => s.occupantId).length}
-                                        </p>
-                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Obsazeno</p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         {/* Main Grid Area */}
@@ -1142,10 +1107,21 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                             <span className="text-[10px] font-bold text-gray-500 uppercase">{plan.name || 'ŽIVÝ PLÁN'}</span>
                                         </div>
                                         <span className="h-4 w-px bg-gray-200" />
-                                        <div className="text-[10px] font-bold text-gray-400">
-                                            GRID: {plan.gridSize.width} × {plan.gridSize.height} | CELKEM MÍST: {plan.stands.length} | OBSAZENO: {placedExhibitors.length}
-                                        </div>
+                                        <span className="text-[10px] font-bold text-gray-400">
+                                            {plan.gridSize.width} × {plan.gridSize.height}
+                                        </span>
+                                        <span className="h-4 w-px bg-gray-200" />
+                                        <span className="text-[10px] font-bold text-gray-400">
+                                            UMÍSTĚNO: <span className="text-lavrs-dark">{plan.stands.length}</span>
+                                        </span>
+                                        <span className="h-4 w-px bg-gray-200" />
+                                        <span className="text-[10px] font-bold text-gray-400">
+                                            OBSAZENO: <span className="text-green-600">{placedExhibitors.length}</span>
+                                        </span>
                                     </div>
+                                    <button onClick={exportPng} className="px-3 py-1.5 text-[10px] font-black uppercase border border-gray-200 hover:border-lavrs-red flex items-center gap-1.5 text-gray-500 hover:text-lavrs-red transition-all">
+                                        <FileImage size={12} /> Exportovat plánek
+                                    </button>
                                 </div>
 
                                 {/* The Grid */}
@@ -1153,9 +1129,10 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                     <div
                                         className="grid mx-auto bg-white border border-gray-200 shadow-lg transition-all"
                                         style={{
-                                            gridTemplateColumns: `repeat(${plan.gridSize.width}, minmax(${normalizedLayoutMeta.cellSize || 28}px, 1fr))`,
-                                            width: 'fit-content',
-                                            minWidth: '100%',
+                                            gridTemplateColumns: `repeat(${plan.gridSize.width}, 1fr)`,
+                                            gridTemplateRows: `repeat(${plan.gridSize.height}, 1fr)`,
+                                            aspectRatio: '16 / 9',
+                                            width: '100%',
                                             transform: `scale(${layoutZoom})`,
                                             transformOrigin: 'top left',
                                             backgroundImage: normalizedLayoutMeta.backgroundImageUrl ? `linear-gradient(rgba(255,255,255,${1 - (normalizedLayoutMeta.backgroundOpacity || 0.35)}), rgba(255,255,255,${1 - (normalizedLayoutMeta.backgroundOpacity || 0.35)})), url(${normalizedLayoutMeta.backgroundImageUrl})` : undefined,
@@ -1175,6 +1152,73 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                     <p className="text-xs text-amber-800">Kolize buněk: {validation.collisions.length}</p>
                                 </div>
                             )}
+
+                            {/* Floorplan Background */}
+                            <div className="bg-white border border-gray-100 p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Podklad mapy</p>
+                                        {normalizedLayoutMeta.backgroundImageUrl && (
+                                            <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5">Nahráno</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {normalizedLayoutMeta.backgroundImageUrl && (
+                                            <>
+                                                <label className="text-[9px] font-bold uppercase text-gray-400">Opacity: {Math.round((normalizedLayoutMeta.backgroundOpacity || 0) * 100)}%</label>
+                                                <input type="range" min={0} max={100}
+                                                    value={Math.round((normalizedLayoutMeta.backgroundOpacity || 0) * 100)}
+                                                    onChange={(e) => updateLayoutMeta({ backgroundOpacity: Number(e.target.value) / 100 })}
+                                                    className="w-24" />
+                                                <button
+                                                    onClick={() => {
+                                                        updateLayoutMeta({ backgroundImageUrl: '' });
+                                                        const cleared = { ...plan, layoutMeta: { ...normalizedLayoutMeta, backgroundImageUrl: '' } };
+                                                        autoSaveCurrentPlan(cleared);
+                                                    }}
+                                                    className="text-[10px] font-bold text-red-400 hover:text-red-600 px-2 py-1 border border-red-100 hover:border-red-300 transition-all"
+                                                >
+                                                    Odebrat
+                                                </button>
+                                            </>
+                                        )}
+                                        <button type="button" onClick={() => floorplanInputRef.current?.click()}
+                                            className="px-3 py-1.5 text-[10px] font-bold border border-gray-200 hover:border-lavrs-red flex items-center gap-1.5 transition-all">
+                                            <ImageIcon size={12} /> {normalizedLayoutMeta.backgroundImageUrl ? 'Změnit' : 'Nahrát floorplan'}
+                                        </button>
+                                        <input ref={floorplanInputRef} type="file" accept="image/*" className="hidden"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setIsUploadingImage(true);
+                                                setUploadError(null);
+                                                try {
+                                                    const { url } = await uploadEventFloorplan(file, eventId);
+                                                    updateLayoutMeta({ backgroundImageUrl: url });
+                                                    // Auto-save to DB immediately
+                                                    const updatedPlan = {
+                                                        ...plan,
+                                                        layoutMeta: { ...normalizedLayoutMeta, backgroundImageUrl: url }
+                                                    };
+                                                    await autoSaveCurrentPlan(updatedPlan);
+                                                } catch (err) {
+                                                    const msg = err instanceof Error ? err.message : 'Nahrání floorplanu selhalo.';
+                                                    setUploadError(msg);
+                                                } finally {
+                                                    setIsUploadingImage(false);
+                                                    e.currentTarget.value = '';
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                {isUploadingImage && (
+                                    <p className="text-[10px] text-gray-500 font-bold mt-2 animate-pulse">Nahrávám...</p>
+                                )}
+                                {uploadError && (
+                                    <p className="text-[10px] text-red-500 font-bold mt-2">{uploadError}</p>
+                                )}
+                            </div>
 
                             {/* Stand Detail Panel */}
                             {selectedStandId && selectedStand && (

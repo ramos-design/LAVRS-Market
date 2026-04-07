@@ -290,11 +290,9 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                                                                     let html = await res.text();
                                                                     // Inject export bar if not present
                                                                     if (!html.includes('pdf-export-bar')) {
-                                                                        const bar = `<style>.pdf-export-bar{position:fixed;top:0;left:0;right:0;z-index:9999;background:#222;text-align:center;padding:12px 0;box-shadow:0 2px 8px rgba(0,0,0,.3)}.pdf-export-btn{display:inline-flex;align-items:center;gap:8px;background:#D32F2F;color:#fff;border:none;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;border-radius:4px}.pdf-export-btn:hover{background:#b71c1c}@media print{.pdf-export-bar{display:none!important}.page{margin-top:0!important}}</style>`;
+                                                                        const styles = `<style>.pdf-export-bar{text-align:center;padding:24px 0 32px}.pdf-export-btn{display:inline-flex;align-items:center;gap:8px;background:#D32F2F;color:#fff;border:none;padding:14px 40px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;border-radius:4px}.pdf-export-btn:hover{background:#b71c1c}@media print{.pdf-export-bar{display:none!important}}</style>`;
                                                                         const exportBtn = `<div class="pdf-export-bar"><button class="pdf-export-btn" onclick="window.print()"><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/></svg>Uložit jako PDF</button></div>`;
-                                                                        html = html.replace('<body>', `<body>${bar}${exportBtn}`);
-                                                                        // Add top margin to page so bar doesn't cover it
-                                                                        html = html.replace('.page {', '.page { margin-top: 60px; ');
+                                                                        html = html.replace('</body>', `${styles}${exportBtn}</body>`);
                                                                     }
                                                                     const blob = new Blob([html], { type: 'text/html' });
                                                                     const url = URL.createObjectURL(blob);

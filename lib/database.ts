@@ -232,7 +232,8 @@ export const eventsDb = {
 
         // Prefer direct Storage upload (smaller payload than base64 JSON).
         try {
-            const filePath = `event-images/${eventId}/${Date.now()}-${file.name}`;
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const filePath = `event-images/${eventId}/${Date.now()}-${safeName}`;
             const { error: uploadError } = await supabase.storage
                 .from('event-images')
                 .upload(filePath, file, { upsert: true, contentType: file.type || 'image/jpeg', cacheControl: '3600' });
@@ -270,7 +271,8 @@ export const eventsDb = {
             throw new Error('Only image files are allowed.');
         }
 
-        const filePath = `event-floorplans/${eventId}/${Date.now()}-${file.name}`;
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const filePath = `event-floorplans/${eventId}/${Date.now()}-${safeName}`;
         const { error: uploadError } = await supabase.storage
             .from('event-images')
             .upload(filePath, file, { upsert: true, contentType: file.type || 'image/jpeg', cacheControl: '3600' });
