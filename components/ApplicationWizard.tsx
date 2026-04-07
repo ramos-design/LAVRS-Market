@@ -568,7 +568,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     <p className="text-3xl md:text-5xl font-black text-lavrs-dark mb-2">
                       {getCategoryPrice(selectedZoneCategory).toLocaleString('cs-CZ')} Kč
                     </p>
-                    <p className="text-xs text-gray-500 font-medium italic">Včetně základního vybavení dle kategorie</p>
+                    <p className="text-xs text-gray-500 font-medium italic">Cena bez DPH · včetně základního vybavení dle kategorie</p>
                   </div>
                 </section>
 
