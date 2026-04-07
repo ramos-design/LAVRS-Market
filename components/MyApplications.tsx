@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, Clock, CheckCircle2, AlertCircle, ChevronRight, Search } from 'lucide-react';
 import { AppStatus, Application, MarketEvent } from '../types';
+import { useInvoices } from '../hooks/useSupabase';
 
 interface MyApplicationsProps {
     applications: Application[];
@@ -8,6 +9,16 @@ interface MyApplicationsProps {
 }
 
 const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, events }) => {
+    const { data: allInvoices } = useInvoices();
+
+    const invoiceNumberByAppId = React.useMemo(() => {
+        const map = new Map<string, string>();
+        for (const inv of allInvoices) {
+            map.set(inv.applicationId, inv.invoiceNumber);
+        }
+        return map;
+    }, [allInvoices]);
+
     const getEventTitle = (eventId: string) => events.find(e => e.id === eventId)?.title || 'Neznámý event';
     const getEventDate = (eventId: string) => {
         const event = events.find(e => e.id === eventId);
@@ -99,7 +110,7 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                                         <div className="flex flex-wrap gap-x-3 gap-y-1 md:gap-4 text-xs text-gray-400">
                                             <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
                                             <span className="font-medium text-gray-500">{getEventTitle(app.eventId)} · {getEventDate(app.eventId)}</span>
-                                            <span className="hidden md:inline font-medium text-gray-500">ID: {app.id}</span>
+                                            <span className="hidden md:inline font-medium text-gray-500">ID: {invoiceNumberByAppId.get(app.id) || app.id}</span>
                                         </div>
                                         {app.status === AppStatus.APPROVED && app.paymentDeadline && (
                                             <div className="mt-2 text-xs text-lavrs-dark">

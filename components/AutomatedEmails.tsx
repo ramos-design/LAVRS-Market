@@ -146,6 +146,21 @@ Přejeme hodně úspěchů!
 
 S pozdravem,
 Tým LAVRS market`,
+
+    'payment-submitted': `Dobrý den, {{contact_person}},
+
+děkujeme za potvrzení platby za účast na {{event_name}} za značku {{brand_name}}.
+
+Vaše faktura je přiložena v příloze tohoto emailu.
+
+Číslo faktury: {{invoice_number}}
+Částka k úhradě: {{invoice_amount}}
+Splatnost: {{payment_deadline}}
+
+Jakmile bude platba připsána na náš účet, obdržíte potvrzení o přijetí platby a závazné rezervaci Vašeho místa.
+
+S pozdravem,
+Tým LAVRS market`,
 };
 
 /* ─── Main Component ────────────────────────────────────────── */

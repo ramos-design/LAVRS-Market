@@ -457,7 +457,22 @@ děkujeme za Vaši účast na {{event_name}}! 🙏
 Doufáme, že se Vám event líbil a byl pro Vás přínosný.
 
 S pozdravem,
-Tým LAVRS Market', 'event', true)
+Tým LAVRS Market', 'event', true),
+
+  ('payment-submitted', 'Potvrzení odeslání platby', 'Vaše platba byla odeslána - {{event_name}}', 'Automatický email odeslaný vystavovateli ihned po potvrzení platby na konci platebního procesu. V příloze je automaticky přiložena faktura.', 'Dobrý den, {{contact_person}},
+
+děkujeme za potvrzení platby za účast na {{event_name}} za značku {{brand_name}}.
+
+Vaše faktura je přiložena v příloze tohoto emailu.
+
+Číslo faktury: {{invoice_number}}
+Částka k úhradě: {{invoice_amount}}
+Splatnost: {{payment_deadline}}
+
+Jakmile bude platba připsána na náš účet, obdržíte potvrzení o přijetí platby a závazné rezervaci Vašeho místa.
+
+S pozdravem,
+Tým LAVRS Market', 'payment', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================

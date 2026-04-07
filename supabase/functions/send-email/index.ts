@@ -91,6 +91,7 @@ serve(async (req) => {
                 if (newStatus === 'APPROVED') templateId = 'application-approved';
                 else if (newStatus === 'REJECTED') templateId = 'application-rejected';
                 else if (newStatus === 'PAID') templateId = 'payment-confirmed';
+                else if (newStatus === 'PAYMENT_UNDER_REVIEW') templateId = 'payment-submitted';
                 else if (newStatus === 'PAYMENT_REMINDER') templateId = 'payment-reminder';
                 else if (newStatus === 'PAYMENT_LAST_CALL') templateId = 'payment-last-call';
             }
@@ -159,6 +160,40 @@ serve(async (req) => {
             }
         }
 
+        // 3b. Auto-attach invoice PDF for payment-submitted template
+        let invoiceData: { amount_czk?: number; invoice_number?: string; due_date?: string } | null = null;
+        if (templateId === 'payment-submitted' && app.invoice_id) {
+            const { data: invoice } = await supabase
+                .from('invoices')
+                .select('*')
+                .eq('id', app.invoice_id)
+                .single();
+
+            if (invoice) {
+                invoiceData = invoice;
+
+                if (invoice.pdf_storage_path) {
+                    const { data: pdfData, error: pdfError } = await supabase
+                        .storage
+                        .from('attachments')
+                        .download(invoice.pdf_storage_path);
+
+                    if (!pdfError && pdfData && pdfData.size > 0) {
+                        const arrayBuffer = await pdfData.arrayBuffer();
+                        attachments.push({
+                            filename: `${invoice.invoice_number}.pdf`,
+                            content: new Uint8Array(arrayBuffer),
+                            contentType: "application/pdf",
+                            encoding: "binary" as const
+                        });
+                        console.log(`- Auto-attached invoice PDF: ${invoice.invoice_number}.pdf (${pdfData.size} bytes)`);
+                    } else {
+                        console.warn(`- Could not attach invoice PDF: ${pdfError?.message || 'Unknown error'}`);
+                    }
+                }
+            }
+        }
+
         // 4. Substitution
         let body = template.body || "";
         let subject = template.subject || "";
@@ -169,9 +204,13 @@ serve(async (req) => {
             '{{contact_person}}': app.contact_person || "",
             '{{brand_name}}': app.brand_name || "",
             '{{zone_type}}': app.zone || "",
-            '{{payment_deadline}}': app.payment_deadline ? new Date(app.payment_deadline).toLocaleDateString('cs-CZ') : "N/A",
-            '{{invoice_amount}}': "Dle faktury",
-            '{{invoice_number}}': app.id.split('-').pop()?.toUpperCase() || "",
+            '{{payment_deadline}}': invoiceData?.due_date
+                ? new Date(invoiceData.due_date).toLocaleDateString('cs-CZ')
+                : (app.payment_deadline ? new Date(app.payment_deadline).toLocaleDateString('cs-CZ') : "N/A"),
+            '{{invoice_amount}}': invoiceData?.amount_czk
+                ? (invoiceData.amount_czk / 100).toLocaleString('cs-CZ') + ' Kč'
+                : "Dle faktury",
+            '{{invoice_number}}': invoiceData?.invoice_number || app.id.split('-').pop()?.toUpperCase() || "",
         };
 
         Object.entries(vars).forEach(([k, v]) => {
