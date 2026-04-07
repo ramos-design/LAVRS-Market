@@ -9,9 +9,10 @@ interface CuratorModuleProps {
   onUpdateStatus: (id: string, status: AppStatus) => void;
   onDeleteApplication: (id: string) => void;
   onRestoreApplication: (id: string) => void;
+  onPermanentDeleteAllTrash: () => Promise<void>;
 }
 
-const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication }) => {
+const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
 
   // Create a map for O(1) event lookups instead of O(n) find()
@@ -185,13 +186,36 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
               <p className="text-xs text-gray-500 mt-1">Klikněte na přihlášku pro zobrazení detailu</p>
             </div>
             {viewMode === 'TRASH' && (
-              <button
-                type="button"
-                onClick={() => setViewMode('ACTIVE')}
-                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-gray-200 text-gray-600 hover:border-lavrs-red hover:text-lavrs-red transition-colors"
-              >
-                Zpět
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('ACTIVE')}
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-gray-200 text-gray-600 hover:border-lavrs-red hover:text-lavrs-red transition-colors"
+                >
+                  Zpět
+                </button>
+                {deletedApplications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!window.confirm(`Opravdu chcete TRVALE smazat všech ${deletedApplications.length} přihlášek z koše? Tuto akci nelze vrátit zpět!`)) return;
+                      setIsProcessing(true);
+                      try {
+                        await onPermanentDeleteAllTrash();
+                        setSelectedAppId(null);
+                      } finally {
+                        setIsProcessing(false);
+                      }
+                    }}
+                    disabled={isProcessing}
+                    className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-red-300 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors disabled:opacity-50"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Trash2 size={12} /> Smazat vše trvale
+                    </span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-2">

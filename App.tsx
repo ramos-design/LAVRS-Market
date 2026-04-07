@@ -134,7 +134,7 @@ const App: React.FC = () => {
   const { events: dbEvents, loading: eventsLoading, deleteEvent, createEvent } = useEvents(canFetchUserData);
   const {
     applications: dbApplications, loading: appsLoading,
-    createApplication, updateStatus: updateAppStatus, deleteApplication,
+    createApplication, updateStatus: updateAppStatus, deleteApplication, permanentDeleteAllTrash,
   } = useApplications({
     enabled: canFetchUserData,
     userId: user?.id,
@@ -386,6 +386,20 @@ const App: React.FC = () => {
         entityType: 'application',
         entityId: id,
         metadata: { brandName: app?.brandName },
+      });
+    }
+  };
+
+  const handlePermanentDeleteAllTrash = async () => {
+    await permanentDeleteAllTrash();
+    if (user) {
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'all_trash_permanently_deleted',
+        entityType: 'application',
+        entityId: 'bulk',
+        metadata: {},
       });
     }
   };
@@ -656,6 +670,7 @@ const App: React.FC = () => {
               onUpdateStatus={handleUpdateApplicationStatus}
               onDeleteApplication={handleDeleteApplication}
               onRestoreApplication={handleRestoreApplication}
+              onPermanentDeleteAllTrash={handlePermanentDeleteAllTrash}
             />
           )}
 

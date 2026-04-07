@@ -247,6 +247,14 @@ export function useApplications(options: UserScopedQueryOptions = {}) {
             await applicationsDb.update(id, { status: 'DELETED' });
             queryEmitter.invalidatePattern(/^applications:/);
         },
+        permanentDeleteAllTrash: async () => {
+            const allApps = query.data || [];
+            const trashed = allApps.filter((a: DbApplication) => (a.status || '').toUpperCase() === 'DELETED');
+            for (const app of trashed) {
+                await applicationsDb.delete(app.id);
+            }
+            queryEmitter.invalidatePattern(/^applications:/);
+        },
     };
 }
 
