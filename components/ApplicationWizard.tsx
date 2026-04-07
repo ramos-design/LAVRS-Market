@@ -92,6 +92,11 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
     { id: 'electricity', label: 'Přípojka elektřiny', price: '500 Kč' }
   ];
 
+  const getCategoryPriceText = (cat: ZoneCategory | null): string => {
+    if (!cat) return '0 Kč';
+    return eventPlan?.prices?.[cat] || '0 Kč';
+  };
+
   const getCategoryPrice = (cat: ZoneCategory | null) => {
     if (!cat) return 0;
     if (eventPlan?.prices?.[cat]) {
@@ -566,7 +571,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   <div className="p-6 md:p-10 bg-white border-2 border-lavrs-red/10 rounded-none shadow-sm text-center">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Předpokládaná cena</p>
                     <p className="text-3xl md:text-5xl font-black text-lavrs-dark mb-2">
-                      {getCategoryPrice(selectedZoneCategory).toLocaleString('cs-CZ')} Kč
+                      {getCategoryPriceText(selectedZoneCategory)}
                     </p>
                     <p className="text-xs text-gray-500 font-medium italic">Cena bez DPH · včetně základního vybavení dle kategorie</p>
                   </div>
