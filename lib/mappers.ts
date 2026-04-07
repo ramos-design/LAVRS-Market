@@ -206,6 +206,7 @@ export function dbBannerToApp(b: DbBanner): Banner {
         subtitle: b.subtitle || '',
         image: b.image || '',
         tag: b.tag || '',
+        is_active: b.is_active ?? true,
     };
 }
 
@@ -216,6 +217,7 @@ export function appBannerToDb(b: Banner, sortOrder: number = 0): Omit<DbBanner, 
         subtitle: b.subtitle || null,
         image: b.image || null,
         tag: b.tag || null,
+        is_active: b.is_active ?? true,
         sort_order: sortOrder,
     };
 }

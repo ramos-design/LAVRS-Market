@@ -171,6 +171,7 @@ export interface Banner {
   subtitle: string;
   image: string;
   tag: string;
+  is_active: boolean;
 }
 
 export interface Invoice {

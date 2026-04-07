@@ -20,21 +20,24 @@ export const INITIAL_BANNERS: Banner[] = [
     title: "Přípravy na Vánoce vrcholí",
     subtitle: "Nezapomeňte si včas rezervovat své místo na Vánočním LAVRS marketu. Kapacity se rychle plní!",
     image: "/media/1cde43c8-e02d-43da-aa4c-2c21532f5797.webp",
-    tag: "DŮLEŽITÉ"
+    tag: "DŮLEŽITÉ",
+    is_active: true
   },
   {
     id: 'b2',
     title: "Nová lokace v Holešovicích",
     subtitle: "Zářijový LAVRS market se přesouvá do úžasných prostor Garbe Holešovice. Máte se na co těšit.",
     image: "/media/lavrs-market.webp",
-    tag: "NOVINKA"
+    tag: "NOVINKA",
+    is_active: true
   },
   {
     id: 'b3',
     title: "Workshop: Circular Fashion",
     subtitle: "Chcete se dozvědět více o tom, jak lépe prezentovat svou udržitelnou značku? Sledujte náš newsletter.",
     image: "/media/Lavrsmarket-2022-foto-Dominika-Hruba.jpg",
-    tag: "WORKSHOP"
+    tag: "WORKSHOP",
+    is_active: true
   }
 ];
 

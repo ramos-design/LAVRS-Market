@@ -161,9 +161,12 @@ CREATE TABLE IF NOT EXISTS banners (
   subtitle TEXT,
   image TEXT,
   tag TEXT,
+  is_active BOOLEAN DEFAULT true,
   sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 
 -- 9. Email Templates
 CREATE TABLE IF NOT EXISTS email_templates (

@@ -119,7 +119,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
   const [invoiceError, setInvoiceError] = useState('');
   const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [invoiceHtmlContent, setInvoiceHtmlContent] = useState('');
   const generatedInvoiceRef = React.useRef<any>(null);
+  const invoiceIframeRef = React.useRef<HTMLIFrameElement>(null);
 
   // ARES Lookup with debounce
   React.useEffect(() => {
@@ -305,6 +307,27 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     if (!props) return;
     const { downloadInvoiceAsPdf } = await import('../lib/invoice-html');
     downloadInvoiceAsPdf(props, `${generatedInvoiceNumber}.pdf`);
+  };
+
+  const generateInvoiceHtmlPreview = async () => {
+    const props = getInvoiceHtmlProps();
+    if (!props) return;
+    const { generateInvoiceHtml } = await import('../lib/invoice-html');
+    let html = generateInvoiceHtml(props);
+    // Remove the built-in export bar — we have our own button outside the iframe
+    html = html.replace(/<div class="pdf-export-bar">[\s\S]*?<\/div>\s*<\/body>/, '</body>');
+    // Override screen styles: no gray bg/padding/shadow (embedded in page)
+    html = html.replace(
+      '@media screen {',
+      '@media screen { body { background: #fff !important; padding: 0 !important; } .page { box-shadow: none !important; }'
+    );
+    setInvoiceHtmlContent(html);
+  };
+
+  const handlePrintInvoice = () => {
+    const iframe = invoiceIframeRef.current;
+    if (!iframe?.contentWindow) return;
+    iframe.contentWindow.print();
   };
 
   return (
@@ -693,8 +716,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                             // Update status
                             await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
 
-                            // Auto-download invoice after confirmation
-                            handleDownloadPdf();
+                            // Generate invoice HTML preview (shown inline instead of auto-download)
+                            await generateInvoiceHtmlPreview();
 
                             setConfirmedPayment(true);
                           } catch (err: any) {
@@ -725,30 +748,44 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                 </>
               ) : (
                 <div className="space-y-8 animate-fadeIn">
-                  <div className="bg-white border-2 border-gray-100 p-12 text-center space-y-8">
-                    <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle2 size={48} className="text-green-500" />
-                    </div>
-                    <div className="space-y-6">
-                      <h3 className="text-2xl font-black uppercase tracking-tight">Děkujeme za vaši objednávku!</h3>
-                      <div className="py-8 border-y-2 border-gray-100 max-w-sm mx-auto space-y-3">
-                        <p className="text-sm text-lavrs-dark font-bold leading-relaxed">
-                          Vaše objednávka byla potvrzena.
-                        </p>
+                  <div className="bg-white border-2 border-gray-100 p-8 text-center space-y-6">
+                    <div className="flex items-center justify-center gap-4">
+                      <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
+                        <CheckCircle2 size={36} className="text-green-500" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-xl font-black uppercase tracking-tight">Děkujeme za vaši objednávku!</h3>
                         <p className="text-xs text-gray-500 leading-relaxed">
                           Proveďte platbu dle údajů na faktuře. Po připsání platby vám potvrdíme rezervaci místa na e-mail.
                         </p>
                       </div>
                     </div>
-
-                    {/* Invoice download (also available after confirmation) */}
-                    <button
-                      onClick={handleDownloadPdf}
-                      className="w-full py-5 bg-lavrs-red text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-red-700 shadow-lg flex items-center justify-center gap-3"
-                    >
-                      <Download size={20} /> Stáhnout fakturu
-                    </button>
                   </div>
+
+                  {/* Inline invoice HTML preview */}
+                  {invoiceHtmlContent && (
+                    <div className="border-2 border-gray-200 bg-white shadow-sm">
+                      <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center gap-2">
+                        <FileText size={16} className="text-gray-500" />
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Náhled faktury</span>
+                      </div>
+                      <iframe
+                        ref={invoiceIframeRef}
+                        srcDoc={invoiceHtmlContent}
+                        className="w-full border-0"
+                        style={{ height: '800px' }}
+                        title="Faktura"
+                      />
+                    </div>
+                  )}
+
+                  {/* Save as PDF button */}
+                  <button
+                    onClick={handlePrintInvoice}
+                    className="w-full py-5 bg-lavrs-red text-white rounded-none font-black uppercase tracking-[0.2em] transition-all hover:bg-red-700 shadow-lg flex items-center justify-center gap-3"
+                  >
+                    <Download size={20} /> Uložit jako PDF
+                  </button>
 
                   <button
                     onClick={onBack}

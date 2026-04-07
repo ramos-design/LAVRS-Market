@@ -681,7 +681,7 @@ const App: React.FC = () => {
                 onPayment={(appId) => { setSelectedPaymentAppId(appId); setCurrentScreen('PAYMENT'); }}
                 onDismissApp={handleDismissReviewApp}
                 onNavigate={setCurrentScreen}
-                banners={banners}
+                banners={banners.filter(b => b.is_active)}
               />
             ) : (
               <AdminDashboard
