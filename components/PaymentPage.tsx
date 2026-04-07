@@ -171,7 +171,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   };
 
   const handleNextStep = () => {
-    if (step === 3 && onSaveBilling) {
+    if (step === 2 && onSaveBilling) {
       onSaveBilling({ billingName, ic, dic, billingAddress, billingEmail });
     }
     setStep(step + 1);
@@ -181,21 +181,20 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
   const getStepTitle = () => {
     switch (step) {
-      case 2: return 'Speciální požadavky';
-      case 3: return 'Fakturační údaje';
-      case 4: return 'Způsob platby';
+      case 2: return 'Fakturační údaje';
+      case 3: return 'Způsob platby';
       default: return '';
     }
   };
 
   const variableSymbol = getVariableSymbol();
 
-  // Auto-generate invoice + QR when entering step 4
+  // Auto-generate invoice + QR when entering step 3
   // Use ref to prevent deadlock: state-based guards cause issues when useEffect cleanup
   // cancels a running generation (invoiceGenerating stays true forever)
   const generatingRef = React.useRef(false);
 
-  const needsGeneration = step === 4 && !invoiceGenerated
+  const needsGeneration = step === 3 && !invoiceGenerated
     && !!eventPlan && !!activeEvent && !!companySettings && !!allApplications && !!activeApp;
 
   React.useEffect(() => {
@@ -303,7 +302,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
       <header className="flex items-center gap-4">
         <button 
           onClick={step === 2 ? onBack : () => {
-            if (step === 4 && confirmedPayment) {
+            if (step === 3 && confirmedPayment) {
               setConfirmedPayment(false);
             } else {
               setStep(step - 1);
@@ -318,7 +317,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
             {getStepTitle()}
           </h2>
           <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
-            KROK {step - 1} ZE 3
+            KROK {step - 1} ZE 2
           </p>
         </div>
       </header>
@@ -437,37 +436,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
           {step === 2 && (
             <div className="space-y-8 animate-fadeIn">
-              <div className="bg-lavrs-beige/30 p-6 border-l-4 border-lavrs-dark">
-                <p className="text-sm font-medium leading-relaxed">
-                  Máte specifický dotaz k místu, potřebujete atypické vybavení nebo máte jiné přání? Napište nám ho sem.
-                </p>
-              </div>
-              
-              <div className="bg-white p-8 border-2 border-gray-100 space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles size={20} className="text-lavrs-red" />
-                  <h3 className="font-bold text-lg uppercase tracking-tight">Vaše poznámka k objednávce</h3>
-                </div>
-                <textarea
-                  value={specialNote}
-                  onChange={(e) => setSpecialNote(e.target.value)}
-                  rows={6}
-                  placeholder="Např.: Potřebuji stánek blízko vstupu, budu mít vlastní stojany, potřebuji k dispozici přípojku na elektřinu (pokud je dostupná)..."
-                  className="w-full bg-gray-50/50 px-6 py-5 rounded-none border border-gray-100 focus:outline-none focus:border-lavrs-red font-medium transition-all text-sm shadow-inner"
-                />
-              </div>
-
-              <button 
-                onClick={() => setStep(3)}
-                className="w-full py-6 bg-lavrs-dark text-white rounded-none font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-xl hover:bg-lavrs-red hover:translate-y-[-2px]"
-              >
-                Pokračovat k údajům <ChevronRight size={20} />
-              </button>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-8 animate-fadeIn">
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Fakturační jméno / Firma *</label>
@@ -544,7 +512,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
             </div>
           )}
 
-          {step === 4 && (
+          {step === 3 && (
             <div className="space-y-8 animate-fadeIn">
               {!confirmedPayment ? (
                 <>
