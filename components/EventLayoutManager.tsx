@@ -66,6 +66,15 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         }
     );
 
+    // When initialPlan arrives after mount (async load), update state once
+    const [planInitialized, setPlanInitialized] = useState(!!initialPlan);
+    useEffect(() => {
+        if (!planInitialized && initialPlan) {
+            setPlan(initialPlan);
+            setPlanInitialized(true);
+        }
+    }, [initialPlan, planInitialized]);
+
     const [activeTab, setActiveTab] = useState<'info' | 'layout' | 'pricing' | 'exhibitors' | 'stats'>('info');
     const [eventDetails, setEventDetails] = useState({
         title: currentEvent?.title || '',

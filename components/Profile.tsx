@@ -228,6 +228,23 @@ const ProfileInner: React.FC<ProfileProps> = () => {
             } else {
                 await createProfile(dbBrand);
             }
+
+            // Sync billing data to all applications with the same brand name
+            if (authUser?.id && editForm.brandName) {
+                const billingUpdates: Record<string, any> = {
+                    billing_name: editForm.billingName || null,
+                    ic: editForm.ic || null,
+                    dic: editForm.dic || null,
+                    billing_address: editForm.billingAddress || null,
+                    billing_email: editForm.billingEmail || null,
+                };
+                await supabase
+                    .from('applications')
+                    .update(billingUpdates)
+                    .eq('user_id', authUser.id)
+                    .eq('brand_name', editForm.brandName);
+            }
+
             cancelEditing();
         }
     };

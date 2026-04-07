@@ -232,6 +232,8 @@ const App: React.FC = () => {
   const categories = useMemo(() => dbCategories.map(dbCategoryToApp), [dbCategories]);
   const currentEventPlan = useMemo(() => {
     if (!dbPlan) return undefined;
+    // Guard against stale data from a previously selected event
+    if (dbPlan.event_id !== selectedEventId) return undefined;
     try {
       return dbEventPlanToApp(dbPlan, dbZones, dbStands);
     } catch (err) {
@@ -242,7 +244,7 @@ const App: React.FC = () => {
       });
       return undefined;
     }
-  }, [dbPlan, dbZones, dbStands]);
+  }, [dbPlan, dbZones, dbStands, selectedEventId]);
 
   const currentEvent = useMemo(() => {
     if (!selectedEventId) return undefined;
