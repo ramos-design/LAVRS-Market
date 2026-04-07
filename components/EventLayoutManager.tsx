@@ -921,10 +921,57 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
             )}
 
             {/* ═══════════════════════════════════════════════════════════
-                PLÁN ROZMÍSTĚNÍ TAB (SIMPLIFIED)
+                PLÁN ROZMÍSTĚNÍ TAB (MULTI-PLAN + CATEGORIES)
             ═══════════════════════════════════════════════════════════ */}
             {activeTab === 'layout' && (
                 <div className="space-y-6">
+                    {/* Plan Tabs */}
+                    <div className="flex items-center gap-2 bg-white border border-gray-100 p-2 shadow-sm overflow-x-auto">
+                        {plans.map((p, idx) => (
+                            <div key={p.id || idx} className="flex items-center group">
+                                <button
+                                    onClick={() => setActivePlanIdx(idx)}
+                                    className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                        idx === activePlanIdx
+                                            ? 'bg-lavrs-dark text-white shadow-md'
+                                            : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-lavrs-dark'
+                                    }`}
+                                >
+                                    {p.name || `Plán ${idx + 1}`}
+                                </button>
+                                {idx === activePlanIdx && (
+                                    <div className="flex ml-1">
+                                        <button
+                                            onClick={() => {
+                                                const name = prompt('Název plánu:', p.name || `Plán ${idx + 1}`);
+                                                if (name !== null) renamePlan(idx, name);
+                                            }}
+                                            className="p-1.5 text-gray-300 hover:text-lavrs-red transition-colors"
+                                            title="Přejmenovat"
+                                        >
+                                            <Type size={12} />
+                                        </button>
+                                        {plans.length > 1 && (
+                                            <button
+                                                onClick={() => { if (confirm(`Smazat "${p.name || `Plán ${idx + 1}`}"?`)) removePlan(idx); }}
+                                                className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
+                                                title="Smazat plán"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        <button
+                            onClick={addNewPlan}
+                            className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-lavrs-red hover:bg-lavrs-red/10 border border-dashed border-gray-200 hover:border-lavrs-red transition-all flex items-center gap-1 whitespace-nowrap"
+                        >
+                            <Plus size={12} /> Nový plán
+                        </button>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         {/* Left Toolbar */}
                         <div className="lg:col-span-3 space-y-6">
@@ -957,19 +1004,23 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
 
                                 {activeTool === 'place' && !selectedZoneId && (
                                     <p className="text-[10px] text-amber-600 font-bold bg-amber-50 p-2 border border-amber-100">
-                                        Nejprve vyberte zónu, do které chcete umisťovat.
+                                        Nejprve vyberte kategorii, kterou chcete umisťovat.
                                     </p>
                                 )}
 
-                                {/* Grid Size */}
+                                {/* Grid Size - editable */}
                                 <div className="space-y-2 border-t border-gray-100 pt-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Velikost mřížky (fix 16:9)</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Velikost mřížky</p>
                                     <div className="flex items-center gap-2">
-                                        <input type="number" value={FIXED_GRID_WIDTH} disabled
-                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-gray-100 text-gray-500 cursor-not-allowed" />
+                                        <input type="number" min={4} max={60}
+                                            value={plan.gridSize.width}
+                                            onChange={(e) => setPlan(prev => ({ ...prev, gridSize: { ...prev.gridSize, width: Math.max(4, Math.min(60, parseInt(e.target.value) || 4)) } }))}
+                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-white" />
                                         <span className="text-gray-400 font-bold">×</span>
-                                        <input type="number" value={FIXED_GRID_HEIGHT} disabled
-                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-gray-100 text-gray-500 cursor-not-allowed" />
+                                        <input type="number" min={4} max={60}
+                                            value={plan.gridSize.height}
+                                            onChange={(e) => setPlan(prev => ({ ...prev, gridSize: { ...prev.gridSize, height: Math.max(4, Math.min(60, parseInt(e.target.value) || 4)) } }))}
+                                            className="w-16 text-center text-sm font-bold border border-gray-200 py-1 bg-white" />
                                     </div>
                                 </div>
 
@@ -1021,90 +1072,33 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                         className="w-full" />
                                 </div>
 
-                                {/* Zone Management */}
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center bg-gray-50/50 p-2 border border-gray-100">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                            {selectedZoneId ? `Editace: ${getZone(selectedZoneId)?.name}` : 'Správa zón'}
-                                        </p>
-                                        <button onClick={addZone} className="text-lavrs-red hover:bg-lavrs-red/10 p-1.5 transition-colors" title="Přidat novou zónu">
-                                            <Plus size={16} />
-                                        </button>
-                                    </div>
-
-                                    {selectedZoneId && (
-                                        <div className="bg-white border-2 border-lavrs-dark/5 p-4 space-y-4 shadow-sm">
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {['#EF4444', '#8B5CF6', '#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#6B7280', '#000000'].map(c => (
-                                                    <button key={c} onClick={() => updateZone(selectedZoneId, { color: c })}
-                                                        className={`h-6 w-full transition-transform active:scale-90 ${getZone(selectedZoneId)?.color === c ? 'ring-2 ring-offset-1 ring-lavrs-dark scale-110 z-10' : 'opacity-70 hover:opacity-100'}`}
-                                                        style={{ backgroundColor: c }} />
-                                                ))}
-                                            </div>
-
-                                            <div className="space-y-3 pt-2">
-                                                <div className="space-y-1">
-                                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Název zóny</label>
-                                                    <input type="text"
-                                                        className="w-full text-sm font-bold border-gray-100 border-b-2 p-2 focus:border-lavrs-red outline-none bg-gray-50/30 transition-all"
-                                                        value={getZone(selectedZoneId)?.name}
-                                                        onChange={(e) => updateZone(selectedZoneId, { name: e.target.value })}
-                                                        placeholder="Např. Hlavní sál" />
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Kategorie značek</label>
-                                                    <select
-                                                        className="w-full text-[10px] font-black uppercase border-gray-100 border-b-2 p-2 focus:border-lavrs-red outline-none bg-gray-50/30 tracking-widest cursor-pointer"
-                                                        value={getZone(selectedZoneId)?.category}
-                                                        onChange={(e) => updateZone(selectedZoneId, { category: e.target.value as ZoneCategory })}>
-                                                        {categories.map(cat => (
-                                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Kapacita (max. míst)</label>
-                                                    <input type="number" min={0}
-                                                        className="w-full text-sm font-bold border-gray-100 border-b-2 p-2 focus:border-lavrs-red outline-none bg-gray-50/30 transition-all"
-                                                        value={getZone(selectedZoneId)?.capacity ?? 0}
-                                                        onChange={(e) => updateZone(selectedZoneId, { capacity: parseInt(e.target.value) || 0 })} />
-                                                </div>
-                                            </div>
-
-                                            <button onClick={() => deleteZone(selectedZoneId)}
-                                                className="w-full py-2 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100">
-                                                <Trash2 size={12} /> Odstranit zónu
-                                            </button>
-                                        </div>
-                                    )}
-
+                                {/* Category Selector */}
+                                <div className="space-y-3 border-t border-gray-100 pt-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Kategorie k umístění</p>
                                     <div className="grid grid-cols-1 gap-2">
-                                        {plan.zones.map(zone => {
-                                            const info = getCapacityInfo(zone.id);
-                                            const pct = info.total > 0 ? (info.placed / info.total) * 100 : 0;
+                                        {categories.map((cat, i) => {
+                                            const zoneId = `auto-zone-${cat.id}`;
+                                            const count = getCategoryStandCount(cat.id);
+                                            const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
                                             return (
                                                 <button
-                                                    key={zone.id}
-                                                    onClick={() => setSelectedZoneId(zone.id)}
-                                                    className={`group relative w-full text-left p-4 border-l-4 transition-all overflow-hidden ${
-                                                        selectedZoneId === zone.id
-                                                            ? 'bg-white shadow-md border-lavrs-red scale-[1.02] z-10'
-                                                            : 'bg-gray-50/50 border-gray-100 hover:bg-white hover:border-gray-300'
+                                                    key={cat.id}
+                                                    onClick={() => {
+                                                        setSelectedZoneId(zoneId);
+                                                        if (activeTool === 'select') setActiveTool('place');
+                                                    }}
+                                                    className={`group relative w-full text-left p-3 border-l-4 transition-all overflow-hidden ${
+                                                        selectedZoneId === zoneId
+                                                            ? 'bg-white shadow-md scale-[1.02] z-10'
+                                                            : 'bg-gray-50/50 hover:bg-white'
                                                     }`}
-                                                    style={{ borderLeftColor: zone.color }}
+                                                    style={{ borderLeftColor: color }}
                                                 >
-                                                    <div className="flex justify-between items-start">
+                                                    <div className="flex justify-between items-center">
                                                         <div>
-                                                            <h4 className="text-sm font-bold text-lavrs-dark leading-none mb-1">{zone.name}</h4>
-                                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{zone.category}</p>
+                                                            <h4 className="text-sm font-bold text-lavrs-dark leading-none">{cat.name}</h4>
                                                         </div>
-                                                        <span className="text-[10px] font-black text-gray-400">{info.placed}/{info.total}</span>
-                                                    </div>
-                                                    <div className="mt-3 h-1 w-full bg-gray-200">
-                                                        <div className="h-full transition-all duration-500"
-                                                            style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: pct > 100 ? '#EF4444' : zone.color }} />
+                                                        <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-0.5">{count}</span>
                                                     </div>
                                                 </button>
                                             );
@@ -1113,7 +1107,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                 </div>
                             </div>
 
-                            {/* Capacity Summary */}
+                            {/* Summary */}
                             <div className="bg-lavrs-dark text-white p-6 space-y-4 shadow-2xl relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><BarChart3 size={80} /></div>
                                 <header className="flex justify-between items-center border-b border-white/10 pb-3">
@@ -1124,14 +1118,14 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
 
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <p className="text-2xl font-black">{plan.stands.length}<span className="text-white/20 text-sm ml-2">/ {totalCapacitySlots}</span></p>
-                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Umístěno / Kapacita</p>
+                                        <p className="text-2xl font-black">{totalStands}</p>
+                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Umístěno celkem</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xl font-black text-green-400">
-                                            {plan.zones.reduce((acc, z) => acc + getCapacityInfo(z.id).free, 0)}
+                                            {plan.stands.filter(s => s.occupantId).length}
                                         </p>
-                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Volných míst</p>
+                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Obsazeno</p>
                                     </div>
                                 </div>
                             </div>
@@ -1145,11 +1139,11 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-green-500" />
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase">ŽIVÝ PLÁN</span>
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase">{plan.name || 'ŽIVÝ PLÁN'}</span>
                                         </div>
                                         <span className="h-4 w-px bg-gray-200" />
                                         <div className="text-[10px] font-bold text-gray-400">
-                                            GRID: {plan.gridSize.width} x {plan.gridSize.height} | CELKEM MÍST: {plan.stands.length} | OBSAZENO: {placedExhibitors.length}
+                                            GRID: {plan.gridSize.width} × {plan.gridSize.height} | CELKEM MÍST: {plan.stands.length} | OBSAZENO: {placedExhibitors.length}
                                         </div>
                                     </div>
                                 </div>
@@ -1175,15 +1169,10 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                 </div>
                             </div>
 
-                            {(validation.collisions.length > 0 || validation.capacityOverflows.length > 0) && (
+                            {validation.collisions.length > 0 && (
                                 <div className="bg-amber-50 border border-amber-200 p-4 space-y-2">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Validace plánku</p>
-                                    {validation.collisions.length > 0 && (
-                                        <p className="text-xs text-amber-800">Kolize buněk: {validation.collisions.length}</p>
-                                    )}
-                                    {validation.capacityOverflows.length > 0 && (
-                                        <p className="text-xs text-amber-800">Překročené kapacity: {validation.capacityOverflows.join(', ')}</p>
-                                    )}
+                                    <p className="text-xs text-amber-800">Kolize buněk: {validation.collisions.length}</p>
                                 </div>
                             )}
 
@@ -1211,7 +1200,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                 ) : (
                                                     <>
                                                         <h4 className="text-xl font-bold text-white/40 italic">Neobsazeno</h4>
-                                                        <p className="text-xs text-white/40">Zóna: {getZone(selectedStand.zoneId)?.name}</p>
+                                                        <p className="text-xs text-white/40">Kategorie: {getZone(selectedStand.zoneId)?.name}</p>
                                                     </>
                                                 )}
                                             </div>
@@ -1434,7 +1423,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                         <div>
                             <h4 className="font-bold text-lavrs-dark mb-1 underline decoration-lavrs-red/30">Nápověda</h4>
                             <p className="text-sm text-gray-600 leading-relaxed">
-                                Přejděte na záložku "Plán rozmístění", vyberte zónu a nástrojem "Umístit" klikněte do mřížky. Poté klikněte na umístěnou kostku a přiřaďte jí vystavovatele.
+                                Přejděte na záložku "Plán rozmístění", vyberte kategorii a nástrojem "Umístit" klikněte do mřížky. Poté klikněte na umístěnou kostku a přiřaďte jí vystavovatele.
                             </p>
                         </div>
                     </div>
@@ -1624,10 +1613,10 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             </div>
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">OBSAZENOST</h4>
                             <p className="text-2xl font-black text-lavrs-dark">
-                                {Math.round((plan.stands.filter(s => s.occupantId).length / (totalCapacitySlots || 1)) * 100)}%
+                                {Math.round((plan.stands.filter(s => s.occupantId).length / ((totalStands || 1) || 1)) * 100)}%
                             </p>
                             <div className="mt-2 w-full h-1 bg-gray-200">
-                                <div className="h-full bg-amber-500" style={{ width: `${Math.min((plan.stands.filter(s => s.occupantId).length / (totalCapacitySlots || 1)) * 100, 100)}%` }} />
+                                <div className="h-full bg-amber-500" style={{ width: `${Math.min((plan.stands.filter(s => s.occupantId).length / ((totalStands || 1) || 1)) * 100, 100)}%` }} />
                             </div>
                         </div>
 
@@ -1637,7 +1626,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             </div>
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">VOLNÉ KAPACITY</h4>
                             <p className="text-2xl font-black text-lavrs-dark">
-                                {totalCapacitySlots - plan.stands.filter(s => s.occupantId).length}
+                                {(totalStands || 1) - plan.stands.filter(s => s.occupantId).length}
                             </p>
                             <p className="text-[9px] text-gray-400 mt-2 italic font-medium">Zbývající místa k prodeji</p>
                         </div>
@@ -1670,26 +1659,27 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
 
                         <div className="space-y-6">
                             <h3 className="text-lg font-black uppercase tracking-tight text-lavrs-dark border-b-2 border-lavrs-red pb-4 flex items-center gap-3">
-                                <Maximize2 size={20} className="text-lavrs-red" /> Kapacity a umístění dle zón
+                                <Maximize2 size={20} className="text-lavrs-red" /> Umístění dle kategorií
                             </h3>
                             <div className="grid grid-cols-1 gap-4">
-                                {plan.zones.map(zone => {
-                                    const totalZoneCapacity = zone.capacity ?? 0;
-                                    const occupiedStands = plan.stands.filter(s => s.zoneId === zone.id && s.occupantId).length;
-                                    const occupancyRate = (occupiedStands / (totalZoneCapacity || 1)) * 100;
+                                {categories.map((cat, i) => {
+                                    const zoneId = `auto-zone-${cat.id}`;
+                                    const totalCatStands = plan.stands.filter(s => s.zoneId === zoneId).length;
+                                    const occupiedStands = plan.stands.filter(s => s.zoneId === zoneId && s.occupantId).length;
+                                    const occupancyRate = totalCatStands > 0 ? (occupiedStands / totalCatStands) * 100 : 0;
+                                    const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
                                     return (
-                                        <div key={zone.id} className="p-4 border border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                        <div key={cat.id} className="p-4 border border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className="w-2 h-10 flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                                                <div className="w-2 h-10 flex-shrink-0" style={{ backgroundColor: color }} />
                                                 <div className="truncate">
-                                                    <h4 className="font-black text-xs text-lavrs-dark uppercase">{zone.name}</h4>
-                                                    <p className="text-[10px] text-gray-400 font-medium italic truncate">{zone.category}</p>
+                                                    <h4 className="font-black text-xs text-lavrs-dark uppercase">{cat.name}</h4>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-6">
                                                 <div className="text-center">
                                                     <p className="text-[10px] font-black text-gray-400 leading-none mb-1">OBSAZENO</p>
-                                                    <p className="text-lg font-black text-lavrs-dark leading-none">{occupiedStands}<span className="text-xs text-gray-300 ml-1">/ {totalZoneCapacity}</span></p>
+                                                    <p className="text-lg font-black text-lavrs-dark leading-none">{occupiedStands}<span className="text-xs text-gray-300 ml-1">/ {totalCatStands}</span></p>
                                                 </div>
                                                 <div className="w-16 h-16 relative">
                                                     <svg className="w-full h-full transform -rotate-90">
@@ -1725,13 +1715,14 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             <p className="text-[10px] font-black text-white/40 uppercase mb-2">POTENCIÁL AKCE</p>
                             <p className="text-3xl font-black text-white">
                                 {new Intl.NumberFormat('cs-CZ').format(
-                                    plan.zones.reduce((sum, z) => {
-                                        const catPrice = parseInt(plan.prices[z.category]?.replace(/[^\d]/g, '') || '0');
-                                        return sum + (catPrice * (z.capacity ?? 0));
+                                    categories.reduce((sum, cat) => {
+                                        const catPrice = parseInt(plan.prices[cat.id]?.replace(/[^\d]/g, '') || '0');
+                                        const catStands = plan.stands.filter(s => s.zoneId === `auto-zone-${cat.id}`).length;
+                                        return sum + (catPrice * catStands);
                                     }, 0)
                                 )} Kč
                             </p>
-                            <p className="text-[9px] text-lavrs-red font-black mt-2 uppercase">Při 100% obsazenosti</p>
+                            <p className="text-[9px] text-lavrs-red font-black mt-2 uppercase">Při plném obsazení všech míst</p>
                         </div>
                     </div>
                 </div>
