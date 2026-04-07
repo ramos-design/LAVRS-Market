@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ViewMode, User as UserType, BrandProfile, Application, AppStatus, Category, Banner } from './types';
+import { ViewMode, User as UserType, BrandProfile, Application, AppStatus, Category, Banner, EventPlan } from './types';
 import Sidebar from './components/Sidebar';
 import MobileHeader from './components/MobileHeader';
 import Auth from './components/Auth';
@@ -8,7 +8,7 @@ import HeartLoader from './components/HeartLoader';
 
 // Supabase hooks & mappers
 import { useAuth } from './hooks/useAuth';
-import { useEvents, useApplications, useBrandProfiles, useEventPlan, useBanners, useCategories, useCompanySettings } from './hooks/useSupabase';
+import { useEvents, useApplications, useBrandProfiles, useEventPlan, useEventPlans, useAllEventPlanPrices, useInvoices, useBanners, useCategories, useCompanySettings } from './hooks/useSupabase';
 import { logAdminAction, checkVersionConflict } from './lib/activityLog';
 import { useAdminPresence } from './hooks/useAdminPresence';
 import {
@@ -208,8 +208,15 @@ const App: React.FC = () => {
     savePlan: saveEventPlan, loading: planLoading,
   } = useEventPlan(selectedEventId);
   const {
+    plans: dbAllPlans,
+    saveAllPlans,
+    loading: allPlansLoading,
+  } = useEventPlans(selectedEventId);
+  const {
     data: dbCompanySettings, loading: companySettingsLoading,
   } = useCompanySettings({ enabled: canFetchUserData });
+  const { planPrices } = useAllEventPlanPrices(canFetchUserData);
+  const { data: invoices } = useInvoices({ enabled: canFetchUserData });
 
   // ─── Map DB data to app types ─────────────────────────────
   const events = useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
@@ -246,6 +253,18 @@ const App: React.FC = () => {
     }
   }, [dbPlan, dbZones, dbStands, selectedEventId]);
 
+  const allEventPlans = useMemo(() => {
+    if (!dbAllPlans || dbAllPlans.length === 0) return [];
+    return dbAllPlans
+      .filter(p => p.plan.event_id === selectedEventId)
+      .map(p => {
+        try {
+          return dbEventPlanToApp(p.plan, p.zones, p.stands);
+        } catch { return null; }
+      })
+      .filter((p): p is EventPlan => p !== null);
+  }, [dbAllPlans, selectedEventId]);
+
   const currentEvent = useMemo(() => {
     if (!selectedEventId) return undefined;
     return events.find(e => e.id === selectedEventId);
@@ -268,37 +287,40 @@ const App: React.FC = () => {
 
   // ─── Handlers (now write to Supabase) ─────────────────────
 
+  const mapPlanForSave = (plan: any) => ({
+    id: plan.id || `plan-${selectedEventId}-${Date.now()}`,
+    gridSize: plan.gridSize,
+    layoutMeta: { ...plan.layoutMeta, planName: plan.name || '' },
+    prices: plan.prices,
+    equipment: plan.equipment,
+    categorySizes: plan.categorySizes,
+    extras: plan.extras,
+    zones: plan.zones.map((z: any) => ({
+      id: z.id,
+      name: z.name,
+      color: z.color,
+      category: z.category,
+      capacities: z.capacity !== undefined
+        ? { S: 0, M: z.capacity, L: 0 }
+        : z.capacities,
+    })),
+    stands: plan.stands.map((s: any) => ({
+      id: s.id,
+      x: s.x,
+      y: s.y,
+      size: s.size,
+      zone_id: s.zoneId,
+      occupant_id: s.occupantId || null,
+      label: s.label || null,
+      width_cells: s.widthCells ?? 1,
+      height_cells: s.heightCells ?? 1,
+      rotation: s.rotation ?? 0,
+      locked: !!s.locked,
+    })),
+  });
+
   const handleUpdateEventPlan = async (_eventId: string, newPlan: any) => {
-    await saveEventPlan({
-      gridSize: newPlan.gridSize,
-      layoutMeta: newPlan.layoutMeta,
-      prices: newPlan.prices,
-      equipment: newPlan.equipment,
-      categorySizes: newPlan.categorySizes,
-      extras: newPlan.extras,
-      zones: newPlan.zones.map((z: any) => ({
-        id: z.id,
-        name: z.name,
-        color: z.color,
-        category: z.category,
-        capacities: z.capacity !== undefined
-          ? { S: 0, M: z.capacity, L: 0 }
-          : z.capacities,
-      })),
-      stands: newPlan.stands.map((s: any) => ({
-        id: s.id,
-        x: s.x,
-        y: s.y,
-        size: s.size,
-        zone_id: s.zoneId,
-        occupant_id: s.occupantId || null,
-        label: s.label || null,
-        width_cells: s.widthCells ?? 1,
-        height_cells: s.heightCells ?? 1,
-        rotation: s.rotation ?? 0,
-        locked: !!s.locked,
-      })),
-    });
+    await saveEventPlan(mapPlanForSave(newPlan));
     if (user) {
       const evt = events.find(e => e.id === _eventId);
       logAdminAction({
@@ -308,6 +330,21 @@ const App: React.FC = () => {
         entityType: 'event_plan',
         entityId: _eventId,
         metadata: { eventTitle: evt?.title },
+      });
+    }
+  };
+
+  const handleSaveAllPlans = async (_eventId: string, plans: any[]) => {
+    await saveAllPlans(plans.map(mapPlanForSave));
+    if (user) {
+      const evt = events.find(e => e.id === _eventId);
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'event_plan_saved',
+        entityType: 'event_plan',
+        entityId: _eventId,
+        metadata: { eventTitle: evt?.title, planCount: plans.length },
       });
     }
   };
@@ -707,7 +744,7 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'PAYMENTS' && userRole === 'ADMIN' && (
-            <PaymentsAndInvoicing applications={applications} events={events} />
+            <PaymentsAndInvoicing applications={applications} events={events} planPrices={planPrices} invoices={invoices} />
           )}
 
           {currentScreen === 'EVENTS_CONFIG' && userRole === 'ADMIN' && (
@@ -789,7 +826,9 @@ const App: React.FC = () => {
                 onBack={() => setCurrentScreen('EVENTS_CONFIG')}
                 applications={applications}
                 initialPlan={currentEventPlan}
+                initialPlans={allEventPlans}
                 onSavePlan={(newPlan) => handleUpdateEventPlan(selectedEventId, newPlan)}
+                onSavePlans={(plans) => handleSaveAllPlans(selectedEventId, plans)}
                 categories={categories}
               />
             </AppErrorBoundary>

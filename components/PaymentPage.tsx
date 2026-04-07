@@ -621,14 +621,13 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           try {
                             const invoiceResult = generatedInvoiceRef.current;
 
-                            // Generate HTML blob for storage
-                            const htmlProps = getInvoiceHtmlProps();
-                            if (htmlProps) {
-                              const { generateInvoiceBlobFromHtml } = await import('../lib/invoice-html');
-                              invoiceResult.pdfBlob = await generateInvoiceBlobFromHtml(htmlProps);
-                            }
+                            // Generate real PDF via @react-pdf/renderer for storage & email
+                            const { generateInvoicePdf } = await import('../lib/invoice-generator');
+                            const pdfBlob = await generateInvoicePdf(invoiceResult);
+                            console.log('[Invoice] Real PDF generated:', pdfBlob.size, 'bytes');
+                            invoiceResult.pdfBlob = pdfBlob;
 
-                            // Save invoice to Supabase
+                            // Save invoice to Supabase (now with real PDF)
                             const { saveInvoice } = await import('../lib/invoice-storage');
                             await saveInvoice({
                               result: invoiceResult,
@@ -636,13 +635,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                               eventId: activeEvent.id,
                             });
 
-                            // Fire-and-forget: send invoice notification email with real PDF
+                            // Fire-and-forget: send invoice notification email
                             (async () => {
                               try {
-                                // Generate real PDF via @react-pdf/renderer
-                                const { generateInvoicePdf } = await import('../lib/invoice-generator');
-                                const pdfBlob = await generateInvoicePdf(invoiceResult);
-                                console.log('[Invoice email] Real PDF generated:', pdfBlob.size, 'bytes');
 
                                 // Convert PDF blob to base64
                                 const ab = await pdfBlob.arrayBuffer();

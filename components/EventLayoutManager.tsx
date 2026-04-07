@@ -18,12 +18,39 @@ interface EventLayoutManagerProps {
     applications: Application[];
     onUpdateApplication?: (updatedApp: Application) => void;
     initialPlan?: EventPlan;
+    initialPlans?: EventPlan[];
     onSavePlan: (plan: EventPlan) => Promise<void> | void;
+    onSavePlans?: (plans: EventPlan[]) => Promise<void> | void;
     categories: Category[];
 }
 
-const FIXED_GRID_WIDTH = 16;
-const FIXED_GRID_HEIGHT = 9;
+const DEFAULT_GRID_WIDTH = 24;
+const DEFAULT_GRID_HEIGHT = 16;
+const CATEGORY_COLORS = ['#EF4444', '#8B5CF6', '#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#6B7280', '#14B8A6'];
+
+// Build auto-zones from categories (one zone per category, deterministic colors)
+function buildAutoZones(categories: Category[]): Zone[] {
+    return categories.map((cat, i) => ({
+        id: `auto-zone-${cat.id}`,
+        name: cat.name,
+        color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+        category: cat.id,
+        capacities: {},
+        capacity: 0,
+    }));
+}
+
+// Remap stands from old zones to auto-zones based on category
+function remapStandsToAutoZones(stands: Stand[], oldZones: Zone[], autoZones: Zone[]): Stand[] {
+    const categoryToAutoZoneId = new Map(autoZones.map(z => [z.category, z.id]));
+    const oldZoneCategoryMap = new Map(oldZones.map(z => [z.id, z.category]));
+    return stands.map(s => {
+        if (categoryToAutoZoneId.has(s.zoneId)) return s; // already mapped
+        const oldCategory = oldZoneCategoryMap.get(s.zoneId);
+        const newZoneId = oldCategory ? categoryToAutoZoneId.get(oldCategory) : null;
+        return newZoneId ? { ...s, zoneId: newZoneId } : s;
+    });
+}
 
 const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     eventId,
@@ -31,7 +58,9 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     applications: allApplications,
     onUpdateApplication,
     initialPlan,
+    initialPlans,
     onSavePlan,
+    onSavePlans,
     categories
 }) => {
     const normalizedEventId = React.useMemo(() => (eventId || '').trim().toLowerCase(), [eventId]);
@@ -45,35 +74,66 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
 
     const { events: dbEvents, updateEvent, uploadEventImage, uploadEventFloorplan } = useEvents();
     const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
-
     const currentEvent = events.find(e => e.id === eventId);
-    const [plan, setPlan] = useState<EventPlan>(
-        initialPlan || {
-            eventId,
-            gridSize: { width: FIXED_GRID_WIDTH, height: FIXED_GRID_HEIGHT },
-            layoutMeta: {
-                backgroundImageUrl: '',
-                backgroundOpacity: 0.35,
-                cellSize: 28,
-                originOffset: { x: 0, y: 0 }
-            },
-            zones: [],
-            stands: [],
-            prices: {},
-            equipment: {},
-            categorySizes: {},
-            extras: []
-        }
-    );
 
-    // When initialPlan arrives after mount (async load), update state once
-    const [planInitialized, setPlanInitialized] = useState(!!initialPlan);
+    const autoZones = React.useMemo(() => buildAutoZones(categories), [categories]);
+
+    const makeEmptyPlan = (name: string): EventPlan => ({
+        id: `plan-${eventId}-${Date.now()}`,
+        name,
+        eventId,
+        gridSize: { width: DEFAULT_GRID_WIDTH, height: DEFAULT_GRID_HEIGHT },
+        layoutMeta: {
+            backgroundImageUrl: '',
+            backgroundOpacity: 0.35,
+            cellSize: 28,
+            originOffset: { x: 0, y: 0 }
+        },
+        zones: autoZones,
+        stands: [],
+        prices: {},
+        equipment: {},
+        categorySizes: {},
+        extras: []
+    });
+
+    // Initialize plans from props
+    const initPlans = (): EventPlan[] => {
+        if (initialPlans && initialPlans.length > 0) {
+            return initialPlans.map(p => ({
+                ...p,
+                zones: autoZones,
+                stands: remapStandsToAutoZones(p.stands, p.zones, autoZones),
+            }));
+        }
+        if (initialPlan) {
+            return [{
+                ...initialPlan,
+                zones: autoZones,
+                stands: remapStandsToAutoZones(initialPlan.stands, initialPlan.zones, autoZones),
+            }];
+        }
+        return [makeEmptyPlan('Plán 1')];
+    };
+
+    const [plans, setPlans] = useState<EventPlan[]>(initPlans);
+    const [activePlanIdx, setActivePlanIdx] = useState(0);
+
+    // Derived plan + setPlan wrapper (keeps all existing setPlan calls working)
+    const plan = plans[activePlanIdx] || plans[0] || makeEmptyPlan('Plán 1');
+    const setPlan = React.useCallback((updater: EventPlan | ((prev: EventPlan) => EventPlan)) => {
+        setPlans(prev => prev.map((p, i) => i === activePlanIdx ? (typeof updater === 'function' ? updater(p) : updater) : p));
+    }, [activePlanIdx]);
+
+    // When initialPlans arrives after mount (async load), update state once
+    const [planInitialized, setPlanInitialized] = useState(!!(initialPlans?.length || initialPlan));
     useEffect(() => {
-        if (!planInitialized && initialPlan) {
-            setPlan(initialPlan);
+        if (!planInitialized && (initialPlans?.length || initialPlan)) {
+            const newPlans = initPlans();
+            setPlans(newPlans);
             setPlanInitialized(true);
         }
-    }, [initialPlan, planInitialized]);
+    }, [initialPlan, initialPlans, planInitialized]);
 
     const [activeTab, setActiveTab] = useState<'info' | 'layout' | 'pricing' | 'exhibitors' | 'stats'>('info');
     const [eventDetails, setEventDetails] = useState({
@@ -86,7 +146,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         status: currentEvent?.status === 'closed' ? 'waitlist' : (currentEvent?.status || 'draft')
     });
     const [eventDateType, setEventDateType] = useState<'single' | 'multi'>(currentEvent?.endDate ? 'multi' : 'single');
-    const [selectedZoneId, setSelectedZoneId] = useState<string | null>(plan.zones[0]?.id || null);
+    const [selectedZoneId, setSelectedZoneId] = useState<string | null>(autoZones[0]?.id || null);
     const [activeTool, setActiveTool] = useState<'select' | 'place' | 'erase'>('select');
     const [selectedStandId, setSelectedStandId] = useState<string | null>(null);
     const [showExhibitorList, setShowExhibitorList] = useState(false);
@@ -126,11 +186,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     useEffect(() => {
         setPlan(prev => ({
             ...prev,
-            gridSize: { width: FIXED_GRID_WIDTH, height: FIXED_GRID_HEIGHT },
-            zones: prev.zones.map(z => ({
-                ...z,
-                capacity: (z.capacity !== undefined) ? z.capacity : (Number(z.capacities?.S || 0) + Number(z.capacities?.M || 0) + Number(z.capacities?.L || 0)),
-            })),
+            zones: autoZones,
             layoutMeta: {
                 backgroundImageUrl: prev.layoutMeta?.backgroundImageUrl || '',
                 backgroundOpacity: typeof prev.layoutMeta?.backgroundOpacity === 'number' ? prev.layoutMeta.backgroundOpacity : 0.35,
@@ -381,55 +437,30 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         ? propApplications.find(app => app.id === selectedStand.occupantId) || null
         : null;
 
-    const addZone = () => {
-        const newZone: Zone = {
-            id: `z-${Date.now()}`,
-            name: 'Nová zóna',
-            color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`,
-            category: categories[0]?.id || 'Secondhands',
-            capacities: { S: 0, M: 10, L: 0 },
-            capacity: 10
-        };
-        setPlan(prev => ({
-            ...prev,
-            zones: [...prev.zones, newZone]
-        }));
-        setSelectedZoneId(newZone.id);
+    // Plan management helpers
+    const addNewPlan = () => {
+        const newPlan = makeEmptyPlan(`Plán ${plans.length + 1}`);
+        setPlans(prev => [...prev, newPlan]);
+        setActivePlanIdx(plans.length);
     };
 
-    const updateZone = (zoneId: string, updates: Partial<Zone>) => {
-        setPlan(prev => ({
-            ...prev,
-            zones: prev.zones.map(z => {
-                if (z.id !== zoneId) return z;
-                const updated = { ...z, ...updates };
-                if (updates.capacity !== undefined) {
-                    updated.capacities = { S: 0, M: updates.capacity, L: 0 };
-                }
-                return updated;
-            })
-        }));
+    const renamePlan = (idx: number, name: string) => {
+        setPlans(prev => prev.map((p, i) => i === idx ? { ...p, name } : p));
     };
 
-    const deleteZone = (zoneId: string) => {
-        setPlan(prev => ({
-            ...prev,
-            zones: prev.zones.filter(z => z.id !== zoneId),
-            stands: prev.stands.filter(s => s.zoneId !== zoneId)
-        }));
-        if (selectedZoneId === zoneId) setSelectedZoneId(null);
+    const removePlan = (idx: number) => {
+        if (plans.length <= 1) return;
+        setPlans(prev => prev.filter((_, i) => i !== idx));
+        setActivePlanIdx(prev => prev >= idx ? Math.max(0, prev - 1) : prev);
     };
 
-    const getCapacityInfo = (zoneId: string) => {
-        const zone = plan.zones.find(z => z.id === zoneId);
-        if (!zone) return { used: 0, total: 0, placed: 0, free: 0 };
-        const total = zone.capacity ?? 0;
-        const placed = plan.stands.filter(s => s.zoneId === zoneId).length;
-        const used = plan.stands.filter(s => s.zoneId === zoneId && s.occupantId).length;
-        return { used, total, placed, free: Math.max(0, total - placed) };
+    // Category count per plan (no limits)
+    const getCategoryStandCount = (categoryId: string) => {
+        const zoneId = `auto-zone-${categoryId}`;
+        return plan.stands.filter(s => s.zoneId === zoneId).length;
     };
 
-    const totalCapacitySlots = plan.zones.reduce((sum, zone) => sum + (zone.capacity ?? 0), 0);
+    const totalStands = plan.stands.length;
 
     const validation = useMemo(() => {
         const collisions: string[] = [];
@@ -442,18 +473,8 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
             seen.set(key, stand.id);
         });
 
-        const capacityOverflows = plan.zones
-            .filter(zone => {
-                const info = getCapacityInfo(zone.id);
-                return info.total > 0 && info.placed > info.total;
-            })
-            .map(zone => {
-                const info = getCapacityInfo(zone.id);
-                return `${zone.name}: ${info.placed}/${info.total}`;
-            });
-
-        return { collisions, capacityOverflows };
-    }, [plan.stands, plan.zones]);
+        return { collisions, capacityOverflows: [] as string[] };
+    }, [plan.stands]);
 
     useEffect(() => {
         const onMouseUp = () => setIsPainting(false);
@@ -667,10 +688,21 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             lastSavedEndDate.current = eventDetails.endDate || '';
                             setEventDateType(eventDetails.endDate ? 'multi' : 'single');
 
-                            if (onSavePlan) {
+                            if (onSavePlans) {
+                                await onSavePlans(plans.map(p => ({
+                                    ...p,
+                                    layoutMeta: p === plan ? normalizedLayoutMeta : p.layoutMeta,
+                                    stands: p.stands.map(s => ({
+                                        ...s,
+                                        widthCells: 1,
+                                        heightCells: 1,
+                                        rotation: 0 as const,
+                                        locked: false
+                                    }))
+                                })));
+                            } else if (onSavePlan) {
                                 await onSavePlan({
                                     ...plan,
-                                    gridSize: { width: FIXED_GRID_WIDTH, height: FIXED_GRID_HEIGHT },
                                     layoutMeta: normalizedLayoutMeta,
                                     stands: plan.stands.map(s => ({
                                         ...s,

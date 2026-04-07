@@ -181,14 +181,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 @media screen {
     body { background: #e5e5e5; padding: 20px 0; }
     .page { box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
-    .pdf-export-bar { text-align: center; padding: 16px 0 24px; }
-    .pdf-export-btn { display: inline-flex; align-items: center; gap: 8px; background: #D32F2F; color: #fff; border: none; padding: 12px 32px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; transition: background 0.2s; }
+    .pdf-export-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: #222; text-align: center; padding: 12px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .pdf-export-btn { display: inline-flex; align-items: center; gap: 8px; background: #D32F2F; color: #fff; border: none; padding: 12px 32px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; transition: background 0.2s; border-radius: 4px; }
     .pdf-export-btn:hover { background: #b71c1c; }
     .pdf-export-btn svg { width: 18px; height: 18px; }
+    .page { margin-top: 60px; }
 }
 </style>
 </head>
 <body>
+<div class="pdf-export-bar">
+    <button class="pdf-export-btn" onclick="window.print()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Uložit jako PDF
+    </button>
+</div>
 <div class="page">
 
     <!-- Header -->
@@ -300,12 +307,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 
 </div>
 
-<div class="pdf-export-bar">
-    <button class="pdf-export-btn" onclick="window.print()">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Exportovat jako PDF
-    </button>
-</div>
 
 </body>
 </html>`;

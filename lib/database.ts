@@ -441,36 +441,54 @@ export const applicationsDb = {
    EVENT PLANS (with zones and stands)
 ═══════════════════════════════════════════════════════════ */
 export const eventPlansDb = {
+    // Legacy: get single plan (backward compat)
     async getByEventId(eventId: string): Promise<{
         plan: DbEventPlan | null;
         zones: DbZone[];
         stands: DbStand[];
     }> {
-        const { data: plan, error: planError } = await supabase
+        const all = await eventPlansDb.getAllByEventId(eventId);
+        if (all.length === 0) return { plan: null, zones: [], stands: [] };
+        return all[0];
+    },
+
+    // Get ALL plans for an event
+    async getAllByEventId(eventId: string): Promise<Array<{
+        plan: DbEventPlan;
+        zones: DbZone[];
+        stands: DbStand[];
+    }>> {
+        const { data: plans, error: planError } = await supabase
             .from('event_plans')
             .select('*')
             .eq('event_id', eventId)
-            .single();
+            .order('created_at', { ascending: true });
 
-        if (planError && planError.code !== 'PGRST116') throw planError; // PGRST116 = not found
-        if (!plan) return { plan: null, zones: [], stands: [] };
+        if (planError) throw planError;
+        if (!plans || plans.length === 0) return [];
+
+        const planIds = plans.map(p => p.id);
 
         const [zonesResult, standsResult] = await Promise.all([
-            supabase.from('zones').select('*').eq('event_plan_id', plan.id),
-            supabase.from('stands').select('*').eq('event_plan_id', plan.id),
+            supabase.from('zones').select('*').in('event_plan_id', planIds),
+            supabase.from('stands').select('*').in('event_plan_id', planIds),
         ]);
 
         if (zonesResult.error) throw zonesResult.error;
         if (standsResult.error) throw standsResult.error;
 
-        return {
+        const allZones = zonesResult.data || [];
+        const allStands = standsResult.data || [];
+
+        return plans.map(plan => ({
             plan,
-            zones: zonesResult.data || [],
-            stands: standsResult.data || [],
-        };
+            zones: allZones.filter(z => z.event_plan_id === plan.id),
+            stands: allStands.filter(s => s.event_plan_id === plan.id),
+        }));
     },
 
-    async savePlan(eventId: string, planData: {
+    // Save a single plan (upsert)
+    async saveSinglePlan(planId: string, eventId: string, planData: {
         gridSize: { width: number; height: number };
         prices: Record<string, string>;
         equipment: Record<string, string[]>;
@@ -480,8 +498,6 @@ export const eventPlansDb = {
         zones: DbZone[];
         stands: DbStand[];
     }): Promise<void> {
-        // Upsert event plan
-        const planId = `plan-${eventId}`;
         const { error: planError } = await supabase.from('event_plans').upsert({
             id: planId,
             event_id: eventId,
@@ -491,6 +507,7 @@ export const eventPlansDb = {
             equipment: planData.equipment,
             category_sizes: planData.categorySizes || {},
             extras: planData.extras,
+            layout_meta: planData.layoutMeta || {},
         });
         if (planError) throw planError;
 
@@ -498,7 +515,6 @@ export const eventPlansDb = {
         await supabase.from('stands').delete().eq('event_plan_id', planId);
         await supabase.from('zones').delete().eq('event_plan_id', planId);
 
-        // Insert zones
         if (planData.zones.length > 0) {
             const zonesToInsert = planData.zones.map(z => ({
                 id: z.id,
@@ -512,7 +528,6 @@ export const eventPlansDb = {
             if (zonesError) throw zonesError;
         }
 
-        // Insert stands
         if (planData.stands.length > 0) {
             const standsToInsert = planData.stands.map(s => ({
                 id: s.id,
@@ -531,6 +546,71 @@ export const eventPlansDb = {
             const { error: standsError } = await supabase.from('stands').insert(standsToInsert);
             if (standsError) throw standsError;
         }
+    },
+
+    // Legacy savePlan - saves as first plan
+    async savePlan(eventId: string, planData: {
+        gridSize: { width: number; height: number };
+        prices: Record<string, string>;
+        equipment: Record<string, string[]>;
+        categorySizes?: Record<string, string>;
+        extras: Array<{ id: string; label: string; price: string }>;
+        layoutMeta?: Record<string, any>;
+        zones: DbZone[];
+        stands: DbStand[];
+    }): Promise<void> {
+        const planId = `plan-${eventId}`;
+        await eventPlansDb.saveSinglePlan(planId, eventId, planData);
+    },
+
+    // Save ALL plans for an event (replaces old plans)
+    async saveAllPlans(eventId: string, plans: Array<{
+        id: string;
+        gridSize: { width: number; height: number };
+        prices: Record<string, string>;
+        equipment: Record<string, string[]>;
+        categorySizes?: Record<string, string>;
+        extras: Array<{ id: string; label: string; price: string }>;
+        layoutMeta?: Record<string, any>;
+        zones: DbZone[];
+        stands: DbStand[];
+    }>): Promise<void> {
+        // Get existing plan IDs
+        const { data: existingPlans } = await supabase
+            .from('event_plans')
+            .select('id')
+            .eq('event_id', eventId);
+
+        const existingIds = new Set((existingPlans || []).map(p => p.id));
+        const newIds = new Set(plans.map(p => p.id));
+
+        // Delete plans that no longer exist
+        for (const eid of existingIds) {
+            if (!newIds.has(eid)) {
+                await supabase.from('stands').delete().eq('event_plan_id', eid);
+                await supabase.from('zones').delete().eq('event_plan_id', eid);
+                await supabase.from('event_plans').delete().eq('id', eid);
+            }
+        }
+
+        // Save each plan
+        for (const plan of plans) {
+            await eventPlansDb.saveSinglePlan(plan.id, eventId, plan);
+        }
+    },
+
+    async deletePlan(planId: string): Promise<void> {
+        await supabase.from('stands').delete().eq('event_plan_id', planId);
+        await supabase.from('zones').delete().eq('event_plan_id', planId);
+        await supabase.from('event_plans').delete().eq('id', planId);
+    },
+
+    async getAllPrices(): Promise<Array<{ event_id: string; prices: Record<string, string> }>> {
+        const { data, error } = await supabase
+            .from('event_plans')
+            .select('event_id, prices');
+        if (error) throw error;
+        return data || [];
     },
 };
 

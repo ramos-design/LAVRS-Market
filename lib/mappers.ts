@@ -279,6 +279,8 @@ export function dbEventPlanToApp(
     stands: DbStand[]
 ): EventPlan {
     return {
+        id: plan.id,
+        name: plan.layout_meta?.planName || '',
         eventId: plan.event_id,
         gridSize: { width: plan.grid_width, height: plan.grid_height },
         layoutMeta: {

@@ -115,6 +115,8 @@ export interface ExtraItem {
 }
 
 export interface EventPlan {
+  id?: string;
+  name?: string;
   eventId: string;
   zones: Zone[];
   stands: Stand[];

@@ -285,6 +285,41 @@ export function useEventPlan(eventId: string | null) {
     };
 }
 
+export function useEventPlans(eventId: string | null) {
+    type PlansData = Array<{ plan: DbEventPlan; zones: DbZone[]; stands: DbStand[] }>;
+    const query = useQuery(
+        `event_plans:${eventId || 'none'}`,
+        async () => {
+            if (!eventId) return [] as PlansData;
+            return eventPlansDb.getAllByEventId(eventId);
+        },
+        [] as PlansData,
+        [eventId]
+    );
+
+    return {
+        ...query,
+        plans: query.data,
+        saveAllPlans: async (plans: Parameters<typeof eventPlansDb.saveAllPlans>[1]) => {
+            if (!eventId) return;
+            await eventPlansDb.saveAllPlans(eventId, plans);
+            queryEmitter.invalidate(`event_plans:${eventId}`);
+            queryEmitter.invalidate(`event_plan:${eventId}`);
+        },
+    };
+}
+
+export function useAllEventPlanPrices(enabled = true) {
+    const query = useQuery(
+        'all_event_plan_prices',
+        () => eventPlansDb.getAllPrices(),
+        [] as Array<{ event_id: string; prices: Record<string, string> }>,
+        [],
+        { enabled }
+    );
+    return { ...query, planPrices: query.data };
+}
+
 /* ═══════════════════════════════════════════════════════════
    BANNERS
 ═══════════════════════════════════════════════════════════ */

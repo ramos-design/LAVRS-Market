@@ -39,28 +39,28 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
             return existingInvoice;
         }
 
-        // 1. Upload HTML invoice to Storage
-        const htmlPath = `invoices/${applicationId}/${result.invoiceNumber}.html`;
+        // 1. Upload PDF invoice to Storage
+        const pdfPath = `invoices/${applicationId}/${result.invoiceNumber}.pdf`;
         let pdfUrl: string | null = null;
 
         if (result.pdfBlob && result.pdfBlob.size > 0) {
-            const { error: htmlError } = await supabase.storage
+            const { error: pdfError } = await supabase.storage
                 .from('attachments')
-                .upload(htmlPath, result.pdfBlob, {
-                    contentType: 'text/html',
+                .upload(pdfPath, result.pdfBlob, {
+                    contentType: 'application/pdf',
                     upsert: true,
                 });
 
-            if (htmlError) {
-                console.warn(`HTML invoice upload failed (non-blocking): ${htmlError.message}`);
+            if (pdfError) {
+                console.warn(`PDF invoice upload failed (non-blocking): ${pdfError.message}`);
             } else {
-                const { data: htmlUrlData } = supabase.storage
+                const { data: pdfUrlData } = supabase.storage
                     .from('attachments')
-                    .getPublicUrl(htmlPath);
-                pdfUrl = htmlUrlData?.publicUrl || null;
+                    .getPublicUrl(pdfPath);
+                pdfUrl = pdfUrlData?.publicUrl || null;
             }
         } else {
-            console.warn('Invoice HTML blob is empty, skipping upload');
+            console.warn('Invoice PDF blob is empty, skipping upload');
         }
 
         // 2. Upload ISDOC XML to Storage
@@ -98,7 +98,7 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
             issued_at: result.issuedDate,
             due_date: result.dueDate,
             variable_symbol: result.variableSymbol,
-            pdf_storage_path: htmlPath,
+            pdf_storage_path: pdfPath,
             xml_storage_path: xmlPath,
             pdf_url: pdfUrl,
             xml_url: xmlUrl,
@@ -142,7 +142,7 @@ export async function downloadInvoicePdf(invoiceNumber: string, pdfStoragePath: 
         const url = window.URL.createObjectURL(data);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${invoiceNumber}.html`;
+        a.download = `${invoiceNumber}.pdf`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
