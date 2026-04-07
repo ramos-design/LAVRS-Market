@@ -16,6 +16,7 @@ function compressImage(file: File, maxWidth = 1200): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
+      URL.revokeObjectURL(img.src);
       let { width, height } = img;
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
@@ -138,7 +139,7 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
               Spravujte bannery, které se zobrazují vystavovatelům na dashboardu. (Max. 10)
               {localBanners.length > 0 && (
                 <span className="ml-2 text-sm">
-                  — <strong>{activeCount}</strong> aktivní{activeCount === 1 ? '' : activeCount >= 2 && activeCount <= 4 ? 'ch' : 'ch'} z {localBanners.length}
+                  — <strong>{activeCount}</strong> {activeCount === 1 ? 'aktivní' : 'aktivních'} z {localBanners.length}
                 </span>
               )}
             </p>
@@ -192,7 +193,7 @@ const BannerManager: React.FC<BannerManagerProps> = ({ banners, onUpdateBanners 
                     </span>
                   </div>
                 )}
-                <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${banner.is_active ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity opacity-0 group-hover:opacity-100`}>
                   {uploadingIds.has(banner.id) ? (
                     <div className="flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest">
                       <Loader size={14} className="animate-spin" /> Nahrávám...

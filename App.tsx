@@ -728,6 +728,7 @@ const App: React.FC = () => {
               onBack={() => setCurrentScreen('DASHBOARD')}
               events={events}
               applications={applications}
+              planPrices={planPrices}
               onUpdateStatus={handleUpdateApplicationStatus}
               onUpdateApplication={updateApplication}
               onDeleteApplication={handleDeleteApplication}

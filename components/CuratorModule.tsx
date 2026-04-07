@@ -7,6 +7,7 @@ interface CuratorModuleProps {
   onBack: () => void;
   events: MarketEvent[];
   applications: Application[];
+  planPrices?: Array<{ event_id: string; prices: Record<string, string> }>;
   onUpdateStatus: (id: string, status: AppStatus) => void;
   onUpdateApplication: (id: string, updates: Partial<DbApplication>) => Promise<void>;
   onDeleteApplication: (id: string) => void;
@@ -14,7 +15,7 @@ interface CuratorModuleProps {
   onPermanentDeleteAllTrash: () => Promise<void>;
 }
 
-const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
+const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, planPrices, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
 
   // Create a map for O(1) event lookups instead of O(n) find()
@@ -48,15 +49,32 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
   const selectedApp = displayedApplications.find(a => a.id === selectedAppId) || (displayedApplications.length > 0 ? displayedApplications[0] : null);
 
+  // Get category price string from plan prices for an application
+  const getCategoryPrice = useCallback((app: Application | null): string | null => {
+    if (!app?.zoneCategory || !planPrices) return null;
+    const plan = planPrices.find(p => p.event_id === app.eventId);
+    return plan?.prices?.[app.zoneCategory] || null;
+  }, [planPrices]);
+
+  // Parse numeric value from category price string (returns null if non-numeric like "domluvou")
+  const parseCategoryPrice = useCallback((priceStr: string | null): number | null => {
+    if (!priceStr) return null;
+    const digits = priceStr.replace(/[^\d]/g, '');
+    return digits ? parseInt(digits, 10) : null;
+  }, []);
+
   // Sync price input when selected application changes
   React.useEffect(() => {
     if (selectedApp?.customPrice != null) {
       setPriceInput(String(selectedApp.customPrice));
     } else {
-      setPriceInput('');
+      // Pre-fill from category price if it's numeric
+      const catPrice = getCategoryPrice(selectedApp);
+      const numPrice = parseCategoryPrice(catPrice);
+      setPriceInput(numPrice ? String(numPrice) : '');
     }
     setPriceSaved(false);
-  }, [selectedApp?.id, selectedApp?.customPrice]);
+  }, [selectedApp?.id, selectedApp?.customPrice, getCategoryPrice, parseCategoryPrice]);
 
   const handleSavePrice = useCallback(async () => {
     if (!selectedApp) return;
@@ -508,12 +526,33 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                         Nastavená částka: {selectedApp.customPrice.toLocaleString('cs-CZ')} Kč bez DPH
                       </p>
                     )}
-                    {!priceInput && !selectedApp.customPrice && (
-                      <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-                        <AlertCircle size={12} />
-                        Částka není nastavena — cena bude načtena z ceníku kategorie (pokud existuje)
-                      </p>
-                    )}
+                    {(() => {
+                      const catPrice = getCategoryPrice(selectedApp);
+                      const numPrice = parseCategoryPrice(catPrice);
+                      const isNonNumeric = catPrice && !numPrice;
+                      return (
+                        <>
+                          {catPrice && numPrice && !selectedApp.customPrice && (
+                            <p className="text-xs text-blue-600 mt-2 flex items-center gap-1">
+                              <AlertCircle size={12} />
+                              Cena z ceníku kategorie: {numPrice.toLocaleString('cs-CZ')} Kč
+                            </p>
+                          )}
+                          {isNonNumeric && !selectedApp.customPrice && (
+                            <p className="text-xs text-red-600 mt-2 flex items-center gap-1 font-semibold">
+                              <AlertCircle size={12} />
+                              Ceník kategorie: „{catPrice}" — je nutné doplnit konkrétní částku!
+                            </p>
+                          )}
+                          {!catPrice && !priceInput && !selectedApp.customPrice && (
+                            <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                              <AlertCircle size={12} />
+                              Částka není nastavena — ceník kategorie nenalezen
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </section>
 
