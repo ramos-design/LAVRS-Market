@@ -84,7 +84,7 @@ function buildLineItems(
         const mm = String(eventDate.getMonth() + 1).padStart(2, '0');
         const yyyy = eventDate.getFullYear();
         items.push({
-            description: `Vystavovatelský poplatek včetně inventáře na LAVRS Market ${dd}.${mm}.${yyyy} (${application.zoneCategory || 'bez kategorie'})`,
+            description: `Vystavovatelský poplatek včetně inventáře na LAVRS market ${dd}.${mm}.${yyyy} (${application.zoneCategory || 'bez kategorie'})`,
             quantity: 1,
             unitPriceCzk: basePriceCzk,
             dphRate: DPH_RATE,

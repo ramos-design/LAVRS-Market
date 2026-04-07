@@ -355,9 +355,10 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+      <div className={`grid gap-12 items-start ${confirmedPayment && step === 3 ? 'grid-cols-1 max-w-3xl mx-auto' : 'grid-cols-1 md:grid-cols-2'}`}>
 
-        {/* Left Panel: Summary */}
+        {/* Left Panel: Summary — hidden after payment confirmed */}
+        {!(confirmedPayment && step === 3) && (
         <div className="bg-white p-10 rounded-none border border-gray-100 shadow-sm space-y-8">
           <h3 className="text-xl font-bold">Rekapitulace</h3>
 
@@ -416,6 +417,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
             <p className="text-[10px] text-gray-400 text-center font-medium">Po vypršení limitu bude místo nabídnuto náhradníkům.</p>
           </div>
         </div>
+        )}
 
         {/* Right Panel: Step Content */}
         <div className="space-y-8">
@@ -626,7 +628,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Zpráva pro příjemce</span>
                             <span className="font-medium text-xs text-gray-600 text-right max-w-[200px]">
-                              {activeEvent?.title || 'LAVRS Market'}{' '}
+                              {activeEvent?.title || 'LAVRS market'}{' '}
                               {activeEvent ? formatEventDateRange(activeEvent.date, activeEvent.endDate) : ''}{' '}
                               {activeApp?.zoneCategory || ''}
                             </span>
