@@ -120,14 +120,17 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
     const invoiceNumber = calculateInvoiceNumber(application, allApplications, event);
     const sequenceNumber = getApplicationSequenceForEvent(application, allApplications);
 
-    // 2. Dates
-    const issuedDate = new Date().toISOString().split('T')[0];
-    const taxPointDate = issuedDate;
+    // 2. Dates — full ISO timestamps for DB, date-only for PDF/XML
+    const now = new Date();
+    const issuedDateOnly = now.toISOString().split('T')[0]; // YYYY-MM-DD for PDF/XML
+    const issuedDateIso = now.toISOString(); // full timestamp for DB
+    const taxPointDate = issuedDateOnly;
     const dueDays = (companySettings.invoiceDueDays && companySettings.invoiceDueDays > 0)
         ? companySettings.invoiceDueDays : 5;
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + dueDays);
-    const dueDateStr = dueDate.toISOString().split('T')[0];
+    const dueDateObj = new Date(now);
+    dueDateObj.setDate(dueDateObj.getDate() + dueDays);
+    const dueDateOnly = dueDateObj.toISOString().split('T')[0]; // YYYY-MM-DD for PDF/XML
+    const dueDateIso = dueDateObj.toISOString(); // full timestamp for DB
 
     // 3. Line items with DPH
     const lineItems = buildLineItems(application, event, eventPlan, selectedExtraIds);
@@ -168,12 +171,12 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
         message: qrMessage,
     });
 
-    // 6. Generate ISDOC XML
+    // 6. Generate ISDOC XML (uses date-only format)
     const xmlString = buildIsdocXml({
         invoiceNumber,
-        issuedDate,
+        issuedDate: issuedDateOnly,
         taxPointDate,
-        dueDate: dueDateStr,
+        dueDate: dueDateOnly,
         variableSymbol,
         issuer: {
             name: companySettings.companyName || 'LAVRS market',
@@ -213,15 +216,15 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
         variableSymbol,
         qrDataUrl,
         spaydString,
-        issuedDate,
-        dueDate: dueDateStr,
+        issuedDate: issuedDateIso,
+        dueDate: dueDateIso,
         // Store params needed for PDF generation
         _pdfParams: {
             invoiceNumber,
             sequenceNumber,
-            issuedDate,
+            issuedDate: issuedDateOnly,
             taxPointDate,
-            dueDate: dueDateStr,
+            dueDate: dueDateOnly,
             variableSymbol,
             companySettings,
             application,

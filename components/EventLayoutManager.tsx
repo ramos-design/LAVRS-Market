@@ -642,21 +642,6 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                 return;
                             }
 
-                            // Validate prices before allowing "open" status
-                            if (eventDetails.status === 'open') {
-                                const missingPrices = categories.filter(cat => {
-                                    const price = plan.prices[cat.id];
-                                    if (!price) return true;
-                                    const numericValue = parseInt(price.replace(/[^\d]/g, ''));
-                                    return !numericValue || numericValue <= 0;
-                                });
-                                if (missingPrices.length > 0) {
-                                    alert(
-                                        `Nelze spustit event bez nastavených cen.\n\nChybí ceny pro: ${missingPrices.map(c => c.name).join(', ')}\n\nNastavte ceny v záložce "Ceník a Extra" a uložte znovu.`
-                                    );
-                                    return;
-                                }
-                            }
 
                             const savePayload = {
                                 title: eventDetails.title,
@@ -751,18 +736,6 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                 <button
                                                     key={status.id}
                                                     onClick={() => {
-                                                        if (status.id === 'open') {
-                                                            const missing = categories.filter(cat => {
-                                                                const price = plan.prices[cat.id];
-                                                                if (!price) return true;
-                                                                const num = parseInt(price.replace(/[^\d]/g, ''));
-                                                                return !num || num <= 0;
-                                                            });
-                                                            if (missing.length > 0) {
-                                                                alert(`Nejprve nastavte ceny pro všechny kategorie v záložce "Ceník a Extra".\n\nChybí: ${missing.map(c => c.name).join(', ')}`);
-                                                                return;
-                                                            }
-                                                        }
                                                         setEventDetails(prev => ({ ...prev, status: status.id as any }));
                                                     }}
                                                     className={`flex items-center justify-center gap-3 py-3 px-4 border-2 transition-all ${eventDetails.status === status.id
@@ -1454,11 +1427,10 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                         <div className="relative">
                                                             <input type="text" value={plan.prices[category] || ''}
                                                                 onChange={(e) => {
-                                                                    const formatted = formatPriceInput(e.target.value);
-                                                                    setPlan(prev => ({ ...prev, prices: { ...prev.prices, [category]: formatted || e.target.value } }));
+                                                                    setPlan(prev => ({ ...prev, prices: { ...prev.prices, [category]: e.target.value } }));
                                                                 }}
                                                                 className="w-full p-4 border border-gray-200 focus:border-lavrs-red outline-none font-bold text-lg bg-white transition-all shadow-sm"
-                                                                placeholder="Napr. 2.500 Kč" />
+                                                                placeholder="Např. 2.500 Kč nebo 'domluvou'" />
                                                             <div className="absolute right-4 top-1/2 -translate-y-1/2"><CreditCard size={18} className="text-gray-200" /></div>
                                                         </div>
                                                     </div>
@@ -1535,8 +1507,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                                 <input type="text" value={extra.price}
                                                     onChange={(e) => {
                                                         const newExtras = [...plan.extras];
-                                                        const formatted = formatPriceInput(e.target.value);
-                                                        newExtras[idx].price = formatted || e.target.value;
+                                                        newExtras[idx].price = e.target.value;
                                                         setPlan(prev => ({ ...prev, extras: newExtras }));
                                                     }}
                                                     className="bg-transparent font-black text-lavrs-red outline-none w-24 border-b border-transparent focus:border-red-100" />
