@@ -1,18 +1,20 @@
 import React, { useState, useCallback } from 'react';
 import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory, MarketEvent } from '../types';
+import { DbApplication } from '../lib/database';
 
 interface CuratorModuleProps {
   onBack: () => void;
   events: MarketEvent[];
   applications: Application[];
   onUpdateStatus: (id: string, status: AppStatus) => void;
+  onUpdateApplication: (id: string, updates: Partial<DbApplication>) => Promise<void>;
   onDeleteApplication: (id: string) => void;
   onRestoreApplication: (id: string) => void;
   onPermanentDeleteAllTrash: () => Promise<void>;
 }
 
-const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
+const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
 
   // Create a map for O(1) event lookups instead of O(n) find()
@@ -35,6 +37,9 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(displayedApplications.length > 0 ? displayedApplications[0].id : null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [priceInput, setPriceInput] = useState<string>('');
+  const [priceSaving, setPriceSaving] = useState(false);
+  const [priceSaved, setPriceSaved] = useState(false);
 
   React.useEffect(() => {
     if (selectedAppId && displayedApplications.find(a => a.id === selectedAppId)) return;
@@ -42,6 +47,33 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
   }, [viewMode, displayedIds, selectedAppId, displayedApplications]);
 
   const selectedApp = displayedApplications.find(a => a.id === selectedAppId) || (displayedApplications.length > 0 ? displayedApplications[0] : null);
+
+  // Sync price input when selected application changes
+  React.useEffect(() => {
+    if (selectedApp?.customPrice != null) {
+      setPriceInput(String(selectedApp.customPrice));
+    } else {
+      setPriceInput('');
+    }
+    setPriceSaved(false);
+  }, [selectedApp?.id, selectedApp?.customPrice]);
+
+  const handleSavePrice = useCallback(async () => {
+    if (!selectedApp) return;
+    const parsed = priceInput.replace(/[^\d]/g, '');
+    const value = parsed ? parseInt(parsed, 10) : null;
+    setPriceSaving(true);
+    try {
+      await onUpdateApplication(selectedApp.id, { custom_price: value });
+      setPriceSaved(true);
+      setTimeout(() => setPriceSaved(false), 2000);
+    } catch (error) {
+      console.error('Failed to save price:', error);
+      alert('Chyba při ukládání částky.');
+    } finally {
+      setPriceSaving(false);
+    }
+  }, [selectedApp, priceInput, onUpdateApplication]);
 
   const handleAction = useCallback(async (id: string, newStatus: AppStatus) => {
     setIsProcessing(true);
@@ -430,6 +462,58 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                       </div>
                       <p className="text-sm font-bold text-lavrs-dark">{selectedApp.billingAddress}</p>
                     </div>
+                  </div>
+                </section>
+
+                {/* Custom Price */}
+                <section>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <CreditCard size={14} className="text-lavrs-red" />
+                    Částka k fakturaci
+                  </h4>
+                  <div className="bg-white p-6 rounded-none border border-gray-100 shadow-sm">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-3">
+                      Částka bez DPH (Kč) — bude použita na faktuře
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={priceInput}
+                          onChange={e => {
+                            setPriceSaved(false);
+                            setPriceInput(e.target.value.replace(/[^\d]/g, ''));
+                          }}
+                          onKeyDown={e => { if (e.key === 'Enter') handleSavePrice(); }}
+                          placeholder="např. 6900"
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-none text-lg font-bold text-lavrs-dark focus:outline-none focus:border-lavrs-red transition-colors pr-12"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Kč</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSavePrice}
+                        disabled={priceSaving}
+                        className={`px-6 py-3 rounded-none font-bold text-xs uppercase tracking-widest transition-all ${priceSaved
+                          ? 'bg-green-600 text-white'
+                          : 'bg-lavrs-dark text-white hover:bg-black'
+                        } disabled:opacity-50`}
+                      >
+                        {priceSaving ? 'Ukládám...' : priceSaved ? 'Uloženo' : 'Uložit'}
+                      </button>
+                    </div>
+                    {selectedApp.customPrice != null && (
+                      <p className="text-xs text-green-600 mt-2 font-semibold">
+                        Nastavená částka: {selectedApp.customPrice.toLocaleString('cs-CZ')} Kč bez DPH
+                      </p>
+                    )}
+                    {!priceInput && !selectedApp.customPrice && (
+                      <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                        <AlertCircle size={12} />
+                        Částka není nastavena — cena bude načtena z ceníku kategorie (pokud existuje)
+                      </p>
+                    )}
                   </div>
                 </section>
 

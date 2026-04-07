@@ -69,9 +69,10 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     return new Intl.NumberFormat('cs-CZ').format(num) + ' Kč';
   };
   
-  // Get pricing and categories
-  const categoryPriceStr = activeApp?.zoneCategory && eventPlan?.prices?.[activeApp.zoneCategory] ? eventPlan.prices[activeApp.zoneCategory] : '0 Kč';
-  const basePrice = parsePrice(categoryPriceStr);
+  // Get pricing: use customPrice if set by curator, otherwise look up from category pricing
+  const basePrice = activeApp?.customPrice != null && activeApp.customPrice > 0
+    ? activeApp.customPrice
+    : parsePrice(activeApp?.zoneCategory && eventPlan?.prices?.[activeApp.zoneCategory] ? eventPlan.prices[activeApp.zoneCategory] : '0 Kč');
 
   const selectedExtrasList = eventPlan?.extras?.filter(extra => selectedExtras.has(extra.id)) || [];
   const extrasTotal = selectedExtrasList.reduce((sum, extra) => sum + parsePrice(extra.price), 0);
@@ -340,7 +341,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-500 text-sm font-medium">Místo ({activeApp?.zoneCategory || 'Zóna'})</span>
-                <span className="font-bold">{categoryPriceStr}</span>
+                <span className="font-bold">{formatPrice(basePrice)}</span>
               </div>
               
               {selectedExtrasList.map(extra => (

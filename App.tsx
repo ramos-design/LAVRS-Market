@@ -156,7 +156,7 @@ const App: React.FC = () => {
   const { events: dbEvents, loading: eventsLoading, deleteEvent, createEvent } = useEvents(canFetchUserData);
   const {
     applications: dbApplications, loading: appsLoading,
-    createApplication, updateStatus: updateAppStatus, deleteApplication, permanentDeleteAllTrash,
+    createApplication, updateStatus: updateAppStatus, updateApplication, deleteApplication, permanentDeleteAllTrash,
   } = useApplications({
     enabled: canFetchUserData,
     userId: user?.id,
@@ -729,6 +729,7 @@ const App: React.FC = () => {
               events={events}
               applications={applications}
               onUpdateStatus={handleUpdateApplicationStatus}
+              onUpdateApplication={updateApplication}
               onDeleteApplication={handleDeleteApplication}
               onRestoreApplication={handleRestoreApplication}
               onPermanentDeleteAllTrash={handlePermanentDeleteAllTrash}

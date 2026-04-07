@@ -119,6 +119,7 @@ export function dbApplicationToApp(a: DbApplication): Application {
         approvedAt: a.approved_at || undefined,
         invoiceId: (a as any).invoice_id || undefined,
         updatedAt: a.updated_at || undefined,
+        customPrice: a.custom_price ?? null,
     };
 }
 
@@ -150,6 +151,7 @@ export function appApplicationToDb(a: Application, userId?: string | null): Omit
         consent_newsletter: a.consentNewsletter,
         curator_note: a.curatorNote || null,
         extra_note: a.extraNote || null,
+        custom_price: a.customPrice ?? null,
         brand_profile_id: null,
     };
 }

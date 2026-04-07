@@ -81,6 +81,7 @@ export interface Application {
   approvedAt?: string | null;
   invoiceId?: string;
   updatedAt?: string;
+  customPrice?: number | null;
 }
 
 export interface Stand {

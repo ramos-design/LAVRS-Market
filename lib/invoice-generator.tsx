@@ -65,22 +65,24 @@ function buildLineItems(
 ): InvoiceLineItem[] {
     const items: InvoiceLineItem[] = [];
 
-    // Base price for zone category
-    if (application.zoneCategory && eventPlan.prices?.[application.zoneCategory]) {
-        const priceCzk = parsePriceCzk(eventPlan.prices[application.zoneCategory]);
-        if (priceCzk > 0) {
-            // Format event date for item description
-            const eventDate = new Date(event.date);
-            const dd = String(eventDate.getDate()).padStart(2, '0');
-            const mm = String(eventDate.getMonth() + 1).padStart(2, '0');
-            const yyyy = eventDate.getFullYear();
-            items.push({
-                description: `Vystavovatelský poplatek včetně inventáře na LAVRS Market ${dd}.${mm}.${yyyy} (${application.zoneCategory})`,
-                quantity: 1,
-                unitPriceCzk: priceCzk,
-                dphRate: DPH_RATE,
-            });
-        }
+    // Base price: use customPrice if set by curator, otherwise look up from category pricing
+    const basePriceCzk = application.customPrice != null && application.customPrice > 0
+        ? application.customPrice
+        : (application.zoneCategory && eventPlan.prices?.[application.zoneCategory]
+            ? parsePriceCzk(eventPlan.prices[application.zoneCategory])
+            : 0);
+
+    if (basePriceCzk > 0) {
+        const eventDate = new Date(event.date);
+        const dd = String(eventDate.getDate()).padStart(2, '0');
+        const mm = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const yyyy = eventDate.getFullYear();
+        items.push({
+            description: `Vystavovatelský poplatek včetně inventáře na LAVRS Market ${dd}.${mm}.${yyyy} (${application.zoneCategory || 'bez kategorie'})`,
+            quantity: 1,
+            unitPriceCzk: basePriceCzk,
+            dphRate: DPH_RATE,
+        });
     }
 
     // Extra items
