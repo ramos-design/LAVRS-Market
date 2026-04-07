@@ -31,9 +31,11 @@ const CATEGORY_COLORS = ['#EF4444', '#8B5CF6', '#10B981', '#F59E0B', '#3B82F6', 
 const calcGridRows = (cols: number) => Math.round(cols * 9 / 16);
 
 // Build auto-zones from categories (one zone per category, deterministic colors)
-function buildAutoZones(categories: Category[]): Zone[] {
+// planId is included so that zone IDs are globally unique across events/plans
+function buildAutoZones(categories: Category[], planId?: string): Zone[] {
+    const prefix = planId ? `${planId}-zone` : 'auto-zone';
     return categories.map((cat, i) => ({
-        id: `auto-zone-${cat.id}`,
+        id: `${prefix}-${cat.id}`,
         name: cat.name,
         color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
         category: cat.id,
@@ -78,41 +80,46 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     const events = React.useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
     const currentEvent = events.find(e => e.id === eventId);
 
-    const autoZones = React.useMemo(() => buildAutoZones(categories), [categories]);
-
-    const makeEmptyPlan = (name: string): EventPlan => ({
-        id: `plan-${eventId}-${Date.now()}`,
-        name,
-        eventId,
-        gridSize: { width: DEFAULT_GRID_COLS, height: calcGridRows(DEFAULT_GRID_COLS) },
-        layoutMeta: {
-            backgroundImageUrl: '',
-            backgroundOpacity: 0.35,
-            cellSize: 28,
-            originOffset: { x: 0, y: 0 }
-        },
-        zones: autoZones,
-        stands: [],
-        prices: {},
-        equipment: {},
-        categorySizes: {},
-        extras: []
-    });
+    const makeEmptyPlan = (name: string): EventPlan => {
+        const planId = `plan-${eventId}-${Date.now()}`;
+        return {
+            id: planId,
+            name,
+            eventId,
+            gridSize: { width: DEFAULT_GRID_COLS, height: calcGridRows(DEFAULT_GRID_COLS) },
+            layoutMeta: {
+                backgroundImageUrl: '',
+                backgroundOpacity: 0.35,
+                cellSize: 28,
+                originOffset: { x: 0, y: 0 }
+            },
+            zones: buildAutoZones(categories, planId),
+            stands: [],
+            prices: {},
+            equipment: {},
+            categorySizes: {},
+            extras: []
+        };
+    };
 
     // Initialize plans from props
     const initPlans = (): EventPlan[] => {
         if (initialPlans && initialPlans.length > 0) {
-            return initialPlans.map(p => ({
-                ...p,
-                zones: autoZones,
-                stands: remapStandsToAutoZones(p.stands, p.zones, autoZones),
-            }));
+            return initialPlans.map(p => {
+                const zones = buildAutoZones(categories, p.id);
+                return {
+                    ...p,
+                    zones,
+                    stands: remapStandsToAutoZones(p.stands, p.zones, zones),
+                };
+            });
         }
         if (initialPlan) {
+            const zones = buildAutoZones(categories, initialPlan.id);
             return [{
                 ...initialPlan,
-                zones: autoZones,
-                stands: remapStandsToAutoZones(initialPlan.stands, initialPlan.zones, autoZones),
+                zones,
+                stands: remapStandsToAutoZones(initialPlan.stands, initialPlan.zones, zones),
             }];
         }
         return [makeEmptyPlan('Plán 1')];
@@ -148,7 +155,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         status: currentEvent?.status === 'closed' ? 'waitlist' : (currentEvent?.status || 'draft')
     });
     const [eventDateType, setEventDateType] = useState<'single' | 'multi'>(currentEvent?.endDate ? 'multi' : 'single');
-    const [selectedZoneId, setSelectedZoneId] = useState<string | null>(autoZones[0]?.id || null);
+    const [selectedZoneId, setSelectedZoneId] = useState<string | null>(plans[0]?.zones?.[0]?.id || null);
     const [activeTool, setActiveTool] = useState<'select' | 'place' | 'erase'>('select');
     const [selectedStandId, setSelectedStandId] = useState<string | null>(null);
     const [showExhibitorList, setShowExhibitorList] = useState(false);
@@ -188,7 +195,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
     useEffect(() => {
         setPlan(prev => ({
             ...prev,
-            zones: autoZones,
+            zones: buildAutoZones(categories, prev.id),
             layoutMeta: {
                 backgroundImageUrl: prev.layoutMeta?.backgroundImageUrl || '',
                 backgroundOpacity: typeof prev.layoutMeta?.backgroundOpacity === 'number' ? prev.layoutMeta.backgroundOpacity : 0.35,
@@ -469,9 +476,15 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
         setActivePlanIdx(prev => prev >= idx ? Math.max(0, prev - 1) : prev);
     };
 
+    // Look up zone ID for a given category from the current plan's zones
+    const getZoneIdForCategory = (categoryId: string): string => {
+        const zone = plan.zones.find(z => z.category === categoryId);
+        return zone?.id || `${plan.id}-zone-${categoryId}`;
+    };
+
     // Category count per plan (no limits)
     const getCategoryStandCount = (categoryId: string) => {
-        const zoneId = `auto-zone-${categoryId}`;
+        const zoneId = getZoneIdForCategory(categoryId);
         return plan.stands.filter(s => s.zoneId === zoneId).length;
     };
 
@@ -1064,7 +1077,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Kategorie k umístění</p>
                                     <div className="grid grid-cols-1 gap-2">
                                         {categories.map((cat, i) => {
-                                            const zoneId = `auto-zone-${cat.id}`;
+                                            const zoneId = getZoneIdForCategory(cat.id);
                                             const count = getCategoryStandCount(cat.id);
                                             const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
                                             return (
@@ -1707,7 +1720,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                             </h3>
                             <div className="grid grid-cols-1 gap-4">
                                 {categories.map((cat, i) => {
-                                    const zoneId = `auto-zone-${cat.id}`;
+                                    const zoneId = getZoneIdForCategory(cat.id);
                                     const totalCatStands = plan.stands.filter(s => s.zoneId === zoneId).length;
                                     const occupiedStands = plan.stands.filter(s => s.zoneId === zoneId && s.occupantId).length;
                                     const occupancyRate = totalCatStands > 0 ? (occupiedStands / totalCatStands) * 100 : 0;
@@ -1761,7 +1774,7 @@ const EventLayoutManagerInner: React.FC<EventLayoutManagerProps> = ({
                                 {new Intl.NumberFormat('cs-CZ').format(
                                     categories.reduce((sum, cat) => {
                                         const catPrice = parseInt(plan.prices[cat.id]?.replace(/[^\d]/g, '') || '0');
-                                        const catStands = plan.stands.filter(s => s.zoneId === `auto-zone-${cat.id}`).length;
+                                        const catStands = plan.stands.filter(s => s.zoneId === getZoneIdForCategory(cat.id)).length;
                                         return sum + (catPrice * catStands);
                                     }, 0)
                                 )} Kč

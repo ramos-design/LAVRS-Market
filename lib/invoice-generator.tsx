@@ -36,12 +36,18 @@ export interface GeneratedInvoice {
     dueDate: string;
 }
 
-function getVariableSymbol(application: Application, event: MarketEvent): string {
+function getVariableSymbol(application: Application, event: MarketEvent, allApplications: Application[]): string {
     const date = new Date(event.date);
     const dd = String(date.getDate()).padStart(2, '0');
     const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const icoFirst6 = (application.ic || '000000').replace(/\D/g, '').substring(0, 6).padEnd(6, '0');
-    return `${dd}${mm}${icoFirst6}`;
+    const cleanIc = (application.ic || '').replace(/\D/g, '');
+    if (cleanIc.length > 0) {
+        const icoFirst6 = cleanIc.substring(0, 6).padEnd(6, '0');
+        return `${dd}${mm}${icoFirst6}`;
+    }
+    // No IČO — use DDMM + 6-digit sequential number
+    const seq = getApplicationSequenceForEvent(application, allApplications);
+    return `${dd}${mm}${String(seq).padStart(6, '0')}`;
 }
 
 /**
@@ -128,7 +134,7 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
     const issuedDateIso = now.toISOString(); // full timestamp for DB
     const taxPointDate = issuedDateOnly;
     const dueDays = (companySettings.invoiceDueDays && companySettings.invoiceDueDays > 0)
-        ? companySettings.invoiceDueDays : 5;
+        ? companySettings.invoiceDueDays : 7;
     const dueDateObj = new Date(now);
     dueDateObj.setDate(dueDateObj.getDate() + dueDays);
     const dueDateOnly = dueDateObj.toISOString().split('T')[0]; // YYYY-MM-DD for PDF/XML
@@ -136,7 +142,7 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
 
     // 3. Line items with DPH
     const lineItems = buildLineItems(application, event, eventPlan, selectedExtraIds);
-    const variableSymbol = getVariableSymbol(application, event);
+    const variableSymbol = getVariableSymbol(application, event, allApplications);
 
     // 4. Calculate totals
     let totalBaseCzk = 0;

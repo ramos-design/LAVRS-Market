@@ -66,7 +66,7 @@ Telefon: [DOPLNIT]
 
 4.2. Po schválení přihlášky je Vystavovateli prostřednictvím Platformy vystavena faktura se všemi náležitostmi dle zákona č. 235/2004 Sb., o dani z přidané hodnoty, ve znění pozdějších předpisů. Faktura je dostupná ke stažení ve formátu PDF a v elektronickém formátu ISDOC.
 
-4.3. **Splatnost faktury činí 5 (pět) kalendářních dnů** od schválení přihlášky, není-li na faktuře uvedena jiná lhůta splatnosti.
+4.3. **Splatnost faktury činí 7 (sedm) kalendářních dnů** od schválení přihlášky, není-li na faktuře uvedena jiná lhůta splatnosti.
 
 4.4. Platba se provádí bezhotovostním převodem na bankovní účet Provozovatele uvedený na faktuře. Jako variabilní symbol slouží číslo uvedené na faktuře. Pro usnadnění platby je na faktuře uveden QR kód ve formátu SPAYD (QR Platba).
 

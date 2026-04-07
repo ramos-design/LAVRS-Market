@@ -515,8 +515,10 @@ export const eventPlansDb = {
         if (planError) throw planError;
 
         // Delete old zones and stands, then re-insert
-        await supabase.from('stands').delete().eq('event_plan_id', planId);
-        await supabase.from('zones').delete().eq('event_plan_id', planId);
+        const { error: delStandsErr } = await supabase.from('stands').delete().eq('event_plan_id', planId);
+        if (delStandsErr) throw delStandsErr;
+        const { error: delZonesErr } = await supabase.from('zones').delete().eq('event_plan_id', planId);
+        if (delZonesErr) throw delZonesErr;
 
         if (planData.zones.length > 0) {
             const zonesToInsert = planData.zones.map(z => ({
@@ -527,7 +529,7 @@ export const eventPlansDb = {
                 category: z.category,
                 capacities: z.capacities,
             }));
-            const { error: zonesError } = await supabase.from('zones').insert(zonesToInsert);
+            const { error: zonesError } = await supabase.from('zones').upsert(zonesToInsert);
             if (zonesError) throw zonesError;
         }
 
@@ -546,7 +548,7 @@ export const eventPlansDb = {
                 rotation: s.rotation ?? 0,
                 locked: !!s.locked,
             }));
-            const { error: standsError } = await supabase.from('stands').insert(standsToInsert);
+            const { error: standsError } = await supabase.from('stands').upsert(standsToInsert);
             if (standsError) throw standsError;
         }
     },

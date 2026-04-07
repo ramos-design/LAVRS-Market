@@ -387,8 +387,8 @@ const App: React.FC = () => {
     if (newStatus === AppStatus.APPROVED) {
       const now = new Date();
       approvedAt = now.toISOString();
-      const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
-      paymentDeadline = new Date(now.getTime() + fiveDaysMs).toISOString();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      paymentDeadline = new Date(now.getTime() + sevenDaysMs).toISOString();
     }
     const result = await updateAppStatus(id, newStatus, paymentDeadline, approvedAt);
     if (user) {

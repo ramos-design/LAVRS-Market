@@ -22,6 +22,7 @@ import { useEventPlan } from '../hooks/useSupabase';
 import { formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
 import { fetchFromARES, isValidIcoFormat } from '../lib/aresAPI';
+import { getApplicationSequenceForEvent } from '../lib/invoice-number';
 
 interface PaymentPageProps {
   onBack: () => void;
@@ -160,8 +161,16 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     const date = new Date(activeEvent.date);
     const dd = date.getDate().toString().padStart(2, '0');
     const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-    const icoFirst6 = (ic || '000000').replace(/\D/g, '').substring(0, 6).padEnd(6, '0');
-    return `${dd}${mm}${icoFirst6}`;
+    const cleanIc = (ic || '').replace(/\D/g, '');
+    if (cleanIc.length > 0) {
+      const icoFirst6 = cleanIc.substring(0, 6).padEnd(6, '0');
+      return `${dd}${mm}${icoFirst6}`;
+    }
+    // No IČO — use DDMM + 6-digit sequential number
+    const seq = (activeApp && allApplications)
+      ? getApplicationSequenceForEvent(activeApp, allApplications)
+      : 1;
+    return `${dd}${mm}${String(seq).padStart(6, '0')}`;
   };
 
   const toggleExtra = (id: string) => {
@@ -178,7 +187,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     setStep(step + 1);
   };
 
-  const isBillingValid = billingName && ic && billingAddress && billingEmail;
+  const isBillingValid = billingName && billingAddress && billingEmail;
 
   const getStepTitle = () => {
     switch (step) {
@@ -448,7 +457,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">IČ * {aresLoading && <span className="text-lavrs-red">Vyhledávám v ARES...</span>}</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">IČ {aresLoading && <span className="text-lavrs-red">Vyhledávám v ARES...</span>}</label>
                     <div className="relative">
                       <input
                         value={ic}

@@ -94,7 +94,14 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
 
   const getCategoryPriceText = (cat: ZoneCategory | null): string => {
     if (!cat) return '0 Kč';
-    return eventPlan?.prices?.[cat] || '0 Kč';
+    const raw = eventPlan?.prices?.[cat];
+    if (!raw) return '0 Kč';
+    // If the value contains any digit, ensure it ends with "Kč"
+    if (/\d/.test(raw)) {
+      return raw.includes('Kč') ? raw : `${raw} Kč`;
+    }
+    // Pure text (e.g. "domluvou") — display as-is
+    return raw;
   };
 
   const getCategoryPrice = (cat: ZoneCategory | null) => {
