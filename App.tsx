@@ -17,25 +17,42 @@ import {
   appApplicationToDb, appBrandProfileToDb, appBannerToDb, appCategoryToDb,
 } from './lib/mappers';
 
-const ExhibitorDashboard = React.lazy(() => import('./components/ExhibitorDashboard'));
-const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
-const ApplicationWizard = React.lazy(() => import('./components/ApplicationWizard'));
-const PaymentPage = React.lazy(() => import('./components/PaymentPage'));
-const CuratorModule = React.lazy(() => import('./components/CuratorModule'));
-const ApprovedApplications = React.lazy(() => import('./components/ApprovedApplications'));
-const MyApplications = React.lazy(() => import('./components/MyApplications'));
-const Billing = React.lazy(() => import('./components/Billing'));
-const Profile = React.lazy(() => import('./components/Profile'));
-const Contact = React.lazy(() => import('./components/Contact'));
-const PaymentsAndInvoicing = React.lazy(() => import('./components/PaymentsAndInvoicing'));
-const EventsConfig = React.lazy(() => import('./components/EventsConfig'));
-const AutomatedEmails = React.lazy(() => import('./components/AutomatedEmails'));
-const BrandsList = React.lazy(() => import('./components/BrandsList'));
-const EventLayoutManager = React.lazy(() => import('./components/EventLayoutManager'));
-const BannerManager = React.lazy(() => import('./components/BannerManager'));
-const CategoryManager = React.lazy(() => import('./components/CategoryManager'));
-const ToastProvider = React.lazy(() => import('./components/ToastProvider'));
-const ResetPassword = React.lazy(() => import('./components/ResetPassword'));
+// Retry wrapper for lazy imports — handles stale chunks after deploy
+function lazyWithRetry(factory: () => Promise<{ default: React.ComponentType<any> }>) {
+  return React.lazy(() =>
+    factory().catch((err) => {
+      // If chunk fetch failed and we haven't reloaded yet, do a full reload
+      const key = 'chunk_reload';
+      const lastReload = sessionStorage.getItem(key);
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 10_000) {
+        sessionStorage.setItem(key, String(now));
+        window.location.reload();
+      }
+      throw err;
+    })
+  );
+}
+
+const ExhibitorDashboard = lazyWithRetry(() => import('./components/ExhibitorDashboard'));
+const AdminDashboard = lazyWithRetry(() => import('./components/AdminDashboard'));
+const ApplicationWizard = lazyWithRetry(() => import('./components/ApplicationWizard'));
+const PaymentPage = lazyWithRetry(() => import('./components/PaymentPage'));
+const CuratorModule = lazyWithRetry(() => import('./components/CuratorModule'));
+const ApprovedApplications = lazyWithRetry(() => import('./components/ApprovedApplications'));
+const MyApplications = lazyWithRetry(() => import('./components/MyApplications'));
+const Billing = lazyWithRetry(() => import('./components/Billing'));
+const Profile = lazyWithRetry(() => import('./components/Profile'));
+const Contact = lazyWithRetry(() => import('./components/Contact'));
+const PaymentsAndInvoicing = lazyWithRetry(() => import('./components/PaymentsAndInvoicing'));
+const EventsConfig = lazyWithRetry(() => import('./components/EventsConfig'));
+const AutomatedEmails = lazyWithRetry(() => import('./components/AutomatedEmails'));
+const BrandsList = lazyWithRetry(() => import('./components/BrandsList'));
+const EventLayoutManager = lazyWithRetry(() => import('./components/EventLayoutManager'));
+const BannerManager = lazyWithRetry(() => import('./components/BannerManager'));
+const CategoryManager = lazyWithRetry(() => import('./components/CategoryManager'));
+const ToastProvider = lazyWithRetry(() => import('./components/ToastProvider'));
+const ResetPassword = lazyWithRetry(() => import('./components/ResetPassword'));
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -71,6 +88,11 @@ class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundary
           <p className="text-xs text-gray-400 mt-3 mb-4">Chyba: {this.state.message}</p>
           <button
             onClick={() => {
+              // If the error is a failed chunk load, reload the page to get fresh assets
+              if (this.state.message.includes('dynamically imported module') || this.state.message.includes('Failed to fetch')) {
+                window.location.reload();
+                return;
+              }
               this.setState({ hasError: false, message: '' });
               this.props.onReset?.();
             }}
