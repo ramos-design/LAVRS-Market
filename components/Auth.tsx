@@ -190,9 +190,9 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
 
                 <div className="text-center mb-10">
                     <img
-                        src="/media/LAVRSmarket_logo.png"
+                        src="https://wllstifewvjtdrzfgbxj.supabase.co/storage/v1/object/public/media/LAVRSmarket_logo_white.svg"
                         alt="LAVRS market"
-                        className="h-16 w-auto object-contain mx-auto mb-6 opacity-90"
+                        className="h-16 mx-auto mb-6"
                     />
                     <p className="text-gray-400 font-medium">Portál pro vystavovatele</p>
                 </div>
