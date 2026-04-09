@@ -66,6 +66,7 @@ serve(async (req) => {
                 else if (newStatus === 'PAYMENT_UNDER_REVIEW') templateId = 'payment-submitted';
                 else if (newStatus === 'PAYMENT_REMINDER') templateId = 'payment-reminder';
                 else if (newStatus === 'PAYMENT_LAST_CALL') templateId = 'payment-last-call';
+                else if (newStatus === 'WAITLIST') templateId = 'application-waitlist';
             }
         }
 

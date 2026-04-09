@@ -393,6 +393,19 @@ Můžete se zapsat na waitlist — pokud se uvolní místo, ozveme se Vám.
 S pozdravem,
 Tým LAVRS market', 'application', true),
 
+  ('application-waitlist', 'Schválení přihlášky, není kapacita, možnost waitlistu', 'Výsledek přihlášky na {{event_name}}', 'Schválení přihlášky do budoucna (nyní není místo).', 'Dobrý den, {{contact_person}},
+
+děkujeme za Váš zájem o účast na {{event_name}} se značkou {{brand_name}}.
+
+Vaše přihláška nás zaujala, bohužel však aktuální kapacita eventu je již plně obsazena. Rádi bychom Vás zařadili na waitlist — pokud se uvolní místo, budeme Vás neprodleně kontaktovat.
+
+Nemusíte nic dalšího podnikat, o případném uvolnění místa Vás budeme informovat emailem.
+
+Děkujeme za pochopení a těšíme se na případnou spolupráci!
+
+S pozdravem,
+Tým LAVRS market', 'application', true),
+
   ('payment-confirmed', 'Potvrzení přijaté platby', 'Platba přijata - {{event_name}}', 'Potvrzení o úspěšném přijetí platby za event.', 'Dobrý den, {{contact_person}},
 
 potvrzujeme přijetí Vaší platby za účast na {{event_name}}.
