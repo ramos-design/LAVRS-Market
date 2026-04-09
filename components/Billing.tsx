@@ -7,9 +7,10 @@ import { downloadInvoicePdf } from '../lib/invoice-storage';
 interface BillingProps {
     applications: Application[];
     brands: BrandProfile[];
+    onNavigate?: (screen: string) => void;
 }
 
-const Billing: React.FC<BillingProps> = ({ applications, brands }) => {
+const Billing: React.FC<BillingProps> = ({ applications, brands, onNavigate }) => {
     const { data: allInvoices, loading: invoicesLoading } = useInvoices();
 
     // Only show applications that have a generated invoice (completed payment process)
@@ -88,16 +89,25 @@ const Billing: React.FC<BillingProps> = ({ applications, brands }) => {
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">K úhradě</p>
                     <p className="text-2xl font-bold text-orange-600">{hasBillingAccess ? new Intl.NumberFormat('cs-CZ').format(totalDue / 100) + ' Kč' : '—'}</p>
                 </div>
-                <div className="bg-lavrs-beige p-6 rounded-none border border-lavrs-red/10 flex items-center justify-between">
+                <div className="bg-lavrs-beige p-6 rounded-none border border-lavrs-red/10 flex items-start justify-between">
                     <div>
                         <p className="text-sm font-bold text-lavrs-dark mb-1">Fakturační údaje</p>
-                        <p className="text-xs text-gray-500 font-medium">
-                            {hasBillingAccess ? (mainProfile?.billingName || 'Žádné údaje') : 'Dostupné po schválení'}
-                        </p>
+                        {mainProfile?.billingName ? (
+                            <div className="space-y-0.5">
+                                <p className="text-xs text-gray-700 font-semibold">{mainProfile.billingName}</p>
+                                {mainProfile.ic && <p className="text-[11px] text-gray-500">IČO: {mainProfile.ic}</p>}
+                                {mainProfile.dic && <p className="text-[11px] text-gray-500">DIČ: {mainProfile.dic}</p>}
+                                {mainProfile.billingAddress && <p className="text-[11px] text-gray-500">{mainProfile.billingAddress}</p>}
+                                {mainProfile.billingEmail && <p className="text-[11px] text-gray-500">{mainProfile.billingEmail}</p>}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-500 font-medium">Nemáte vyplněné fakturační údaje</p>
+                        )}
                     </div>
                     <button
-                        className="text-lavrs-red hover:bg-lavrs-red hover:text-white p-2 rounded-none transition-all border border-lavrs-red/20 shadow-sm"
-                        disabled={!hasBillingAccess}
+                        onClick={() => onNavigate?.('PROFILE')}
+                        className="text-lavrs-red hover:bg-lavrs-red hover:text-white p-2 rounded-none transition-all border border-lavrs-red/20 shadow-sm shrink-0"
+                        title="Upravit fakturační údaje"
                     >
                         <ArrowUpRight size={18} />
                     </button>
@@ -119,13 +129,20 @@ const Billing: React.FC<BillingProps> = ({ applications, brands }) => {
                 </div>
             ) : (
                 <div className="bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse table-fixed">
+                        <colgroup>
+                            <col className="w-[28%]" />
+                            <col className="w-[27%]" />
+                            <col className="w-[20%]" />
+                            <col className="w-[15%]" />
+                            <col className="w-[10%]" />
+                        </colgroup>
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-100">
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Doklad / Datum schválení</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Akce / Položka</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Stav / Splatnost</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Částka</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Stav / Splatnost</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Částka</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Akce</th>
                             </tr>
                         </thead>
@@ -137,7 +154,7 @@ const Billing: React.FC<BillingProps> = ({ applications, brands }) => {
                                         <span className="text-[10px] text-gray-400">Vystaveno: {inv.date}</span>
                                     </td>
                                     <td className="px-6 py-4 font-medium text-gray-600">{inv.event}</td>
-                                    <td className="px-6 py-4 text-center">
+                                    <td className="px-6 py-4">
                                         <div className="space-y-1">
                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-none ${
                                                 inv.status === AppStatus.PAID ? 'bg-green-100 text-green-700' :
@@ -152,7 +169,7 @@ const Billing: React.FC<BillingProps> = ({ applications, brands }) => {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right font-bold text-lavrs-dark">{inv.amount}</td>
+                                    <td className="px-6 py-4 font-bold text-lavrs-dark">{inv.amount}</td>
                                     <td className="px-6 py-4 text-right">
                                         <button
                                             onClick={() => handleDownloadPdf(inv.invoiceNumber, inv.pdfStoragePath)}

@@ -367,7 +367,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
               <div className="space-y-5 animate-fadeIn">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Název značky *</label>
-                  <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" placeholder="Vintage Soul" className="w-full bg-white/50 px-6 py-4 rounded-none border border-lavrs-pink/50 shadow-sm focus:outline-none focus:border-lavrs-red font-semibold text-sm" />
+                  <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" maxLength={40} placeholder="Vintage Soul" className="w-full bg-white/50 px-6 py-4 rounded-none border border-lavrs-pink/50 shadow-sm focus:outline-none focus:border-lavrs-red font-semibold text-sm" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Kontaktní osoba *</label>
@@ -666,7 +666,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                 <div className="space-y-4 md:space-y-6 pt-4 md:pt-6 border-t border-gray-100">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Název Značky <span className="text-lavrs-red">*</span></label>
-                    <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" placeholder="Vaše značka" className="w-full bg-white p-4 md:p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-bold text-base md:text-xl transition-all" />
+                    <input value={brandName} onChange={(e) => setBrandName(e.target.value)} type="text" maxLength={40} placeholder="Vaše značka" className="w-full bg-white p-4 md:p-6 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red font-bold text-base md:text-xl transition-all" />
                   </div>
 
 
@@ -747,18 +747,47 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                 <div className="p-6 md:p-10 bg-lavrs-dark text-white rounded-none border-l-8 border-lavrs-red shadow-2xl relative overflow-hidden animate-fadeIn">
                   <h4 className="text-[10px] md:text-[11px] font-black text-lavrs-pink uppercase tracking-[0.3em] mb-4 md:mb-6">REKAPITULACE PLATBY</h4>
                   <div className="space-y-3 md:space-y-4">
-                    <p className="text-xs md:text-sm opacity-80 leading-relaxed max-w-sm">
-                      Pokud bude vaše přihláška schválena kurátorským týmem, vystavíme vám výzvu k platbě ve výši:
-                    </p>
-                    <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">
-                      {calculateTotal().toLocaleString('cs-CZ')} Kč
-                    </p>
-                    <div className="pt-4 flex items-center gap-2 border-t border-white/10">
-                      <div className="w-1.5 h-1.5 bg-lavrs-red rounded-full" />
-                      <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest leading-none">
-                        Zahrnuje základní balíček kategorie {selectedZoneCategory}
-                      </p>
-                    </div>
+                    {(() => {
+                      const priceText = getCategoryPriceText(selectedZoneCategory);
+                      const isTextPrice = selectedZoneCategory && eventPlan?.prices?.[selectedZoneCategory] && !/\d/.test(eventPlan.prices[selectedZoneCategory]);
+                      if (isTextPrice) {
+                        return (
+                          <>
+                            <p className="text-xs md:text-sm opacity-80 leading-relaxed max-w-sm">
+                              Cena za vaši kategorii je stanovena:
+                            </p>
+                            <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">
+                              {priceText}
+                            </p>
+                            <p className="text-xs md:text-sm opacity-80 leading-relaxed max-w-sm pt-2">
+                              Po schválení přihlášky vás budeme kontaktovat e-mailem s konkrétní výší platby.
+                            </p>
+                            <div className="pt-4 flex items-center gap-2 border-t border-white/10">
+                              <div className="w-1.5 h-1.5 bg-lavrs-red rounded-full" />
+                              <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest leading-none">
+                                Kategorie {selectedZoneCategory} — cena bude upřesněna
+                              </p>
+                            </div>
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          <p className="text-xs md:text-sm opacity-80 leading-relaxed max-w-sm">
+                            Pokud bude vaše přihláška schválena kurátorským týmem, vystavíme vám výzvu k platbě ve výši:
+                          </p>
+                          <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">
+                            {calculateTotal().toLocaleString('cs-CZ')} Kč
+                          </p>
+                          <div className="pt-4 flex items-center gap-2 border-t border-white/10">
+                            <div className="w-1.5 h-1.5 bg-lavrs-red rounded-full" />
+                            <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest leading-none">
+                              Zahrnuje základní balíček kategorie {selectedZoneCategory}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -772,8 +801,8 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                       { id: 'storno', label: 'Souhlasím se STORNO podmínkami LAVRS market', required: true, state: consentStorno, setState: setConsentStorno },
                       { id: 'newsletter', label: 'Chci odebírat newsletter LAVRS market (novinky, termíny)', required: false, state: consentNewsletter, setState: setConsentNewsletter }
                     ].map(consent => (
-                      <label key={consent.id} className="flex items-start gap-4 cursor-pointer group">
-                        <div className="relative mt-1 w-6 h-6 shrink-0">
+                      <label key={consent.id} className="flex items-center gap-4 cursor-pointer group">
+                        <div className="relative w-6 h-6 shrink-0">
                           <input
                             type="checkbox"
                             className="sr-only peer"

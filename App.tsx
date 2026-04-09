@@ -479,24 +479,29 @@ const App: React.FC = () => {
   };
 
   const handleSaveBilling = async (details: Partial<BrandProfile>) => {
-    // Update the active application with billing details
-    if (activeAppForExhibitor) {
-      try {
-        const updatedApp: Application = {
-          ...activeAppForExhibitor,
-          billingName: details.billingName || activeAppForExhibitor.billingName,
-          billingAddress: details.billingAddress || activeAppForExhibitor.billingAddress,
-          ic: details.ic || activeAppForExhibitor.ic,
-          dic: details.dic || activeAppForExhibitor.dic,
-          billingEmail: details.billingEmail || activeAppForExhibitor.billingEmail,
-        };
-        const dbApp = appApplicationToDb(updatedApp, user?.id);
-        // Save to DB - but we need to use updateApplicationData or similar
-        // For now, we'll just ensure the local state is updated
-        console.log('Billing details saved (local):', details);
-      } catch (err) {
-        console.error('Failed to save billing details:', err);
+    if (!activeAppForExhibitor || !user?.id) return;
+
+    const billingFields = {
+      billing_name: details.billingName || null,
+      ic: details.ic || null,
+      dic: details.dic || null,
+      billing_address: details.billingAddress || null,
+      billing_email: details.billingEmail || null,
+    };
+
+    try {
+      // 1. Save billing to the active application
+      await updateApplication(activeAppForExhibitor.id, billingFields);
+
+      // 2. Save billing to the matching brand profile (so it pre-fills next time)
+      const matchingProfile = brandProfiles.find(
+        bp => bp.brandName.toLowerCase() === activeAppForExhibitor.brandName.toLowerCase()
+      );
+      if (matchingProfile) {
+        await updateProfile(matchingProfile.id, billingFields);
       }
+    } catch (err) {
+      console.error('Failed to save billing details:', err);
     }
   };
 
@@ -712,7 +717,7 @@ const App: React.FC = () => {
           )}
 
           {currentScreen === 'BILLING' && userRole === 'EXHIBITOR' && (
-            <Billing applications={applications} brands={brandProfiles} />
+            <Billing applications={applications} brands={brandProfiles} onNavigate={setCurrentScreen} />
           )}
 
           {currentScreen === 'CONTACT' && (
@@ -787,7 +792,10 @@ const App: React.FC = () => {
           {currentScreen === 'PAYMENT' && userRole === 'EXHIBITOR' && (
             <PaymentPage
               onBack={() => { setSelectedPaymentAppId(null); setCurrentScreen('DASHBOARD'); }}
-              initialBillingDetails={brandProfiles[0]}
+              initialBillingDetails={
+                brandProfiles.find(bp => activeAppForExhibitor && bp.brandName.toLowerCase() === activeAppForExhibitor.brandName.toLowerCase())
+                || brandProfiles[0]
+              }
               onSaveBilling={handleSaveBilling}
               activeApp={activeAppForExhibitor}
               activeEvent={activeEventForExhibitor}

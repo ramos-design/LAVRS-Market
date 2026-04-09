@@ -521,7 +521,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Adresa sídla *</label>
                   <div className="relative">
-                    <MapPin className="absolute left-6 top-10 text-gray-300" size={18} />
+                    <MapPin className="absolute left-6 top-7 text-gray-300" size={18} />
                     <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} rows={2} placeholder="Ulice, č.p., PSČ a město" className="w-full bg-white pl-14 pr-6 py-6 rounded-none border-2 border-gray-100 focus:outline-none focus:border-lavrs-red resize-none font-semibold transition-all" />
                   </div>
                 </div>
@@ -654,6 +654,11 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
                           setIsUpdatingStatus(true);
                           try {
+                            // Save billing details to brand profile + application
+                            if (onSaveBilling) {
+                              onSaveBilling({ billingName, ic, dic, billingAddress, billingEmail });
+                            }
+
                             const invoiceResult = generatedInvoiceRef.current;
 
                             // Generate real PDF via @react-pdf/renderer for storage & email

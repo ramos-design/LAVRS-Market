@@ -68,6 +68,11 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
       statusLabel?: string;
       isApproved?: boolean;
       source: 'APP' | 'PROFILE';
+      billingName?: string;
+      ic?: string;
+      dic?: string;
+      billingAddress?: string;
+      billingEmail?: string;
     }>();
 
     const isApprovedStatus = (status?: string) => {
@@ -96,7 +101,12 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
         lastEventTitle: events.find(e => e.id === app.eventId)?.title,
         statusLabel: app.status,
         isApproved: Boolean(existing?.isApproved) || isApprovedStatus(app.status),
-        source: 'APP'
+        source: 'APP',
+        billingName: app.billingName || existing?.billingName,
+        ic: app.ic || existing?.ic,
+        dic: app.dic || existing?.dic,
+        billingAddress: app.billingAddress || existing?.billingAddress,
+        billingEmail: app.billingEmail || existing?.billingEmail,
       });
     });
 
@@ -117,11 +127,24 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
           lastEventTitle: 'Historie',
           statusLabel: 'Profil',
           isApproved: false,
-          source: 'PROFILE'
+          source: 'PROFILE',
+          billingName: brand.billingName,
+          ic: brand.ic,
+          dic: brand.dic,
+          billingAddress: brand.billingAddress,
+          billingEmail: brand.billingEmail,
         });
       } else {
         const existing = byName.get(key)!;
-        byName.set(key, { ...existing, profileId: existing.profileId || brand.id });
+        byName.set(key, {
+          ...existing,
+          profileId: existing.profileId || brand.id,
+          billingName: existing.billingName || brand.billingName,
+          ic: existing.ic || brand.ic,
+          dic: existing.dic || brand.dic,
+          billingAddress: existing.billingAddress || brand.billingAddress,
+          billingEmail: existing.billingEmail || brand.billingEmail,
+        });
       }
     });
 
@@ -195,39 +218,53 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
         ))}
       </div>
 
-      <div className="bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <table className="min-w-full text-sm">
+      <div className="bg-white border border-gray-100 shadow-sm overflow-x-auto">
+        <table className="min-w-full text-sm table-fixed" style={{ minWidth: '900px' }}>
           <thead className="bg-lavrs-beige/50 text-gray-500 text-[10px] uppercase tracking-widest">
             <tr>
-              <th className="text-left px-6 py-4">Značka</th>
-              <th className="text-left px-6 py-4">Kontakt</th>
-              <th className="text-left px-6 py-4">Kategorie zóny</th>
-              <th className="text-left px-6 py-4">Akce / Stav</th>
-              <th className="text-right px-6 py-4">Akce</th>
+              <th className="text-left px-6 py-4 w-[18%]">Značka</th>
+              <th className="text-left px-6 py-4 w-[18%]">Kontakt</th>
+              <th className="text-left px-6 py-4 w-[18%]">Fakturace</th>
+              <th className="text-left px-6 py-4 w-[14%]">Kategorie zóny</th>
+              <th className="text-left px-6 py-4 w-[16%]">Akce / Stav</th>
+              <th className="text-right px-6 py-4 w-[16%]">Akce</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={5}>
+                <td className="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={6}>
                   Nic nenalezeno
                 </td>
               </tr>
             ) : (
               filtered.map((row) => (
                 <tr key={`${row.source}-${row.id}`} className="border-t border-gray-50 hover:bg-lavrs-beige/20 transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 max-w-0">
                     <div className="flex items-center gap-2">
-                      <div className="font-bold text-lavrs-dark">{row.brandName}</div>
+                      <div className="font-bold text-lavrs-dark truncate">{row.brandName}</div>
                       {row.isApproved && (
-                        <Heart size={14} className="text-lavrs-red fill-lavrs-red" />
+                        <Heart size={14} className="text-lavrs-red fill-lavrs-red flex-shrink-0" />
                       )}
                     </div>
-                    <div className="text-[11px] text-gray-400">{row.instagram || row.website || '—'}</div>
+                    <div className="text-[11px] text-gray-400 truncate">{row.instagram || row.website || '—'}</div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-gray-700">{row.contactPerson || '—'}</div>
-                    <div className="text-[11px] text-gray-400">{row.email || '—'}</div>
+                  <td className="px-6 py-4 max-w-0">
+                    <div className="font-semibold text-gray-700 truncate">{row.contactPerson || '—'}</div>
+                    <div className="text-[11px] text-gray-400 truncate">{row.email || '—'}</div>
+                  </td>
+                  <td className="px-6 py-4 max-w-0">
+                    <div className="font-semibold text-gray-700 text-xs truncate">{row.billingName || '—'}</div>
+                    {(row.ic || row.dic) && (
+                      <div className="text-[11px] text-gray-400">
+                        {row.ic && <span>IČ: {row.ic}</span>}
+                        {row.ic && row.dic && <span> · </span>}
+                        {row.dic && <span>DIČ: {row.dic}</span>}
+                      </div>
+                    )}
+                    {row.billingAddress && (
+                      <div className="text-[11px] text-gray-400 truncate max-w-[180px]" title={row.billingAddress}>{row.billingAddress}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 font-semibold text-gray-700">{getZoneCategoryLabel(row.zoneCategory)}</td>
                   <td className="px-6 py-4">

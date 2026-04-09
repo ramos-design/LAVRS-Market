@@ -178,15 +178,15 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
 
       {/* Table */}
       <div className="bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead className="bg-lavrs-beige/50 text-gray-500 text-[10px] uppercase tracking-widest border-b border-gray-100">
             <tr>
-              <th className="text-left px-6 py-4">Značka</th>
-              <th className="text-left px-6 py-4">Kontakt</th>
-              <th className="text-left px-6 py-4">Event</th>
-              <th className="text-left px-6 py-4">Kategorie</th>
-              <th className="text-left px-6 py-4">Stav</th>
-              <th className="w-12"></th>
+              <th className="text-left px-6 py-4 w-[25%]">Značka</th>
+              <th className="text-left px-6 py-4 w-[20%]">Kontakt</th>
+              <th className="text-left px-6 py-4 w-[22%]">Event</th>
+              <th className="text-left px-6 py-4 w-[13%]">Kategorie</th>
+              <th className="text-left px-6 py-4 w-[12%]">Stav</th>
+              <th className="w-[8%]"></th>
             </tr>
           </thead>
           <tbody>
@@ -207,24 +207,24 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                       onClick={() => setSelectedAppId(isSelected ? null : app.id)}
                       className={`border-t border-gray-50 hover:bg-lavrs-beige/20 transition-colors cursor-pointer ${isSelected ? 'bg-lavrs-beige/30' : ''}`}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="font-bold text-lavrs-dark">{app.brandName}</div>
+                      <td className="px-6 py-4 overflow-hidden">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="font-bold text-lavrs-dark truncate">{app.brandName}</div>
                           {(normalizeStatus(app.status) === AppStatus.APPROVED || normalizeStatus(app.status) === AppStatus.PAID) && (
                             <Heart size={14} className="text-lavrs-red fill-lavrs-red shrink-0" />
                           )}
                         </div>
-                        <div className="text-[11px] text-gray-400">{app.instagram || app.website || '—'}</div>
+                        <div className="text-[11px] text-gray-400 truncate">{app.instagram || app.website || '—'}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-700">{app.contactPerson || '—'}</div>
-                        <div className="text-[11px] text-gray-400">{app.email || '—'}</div>
+                      <td className="px-6 py-4 overflow-hidden">
+                        <div className="font-semibold text-gray-700 truncate">{app.contactPerson || '—'}</div>
+                        <div className="text-[11px] text-gray-400 truncate">{app.email || '—'}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-700">{event?.title || '—'}</div>
-                        <div className="text-[11px] text-gray-400">{formatEventDateLong(event?.date)}</div>
+                      <td className="px-6 py-4 overflow-hidden">
+                        <div className="font-semibold text-gray-700 truncate">{event?.title || '—'}</div>
+                        <div className="text-[11px] text-gray-400 truncate">{formatEventDateLong(event?.date)}</div>
                       </td>
-                      <td className="px-6 py-4 font-semibold text-gray-700">{getZoneCategoryLabel(app.zoneCategory)}</td>
+                      <td className="px-6 py-4 overflow-hidden font-semibold text-gray-700 truncate">{getZoneCategoryLabel(app.zoneCategory)}</td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-none text-[9px] font-bold uppercase ${statusInfo.bg} ${statusInfo.text}`}>
                           {statusInfo.label}

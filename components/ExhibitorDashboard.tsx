@@ -144,8 +144,8 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]"
                 alt={slide.title}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/40 to-transparent flex items-center p-12">
-                <div className="max-w-2xl space-y-4">
+              <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/60 to-lavrs-dark/30 flex items-center px-12 py-8">
+                <div className="w-full space-y-4 pr-8">
                   <span className="px-3 py-1 bg-lavrs-red text-white text-[10px] font-black tracking-widest uppercase">
                     {slide.tag}
                   </span>
@@ -304,8 +304,6 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
               Moje Aktivity
             </h3>
             <div className="space-y-8 relative">
-              {/* Timeline Line */}
-              <div className="absolute left-5 top-2 bottom-2 w-px bg-gray-100"></div>
 
               {/* Filter applications for dashboard view */}
               {(() => {
@@ -382,9 +380,9 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
             <div className="space-y-4">
               {brands.map(brand => (
                 <div key={brand.id} className="group p-5 bg-lavrs-beige/50 border border-transparent hover:border-lavrs-red/30 transition-all cursor-pointer" onClick={() => onNavigate('PROFILE')}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-black text-sm uppercase tracking-wider text-lavrs-dark">{brand.brandName}</h4>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-black text-sm uppercase tracking-wider text-lavrs-dark truncate">{brand.brandName}</h4>
                       <p className="text-[11px] text-gray-500 mt-1 font-medium italic">Klikni pro editaci profilu</p>
                     </div>
                     <ChevronRight size={18} className="text-gray-300 group-hover:text-lavrs-red group-hover:translate-x-1 transition-all" />

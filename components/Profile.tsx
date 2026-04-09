@@ -27,12 +27,17 @@ const BrandEditForm: React.FC<{
 
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                 <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Název značky</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Název značky <span className="text-lavrs-red">*</span></label>
                     <input
                         value={editForm.brandName}
                         onChange={(e) => updateFormField('brandName', e.target.value)}
-                        className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red font-bold transition-all"
+                        maxLength={40}
+                        placeholder="Povinné pole"
+                        className={`w-full bg-gray-50 px-6 py-4 rounded-none border-2 focus:bg-white focus:border-lavrs-red font-bold transition-all ${!editForm.brandName.trim() ? 'border-lavrs-red/40' : 'border-transparent'}`}
                     />
+                    {!editForm.brandName.trim() && (
+                        <p className="text-xs text-lavrs-red font-medium ml-4">Název značky je povinný údaj.</p>
+                    )}
                 </div>
             </div>
 
@@ -165,7 +170,8 @@ const BrandEditForm: React.FC<{
             </button>
             <button
                 onClick={handleSave}
-                className="bg-lavrs-red text-white px-10 py-4 rounded-none font-bold hover:bg-lavrs-dark transition-all shadow-xl flex items-center gap-2"
+                disabled={!editForm.brandName.trim()}
+                className={`px-10 py-4 rounded-none font-bold transition-all shadow-xl flex items-center gap-2 ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
             >
                 <Check size={18} /> Uložit úpravy
             </button>
@@ -221,6 +227,10 @@ const ProfileInner: React.FC<ProfileProps> = () => {
 
     const handleSave = async () => {
         if (editForm) {
+            if (!editForm.brandName.trim()) {
+                alert('Název značky je povinný údaj.');
+                return;
+            }
             const dbBrand = appBrandProfileToDb(editForm);
             const exists = brands.find(b => b.id === editForm.id);
             if (exists) {

@@ -1,7 +1,7 @@
 import React from 'react';
-import { FileText, Clock, CheckCircle2, AlertCircle, ChevronRight, Search } from 'lucide-react';
+import { FileText, Clock, AlertCircle } from 'lucide-react';
 import { AppStatus, Application, MarketEvent } from '../types';
-import { useInvoices } from '../hooks/useSupabase';
+import { useInvoices, useAllEventPlanPrices } from '../hooks/useSupabase';
 
 interface MyApplicationsProps {
     applications: Application[];
@@ -10,6 +10,15 @@ interface MyApplicationsProps {
 
 const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, events }) => {
     const { data: allInvoices } = useInvoices();
+    const { planPrices } = useAllEventPlanPrices();
+
+    const pricesByEventId = React.useMemo(() => {
+        const map = new Map<string, Record<string, string>>();
+        for (const p of planPrices) {
+            map.set(p.event_id, p.prices);
+        }
+        return map;
+    }, [planPrices]);
 
     const invoiceNumberByAppId = React.useMemo(() => {
         const map = new Map<string, string>();
@@ -67,14 +76,6 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                     <h1 className="text-2xl md:text-4xl font-bold text-lavrs-dark mb-1 md:mb-2">Moje Přihlášky</h1>
                     <p className="text-sm md:text-base text-gray-500">Správa a historie vašich registrací na eventy.</p>
                 </div>
-                <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-lavrs-red transition-colors" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Hledat přihlášku..."
-                        className="pl-12 pr-6 py-3 bg-white border-2 border-gray-100 rounded-none focus:outline-none focus:border-lavrs-red transition-all text-sm w-64 shadow-sm"
-                    />
-                </div>
             </header>
 
             <div className="grid grid-cols-1 gap-4">
@@ -126,14 +127,15 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 md:gap-8 shrink-0 ml-3">
-                                    <div className="text-right">
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
-                                        <p className="font-bold text-lavrs-dark text-sm md:text-base">4.200 Kč</p>
-                                    </div>
-                                    <button className="hidden md:block p-3 rounded-none bg-gray-50 text-gray-400 hover:bg-lavrs-red hover:text-white transition-all shadow-sm">
-                                        <ChevronRight size={20} />
-                                    </button>
+                                <div className="shrink-0 ml-3 text-right">
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
+                                    <p className="font-bold text-lavrs-dark text-sm md:text-base">
+                                        {app.customPrice != null && app.customPrice > 0
+                                            ? `${app.customPrice.toLocaleString('cs-CZ')} Kč`
+                                            : (app.zoneCategory && pricesByEventId.get(app.eventId)?.[app.zoneCategory])
+                                                ? `${Number(pricesByEventId.get(app.eventId)![app.zoneCategory]).toLocaleString('cs-CZ')} Kč`
+                                                : '—'}
+                                    </p>
                                 </div>
                             </div>
                         </div>

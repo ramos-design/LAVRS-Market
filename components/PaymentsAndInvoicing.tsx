@@ -221,7 +221,7 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                 </button>
             </div>
 
-            <div className="bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-none border border-gray-100 shadow-sm overflow-x-auto">
                 {payments.length === 0 ? (
                     <div className="p-20 text-center space-y-4">
                         <div className="w-16 h-16 bg-gray-50 text-gray-200 flex items-center justify-center mx-auto">
@@ -232,16 +232,16 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                        <table className="w-full text-left table-fixed" style={{ minWidth: '900px' }}>
                             <thead>
                                 <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                                    <th className="px-8 py-4">ID platby</th>
-                                    <th className="px-8 py-4">Značka</th>
-                                    <th className="px-8 py-4">Event</th>
-                                    <th className="px-8 py-4">Částka</th>
-                                    <th className="px-8 py-4">Datum přihlášení</th>
-                                    <th className="px-8 py-4">Stav</th>
-                                    <th className="px-8 py-4"></th>
+                                    <th className="px-8 py-4 w-[14%]">ID platby</th>
+                                    <th className="px-8 py-4 w-[18%]">Značka</th>
+                                    <th className="px-8 py-4 w-[18%]">Event</th>
+                                    <th className="px-8 py-4 w-[12%]">Částka</th>
+                                    <th className="px-8 py-4 w-[14%]">Datum přihlášení</th>
+                                    <th className="px-8 py-4 w-[14%]">Stav</th>
+                                    <th className="px-8 py-4 w-[10%]"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -250,15 +250,15 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                                     const StatusIcon = statusInfo.icon;
                                     return (
                                         <tr key={payment.id} className="group hover:bg-lavrs-beige/30 transition-colors">
-                                            <td className="px-8 py-6">
-                                                <span className="font-mono text-xs text-gray-500">{payment.id}</span>
+                                            <td className="px-8 py-6 max-w-0">
+                                                <span className="font-mono text-xs text-gray-500 truncate block">{payment.id}</span>
                                             </td>
-                                            <td className="px-8 py-6">
-                                                <span className="font-bold text-sm text-lavrs-dark">{payment.brand}</span>
+                                            <td className="px-8 py-6 max-w-0">
+                                                <span className="font-bold text-sm text-lavrs-dark truncate block">{payment.brand}</span>
                                             </td>
-                                            <td className="px-8 py-6">
+                                            <td className="px-8 py-6 max-w-0">
                                                 <div>
-                                                    <span className="text-sm text-gray-600 block">{payment.event}</span>
+                                                    <span className="text-sm text-gray-600 block truncate">{payment.event}</span>
                                                     {payment.eventDate && (
                                                         <span className="text-[11px] text-gray-400">{payment.eventDate}</span>
                                                     )}
