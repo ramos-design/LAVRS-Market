@@ -297,13 +297,13 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
         </div>
 
         {/* Status Column */}
-        <div className="space-y-8">
+        <div className="space-y-4 lg:space-y-8">
           {/* Application Status */}
-          <div className="bg-white rounded-none p-5 md:p-8 shadow-sm border border-gray-100 space-y-6 md:space-y-8">
-            <h3 className="text-lg md:text-xl font-bold flex items-center gap-2">
+          <div className="bg-white rounded-none p-5 md:p-8 shadow-sm border border-gray-100">
+            <h3 className="text-lg md:text-xl font-bold mb-4 md:mb-6">
               Moje Aktivity
             </h3>
-            <div className="space-y-8 relative">
+            <div className="space-y-4 md:space-y-6 relative">
 
               {/* Filter applications for dashboard view */}
               {(() => {
@@ -319,37 +319,37 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
 
                 if (visibleApps.length === 0) {
                   return (
-                    <div className="relative text-center py-6">
+                    <div className="relative text-center py-4">
                       <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Zatím žádná aktivita</p>
                     </div>
                   );
                 }
 
                 return visibleApps.map((app, idx) => (
-                  <div key={app.id} className="relative flex gap-6 pl-2 group">
-                    <div className={`z-10 w-10 h-10 rounded-none flex items-center justify-center border-4 border-white shadow-sm transition-transform duration-300 group-hover:scale-110 ${
+                  <div key={app.id} className="relative flex gap-3 md:gap-4 group">
+                    <div className={`z-10 w-8 h-8 md:w-10 md:h-10 rounded-none flex items-center justify-center border-2 md:border-4 border-white shadow-sm shrink-0 ${
                         app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-500' :
                         app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-500' :
                         app.status === AppStatus.PENDING ? 'bg-amber-400' :
                         app.status === AppStatus.WAITLIST ? 'bg-blue-500' :
-                        app.status === AppStatus.PAID ? 'bg-green-600' : 
+                        app.status === AppStatus.PAID ? 'bg-green-600' :
                         app.status === AppStatus.EXPIRED ? 'bg-gray-400' : 'bg-red-500'
                       }`}>
-                      {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? <CheckCircle2 size={18} className="text-white" /> :
-                        app.status === AppStatus.PAYMENT_UNDER_REVIEW ? <Clock size={18} className="text-white" /> :
-                        app.status === AppStatus.PENDING ? <Clock size={18} className="text-white" /> :
-                        app.status === AppStatus.WAITLIST ? <Clock size={18} className="text-white" /> :
-                        app.status === AppStatus.PAID ? <CheckCircle2 size={18} className="text-white" /> : 
-                        app.status === AppStatus.EXPIRED ? <Clock size={18} className="text-white" /> : <XCircle size={18} className="text-white" />}
+                      {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? <CheckCircle2 size={16} className="text-white" /> :
+                        app.status === AppStatus.PAYMENT_UNDER_REVIEW ? <Clock size={16} className="text-white" /> :
+                        app.status === AppStatus.PENDING ? <Clock size={16} className="text-white" /> :
+                        app.status === AppStatus.WAITLIST ? <Clock size={16} className="text-white" /> :
+                        app.status === AppStatus.PAID ? <CheckCircle2 size={16} className="text-white" /> :
+                        app.status === AppStatus.EXPIRED ? <Clock size={16} className="text-white" /> : <XCircle size={16} className="text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
                         <h4 className="font-bold text-[13px] truncate text-lavrs-dark">{app.brandName}</h4>
-                        <span className="text-[9px] text-gray-400 font-bold tracking-tighter">
+                        <span className="text-[9px] text-gray-400 font-bold tracking-tighter shrink-0">
                           {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}
                         </span>
                       </div>
-                      <p className="text-[11px] text-gray-500 mb-2 truncate">
+                      <p className="text-[11px] text-gray-500 mb-1.5 truncate">
                         {eventsMap.get(app.eventId)?.title}
                       </p>
                       <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${
@@ -357,14 +357,14 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                           app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-100 text-blue-700' :
                           app.status === AppStatus.PENDING ? 'bg-amber-100 text-amber-700' :
                           app.status === AppStatus.WAITLIST ? 'bg-blue-100 text-blue-700' :
-                          app.status === AppStatus.PAID ? 'bg-green-100 text-green-800' : 
+                          app.status === AppStatus.PAID ? 'bg-green-100 text-green-800' :
                           app.status === AppStatus.EXPIRED ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-700'
                         }`}>
                         {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
                           app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
                           app.status === AppStatus.PENDING ? 'V posouzení' :
                           app.status === AppStatus.WAITLIST ? 'Waitlist' :
-                          app.status === AppStatus.PAID ? 'Zaplaceno' : 
+                          app.status === AppStatus.PAID ? 'Zaplaceno' :
                           app.status === AppStatus.EXPIRED ? 'Expirováno' : 'Zamítnuto'}
                       </span>
                     </div>
@@ -374,36 +374,39 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
             </div>
           </div>
 
-          {/* My Brand Box */}
-          <div className="bg-white rounded-none p-5 md:p-8 shadow-sm border border-gray-100 space-y-4 md:space-y-6">
-            <h3 className="text-lg md:text-xl font-bold">Moje značka</h3>
-            <div className="space-y-4">
-              {brands.map(brand => (
-                <div key={brand.id} className="group p-5 bg-lavrs-beige/50 border border-transparent hover:border-lavrs-red/30 transition-all cursor-pointer" onClick={() => onNavigate('PROFILE')}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-black text-sm uppercase tracking-wider text-lavrs-dark truncate">{brand.brandName}</h4>
-                      <p className="text-[11px] text-gray-500 mt-1 font-medium italic">Klikni pro editaci profilu</p>
+          {/* My Brand + Social — side by side on mobile, stacked on desktop sidebar */}
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-8">
+            {/* My Brand Box */}
+            <div className="bg-white rounded-none p-4 md:p-8 shadow-sm border border-gray-100">
+              <h3 className="text-sm md:text-xl font-bold mb-3 md:mb-6">Moje značka</h3>
+              <div className="space-y-3">
+                {brands.map(brand => (
+                  <div key={brand.id} className="group p-3 md:p-5 bg-lavrs-beige/50 border border-transparent hover:border-lavrs-red/30 transition-all cursor-pointer" onClick={() => onNavigate('PROFILE')}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-black text-xs md:text-sm uppercase tracking-wider text-lavrs-dark truncate">{brand.brandName}</h4>
+                        <p className="text-[10px] md:text-[11px] text-gray-500 mt-0.5 font-medium italic hidden sm:block">Klikni pro editaci profilu</p>
+                      </div>
+                      <ChevronRight size={16} className="text-gray-300 group-hover:text-lavrs-red group-hover:translate-x-1 transition-all shrink-0" />
                     </div>
-                    <ChevronRight size={18} className="text-gray-300 group-hover:text-lavrs-red group-hover:translate-x-1 transition-all" />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Social Media Box */}
-          <div className="bg-white rounded-none p-5 md:p-8 shadow-sm border border-gray-100 space-y-4 md:space-y-6">
-            <h3 className="text-lg md:text-xl font-bold text-lavrs-dark">Sleduj sociální sítě<br />LAVRS market</h3>
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <a href="https://www.instagram.com/lavrsmarket/" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center py-6 md:py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
-                <Instagram size={28} className="mb-2 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Instagram</span>
-              </a>
-              <a href="https://www.facebook.com/Lavrsmarket" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center py-6 md:py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
-                <Facebook size={28} className="mb-2 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Facebook</span>
-              </a>
+            {/* Social Media Box */}
+            <div className="bg-white rounded-none p-4 md:p-8 shadow-sm border border-gray-100">
+              <h3 className="text-sm md:text-xl font-bold text-lavrs-dark mb-3 md:mb-6">Sociální sítě</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4">
+                <a href="https://www.instagram.com/lavrsmarket/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-3 md:py-8 md:flex-col bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
+                  <Instagram size={20} className="md:mb-1 group-hover:scale-110 transition-transform" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em]">Instagram</span>
+                </a>
+                <a href="https://www.facebook.com/Lavrsmarket" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-3 md:py-8 md:flex-col bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
+                  <Facebook size={20} className="md:mb-1 group-hover:scale-110 transition-transform" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em]">Facebook</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
