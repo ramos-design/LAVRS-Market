@@ -74,6 +74,13 @@ h4,
     transform: scale(0.98);
 }
 
+/* Hide browser's native password reveal button (Edge/Chrome) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+    display: none !important;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 5px;

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
 import { ViewMode } from '../types';
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
@@ -13,6 +13,17 @@ interface MobileHeaderProps {
 
 const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigate, onSignOut }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    useEffect(() => {
+        if (isMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isMenuOpen]);
 
     const menuItems = role === 'EXHIBITOR' ? [
         { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
@@ -66,7 +77,7 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
 
             {/* Fullscreen Menu Overlay */}
             {isMenuOpen && (
-                <div className="fixed inset-0 top-16 bg-lavrs-red z-[90] animate-fadeIn">
+                <div className="fixed inset-0 top-16 bg-lavrs-red z-[90] animate-fadeIn overflow-y-auto overscroll-contain">
                     <nav className="p-6 space-y-4">
                         {menuItems.map((item) => {
                             const Icon = item.icon;
