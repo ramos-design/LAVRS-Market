@@ -456,17 +456,17 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
           {/* Step 2+ or Right Panel in Waitlist */}
           {(step === 1 && isWaitlist && event) ? (
             <div className="animate-fadeIn h-full flex flex-col">
-              <div className="relative h-[300px] overflow-hidden shrink-0 -mx-4 w-[calc(100%+2rem)] md:mx-0 md:w-full">
+              <div className="relative h-[220px] md:h-[300px] overflow-hidden shrink-0 -mx-4 w-[calc(100%+2rem)] md:mx-0 md:w-full">
                 <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-lavrs-dark/80 via-transparent to-transparent flex items-end">
-                  <div className="p-12 text-white">
-                    <h1 className="text-4xl font-bold mb-2">{event.title}</h1>
+                  <div className="p-5 md:p-12 text-white">
+                    <h1 className="text-2xl md:text-4xl font-bold mb-2">{event.title}</h1>
                     <p className="text-sm opacity-90 italic">Unikátní setkání lokálních tvůrců a milovníků cirkulární módy.</p>
                   </div>
                 </div>
               </div>
 
-              <div className="max-w-xl mx-auto py-12 px-8">
+              <div className="max-w-xl mx-auto py-8 md:py-12 px-5 md:px-8">
                 <section className="space-y-4">
                   <h3 className="text-xs font-black text-lavrs-red uppercase tracking-[0.2em]">O akci</h3>
                   <div className="prose prose-sm text-gray-600 leading-relaxed text-base italic">

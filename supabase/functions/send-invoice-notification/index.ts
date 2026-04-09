@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer/mod.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
 
 const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");

@@ -129,13 +129,25 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
 
                                 <div className="shrink-0 ml-3 text-right">
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
-                                    <p className="font-bold text-lavrs-dark text-sm md:text-base">
-                                        {app.customPrice != null && app.customPrice > 0
-                                            ? `${app.customPrice.toLocaleString('cs-CZ')} Kč`
-                                            : (app.zoneCategory && pricesByEventId.get(app.eventId)?.[app.zoneCategory])
-                                                ? `${Number(pricesByEventId.get(app.eventId)![app.zoneCategory]).toLocaleString('cs-CZ')} Kč`
-                                                : '—'}
-                                    </p>
+                                    {(() => {
+                                        if (app.customPrice != null && app.customPrice > 0) {
+                                            return <p className="font-bold text-lavrs-dark text-sm md:text-base">{app.customPrice.toLocaleString('cs-CZ')} Kč</p>;
+                                        }
+                                        const rawPrice = app.zoneCategory ? pricesByEventId.get(app.eventId)?.[app.zoneCategory] : undefined;
+                                        if (rawPrice != null && rawPrice !== '') {
+                                            const num = Number(rawPrice);
+                                            if (!isNaN(num)) {
+                                                return <p className="font-bold text-lavrs-dark text-sm md:text-base">{num.toLocaleString('cs-CZ')} Kč</p>;
+                                            }
+                                            return (
+                                                <>
+                                                    <p className="font-bold text-lavrs-dark text-sm md:text-base">Dohodou</p>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">Částku upřesníme ve schválovacím řízení</p>
+                                                </>
+                                            );
+                                        }
+                                        return <p className="font-bold text-lavrs-dark text-sm md:text-base">—</p>;
+                                    })()}
                                 </div>
                             </div>
                         </div>

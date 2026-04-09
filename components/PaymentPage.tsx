@@ -346,7 +346,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
           <ChevronLeft size={24} />
         </button>
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
             {getStepTitle()}
           </h2>
           <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
@@ -355,12 +355,12 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
         </div>
       </header>
 
-      <div className={`grid gap-12 items-start ${confirmedPayment && step === 3 ? 'grid-cols-1 max-w-3xl mx-auto' : 'grid-cols-1 md:grid-cols-2'}`}>
+      <div className={`grid gap-6 md:gap-12 items-start ${confirmedPayment && step === 3 ? 'grid-cols-1 max-w-3xl mx-auto' : 'grid-cols-1 md:grid-cols-2'}`}>
 
         {/* Left Panel: Summary — hidden after payment confirmed */}
         {!(confirmedPayment && step === 3) && (
-        <div className="bg-white p-10 rounded-none border border-gray-100 shadow-sm space-y-8">
-          <h3 className="text-xl font-bold">Rekapitulace</h3>
+        <div className="bg-white p-5 md:p-10 rounded-none border border-gray-100 shadow-sm space-y-6 md:space-y-8">
+          <h3 className="text-lg md:text-xl font-bold">Rekapitulace</h3>
 
           <div className="space-y-6">
             <div className="flex justify-between pb-6 border-b border-gray-50">
@@ -399,9 +399,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
               </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-100 flex justify-between items-center">
-              <span className="text-xl font-bold tracking-tight">Celkem k úhradě</span>
-              <span className="text-3xl font-extrabold text-lavrs-red tracking-tight">{formatPrice(totalAmount)}</span>
+            <div className="pt-4 md:pt-6 border-t border-gray-100 flex justify-between items-center gap-2">
+              <span className="text-base md:text-xl font-bold tracking-tight">Celkem k úhradě</span>
+              <span className="text-2xl md:text-3xl font-extrabold text-lavrs-red tracking-tight">{formatPrice(totalAmount)}</span>
             </div>
           </div>
 
@@ -589,45 +589,45 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                   {/* Invoice generated — show QR + bank info + PDF download */}
                   {invoiceGenerated && (
                     <>
-                      <div className="bg-white border-2 border-gray-100 p-8 space-y-8">
-                        <div className="flex flex-col items-center gap-6 text-center">
+                      <div className="bg-white border-2 border-gray-100 p-5 md:p-8 space-y-6 md:space-y-8">
+                        <div className="flex flex-col items-center gap-4 md:gap-6 text-center">
                           {invoiceQrDataUrl ? (
                             <img
                               src={invoiceQrDataUrl}
                               alt="QR platba"
-                              className="w-48 h-48 border border-gray-200"
+                              className="w-36 h-36 md:w-48 md:h-48 border border-gray-200"
                             />
                           ) : (
-                            <div className="w-48 h-48 bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center">
-                              <QrCode size={80} className="text-gray-300" />
+                            <div className="w-36 h-36 md:w-48 md:h-48 bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                              <QrCode size={60} className="text-gray-300" />
                             </div>
                           )}
                           <div>
-                            <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Platba převodem</h3>
+                            <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-2">Platba převodem</h3>
                             <p className="text-sm text-gray-400 font-medium">Naskenujte QR kód ve své bankovní aplikaci.</p>
                           </div>
                         </div>
 
-                        <div className="space-y-4 pt-8 border-t border-gray-100">
-                          <div className="flex justify-between items-center text-sm">
+                        <div className="space-y-3 md:space-y-4 pt-6 md:pt-8 border-t border-gray-100">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-1">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Číslo účtu</span>
-                            <span className="font-black tracking-wider">{companySettings?.bankAccount || '—'}</span>
+                            <span className="font-black tracking-wider text-sm break-all">{companySettings?.bankAccount || '—'}</span>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-1">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">IBAN</span>
-                            <span className="font-bold tracking-wider text-xs">{companySettings?.bankIban || '—'}</span>
+                            <span className="font-bold tracking-wider text-xs break-all">{companySettings?.bankIban || '—'}</span>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-1">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Variabilní symbol</span>
                             <span className="font-black text-lavrs-red tracking-wider">{variableSymbol}</span>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-1">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Částka (vč. DPH)</span>
                             <span className="font-black tracking-wider">{formatPrice(totalAmount)}</span>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-1">
                             <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Zpráva pro příjemce</span>
-                            <span className="font-medium text-xs text-gray-600 text-right max-w-[200px]">
+                            <span className="font-medium text-xs text-gray-600 sm:text-right sm:max-w-[200px]">
                               {activeEvent?.title || 'LAVRS market'}{' '}
                               {activeEvent ? formatEventDateRange(activeEvent.date, activeEvent.endDate) : ''}{' '}
                               {activeApp?.zoneCategory || ''}
@@ -755,13 +755,13 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                 </>
               ) : (
                 <div className="space-y-8 animate-fadeIn">
-                  <div className="bg-white border-2 border-gray-100 p-8 text-center space-y-6">
-                    <div className="flex items-center justify-center gap-4">
-                      <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
-                        <CheckCircle2 size={36} className="text-green-500" />
+                  <div className="bg-white border-2 border-gray-100 p-5 md:p-8 text-center space-y-4 md:space-y-6">
+                    <div className="flex flex-col sm:flex-row items-center sm:justify-center gap-3 md:gap-4">
+                      <div className="w-14 h-14 md:w-16 md:h-16 bg-green-50 rounded-full flex items-center justify-center shrink-0">
+                        <CheckCircle2 size={32} className="text-green-500" />
                       </div>
-                      <div className="text-left">
-                        <h3 className="text-xl font-black uppercase tracking-tight">Děkujeme za vaši objednávku!</h3>
+                      <div className="text-center sm:text-left">
+                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tight">Děkujeme za vaši objednávku!</h3>
                         <p className="text-xs text-gray-500 leading-relaxed">
                           Proveďte platbu dle údajů na faktuře. Po připsání platby vám potvrdíme rezervaci místa na e-mail.
                         </p>

@@ -115,20 +115,62 @@ const Billing: React.FC<BillingProps> = ({ applications, brands, onNavigate }) =
             </div>
 
             {invoicesLoading ? (
-                <div className="bg-white border-2 border-dashed border-gray-100 p-20 text-center space-y-4">
+                <div className="bg-white border-2 border-dashed border-gray-100 p-10 md:p-20 text-center space-y-4">
                     <Loader size={32} className="animate-spin text-gray-300 mx-auto" />
                     <p className="text-gray-400">Načítám faktury...</p>
                 </div>
             ) : !hasBillingAccess ? (
-                <div className="bg-white border-2 border-dashed border-gray-100 p-20 text-center space-y-4">
+                <div className="bg-white border-2 border-dashed border-gray-100 p-10 md:p-20 text-center space-y-4">
                     <div className="w-16 h-16 bg-gray-50 text-gray-300 flex items-center justify-center mx-auto">
                         <FileText size={32} />
                     </div>
                     <h3 className="text-xl font-bold text-lavrs-dark">Zatím žádné faktury</h3>
-                    <p className="text-gray-400 max-w-sm mx-auto">Faktury se zobrazí po dokončení platebního procesu a vystavení dokladu.</p>
+                    <p className="text-gray-400 max-w-sm mx-auto text-sm">Faktury se zobrazí po dokončení platebního procesu a vystavení dokladu.</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden">
+                <>
+                {/* Mobile: Card layout */}
+                <div className="md:hidden space-y-4">
+                    {invoices.map((inv) => (
+                        <div key={inv.invoiceNumber} className="bg-white rounded-none border border-gray-100 shadow-sm p-5 space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <span className="font-bold text-lavrs-dark block text-sm">{inv.invoiceNumber}</span>
+                                    <span className="text-[10px] text-gray-400">Vystaveno: {inv.date}</span>
+                                </div>
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-none shrink-0 ${
+                                    inv.status === AppStatus.PAID ? 'bg-green-100 text-green-700' :
+                                    inv.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-100 text-blue-700' :
+                                    'bg-orange-100 text-orange-700'
+                                }`}>
+                                    {inv.status === AppStatus.PAID ? 'ZAPLACENO' :
+                                     inv.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'V OVĚŘENÍ' : 'ČEKÁ NA PLATBU'}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 pt-2 border-t border-gray-50">
+                                <div className="min-w-0">
+                                    <p className="text-xs font-medium text-gray-600 truncate">{inv.event}</p>
+                                    {inv.status !== AppStatus.PAID && (
+                                        <p className="text-[9px] font-bold text-lavrs-red mt-0.5">Splatnost: {inv.deadline}</p>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-4 shrink-0">
+                                    <span className="font-bold text-lavrs-dark text-sm">{inv.amount}</span>
+                                    <button
+                                        onClick={() => handleDownloadPdf(inv.invoiceNumber, inv.pdfStoragePath)}
+                                        disabled={!inv.pdfStoragePath}
+                                        className="inline-flex items-center gap-1.5 text-lavrs-red font-bold text-xs hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                        <Download size={14} /> PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Desktop: Table layout */}
+                <div className="hidden md:block bg-white rounded-none border border-gray-100 shadow-sm overflow-hidden">
                     <table className="w-full text-left border-collapse table-fixed">
                         <colgroup>
                             <col className="w-[28%]" />
@@ -184,6 +226,7 @@ const Billing: React.FC<BillingProps> = ({ applications, brands, onNavigate }) =
                         </tbody>
                     </table>
                 </div>
+                </>
             )}
         </div>
     );

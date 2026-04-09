@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { SMTPClient } from "https://deno.land/x/denomailer/mod.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -12,55 +12,27 @@ const smtpPassword = Deno.env.get("SMTP_PASSWORD")!;
 const senderEmail = Deno.env.get("SENDER_EMAIL") || "info@lavrs.cz";
 const senderName = Deno.env.get("SENDER_NAME") || "LAVRS market";
 
+// Compact HTML — no indentation to avoid SMTP quoted-printable =3d / =20 artifacts
 const getHtmlTemplate = (title: string, bodyText: string) => {
     const formattedBody = bodyText.replace(/\n/g, '<br>');
-    return `
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title}</title>
-</head>
-<body style="margin:0; padding:0; background-color:#e8b8b8; font-family:Arial, Helvetica, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#e8b8b8; margin:0; padding:0;">
-    <tr>
-      <td align="center" style="padding:30px 10px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px; background-color:#f6d7d7; border-radius:12px; overflow:hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-          <tr>
-            <td style="background-color:#e30613; padding:25px 30px; text-align:center;">
-              <div style="color:#ffffff; font-size:28px; font-weight:900; letter-spacing:1px;">
-                LAVRS market
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:35px 40px; text-align:left;">
-              <h1 style="margin:0 0 20px 0; font-size:24px; line-height:1.2; color:#e30613; font-weight:bold; text-align:center;">
-                ${title}
-              </h1>
-              <div style="font-size:16px; line-height:1.6; color:#b10014; margin-bottom:25px;">
-                ${formattedBody}
-              </div>
-              <p style="margin:0; font-size:15px; line-height:1.5; color:#b10014; font-weight:bold; border-top: 1px solid #efb2b7; padding-top: 15px;">
-                Tým LAVRS market
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 40px 25px 40px; text-align:center;">
-              <p style="margin:0; font-size:12px; line-height:1.4; color:#b96d76;">
-                Toto je automaticky generovaný e-mail. Prosíme, neodpovídejte na něj.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-`;
+    return '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"/>'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1.0"/>'
+    + '<title>' + title + '</title></head>'
+    + '<body style="margin:0;padding:0;background-color:#e8b8b8;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#e8b8b8;margin:0;padding:0;">'
+    + '<tr><td align="center" style="padding:30px 10px;">'
+    + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background-color:#f6d7d7;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.1);">'
+    + '<tr><td style="background-color:#e30613;padding:25px 30px;text-align:center;">'
+    + '<div style="color:#ffffff;font-size:28px;font-weight:900;letter-spacing:1px;">LAVRS market</div>'
+    + '</td></tr>'
+    + '<tr><td style="padding:35px 40px;text-align:left;">'
+    + '<h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">' + title + '</h1>'
+    + '<div style="font-size:16px;line-height:1.6;color:#b10014;margin-bottom:25px;">' + formattedBody + '</div>'
+    + '<p style="margin:0;font-size:15px;line-height:1.5;color:#b10014;font-weight:bold;border-top:1px solid #efb2b7;padding-top:15px;">T\u00fdm LAVRS market</p>'
+    + '</td></tr>'
+    + '<tr><td style="padding:0 40px 25px 40px;text-align:center;">'
+    + '<p style="margin:0;font-size:12px;line-height:1.4;color:#b96d76;">Toto je automaticky generovan\u00fd e-mail. Pros\u00edme, neodpov\u00eddejte na n\u011bj.</p>'
+    + '</td></tr></table></td></tr></table></body></html>';
 };
 
 serve(async (req) => {

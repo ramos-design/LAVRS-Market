@@ -121,8 +121,8 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
       {/* Header */}
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark mb-2">Aktivní přihlášky</h2>
-          <p className="text-gray-500">Přehled schválených a zaplacených přihlášek ({filtered.length})</p>
+          <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight text-lavrs-dark mb-1 md:mb-2">Aktivní přihlášky</h2>
+          <p className="text-sm md:text-base text-gray-500">Přehled schválených a zaplacených přihlášek ({filtered.length})</p>
         </div>
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-lavrs-red transition-colors" size={18} />
@@ -131,18 +131,18 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Hledat značku, kontakt, event..."
-            className="pl-12 pr-6 py-3 bg-white border-2 border-gray-100 rounded-none focus:outline-none focus:border-lavrs-red transition-all text-sm w-64 shadow-sm"
+            className="pl-12 pr-6 py-3 bg-white border-2 border-gray-100 rounded-none focus:outline-none focus:border-lavrs-red transition-all text-sm w-full md:w-64 shadow-sm"
           />
         </div>
       </header>
 
       {/* Filters */}
-      <div className="flex items-center justify-between gap-6">
-        {/* Category Filter - Left Side */}
-        <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-6">
+        {/* Category Filter */}
+        <div className="flex flex-1 gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           <button
             onClick={() => setSelectedCategory('ALL')}
-            className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 whitespace-nowrap ${selectedCategory === 'ALL'
+            className={`px-4 md:px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 whitespace-nowrap ${selectedCategory === 'ALL'
               ? 'border-lavrs-red text-lavrs-red bg-white'
               : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
           >
@@ -152,7 +152,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 whitespace-nowrap ${selectedCategory === cat
+              className={`px-4 md:px-5 py-2 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all border-2 whitespace-nowrap ${selectedCategory === cat
                 ? 'border-lavrs-red text-lavrs-red bg-white'
                 : 'border-gray-100 text-gray-400 hover:border-gray-200 hover:text-lavrs-dark'}`}
             >
@@ -161,11 +161,11 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
           ))}
         </div>
 
-        {/* Event Filter - Right Side */}
+        {/* Event Filter */}
         <select
           value={selectedEventId}
           onChange={(e) => setSelectedEventId(e.target.value)}
-          className="px-5 py-2 rounded-none text-sm font-semibold border-2 border-gray-100 bg-white text-gray-700 focus:outline-none focus:border-lavrs-red transition-all shadow-sm shrink-0"
+          className="px-4 md:px-5 py-2 rounded-none text-sm font-semibold border-2 border-gray-100 bg-white text-gray-700 focus:outline-none focus:border-lavrs-red transition-all shadow-sm w-full md:w-auto md:shrink-0"
         >
           <option value="ALL">Všechny eventy</option>
           {eventsList.map((event) => (
@@ -176,8 +176,119 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white border border-gray-100 shadow-sm overflow-hidden">
+      {/* Mobile: Card layout */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="bg-white border border-gray-100 p-10 text-center text-gray-400 font-bold uppercase tracking-widest text-sm">
+            Nic nenalezeno
+          </div>
+        ) : (
+          filtered.map((app) => {
+            const statusInfo = getStatusBadge(app.status);
+            const event = getEventDetails(app.eventId);
+            const isSelected = selectedAppId === app.id;
+            return (
+              <div key={app.id} className={`bg-white border shadow-sm overflow-hidden ${isSelected ? 'border-lavrs-red/30' : 'border-gray-100'}`}>
+                <button
+                  onClick={() => setSelectedAppId(isSelected ? null : app.id)}
+                  className="w-full p-4 text-left flex items-center gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-lavrs-dark truncate">{app.brandName}</span>
+                      <Heart size={12} className="text-lavrs-red fill-lavrs-red shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-400">
+                      <span className="truncate">{event?.title || '—'}</span>
+                      <span>·</span>
+                      <span className="shrink-0">{getZoneCategoryLabel(app.zoneCategory)}</span>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-none text-[9px] font-bold uppercase shrink-0 ${statusInfo.bg} ${statusInfo.text}`}>
+                    {statusInfo.label}
+                  </span>
+                  {isSelected ? <ChevronUp size={16} className="text-lavrs-red shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                </button>
+
+                {isSelected && (
+                  <div className="p-4 pt-0 space-y-4 border-t border-gray-100 mt-0">
+                    {/* Brand header */}
+                    <div className="flex items-center gap-3 pt-4">
+                      <div className="w-12 h-12 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-xl shadow-lg shrink-0">
+                        {app.brandName[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-extrabold text-lavrs-dark truncate">{app.brandName}</h3>
+                        <div className="flex gap-3 flex-wrap text-xs text-gray-500">
+                          {app.instagram && <span className="flex items-center gap-1"><Instagram size={12} /> {app.instagram}</span>}
+                          {app.website && <span className="flex items-center gap-1 truncate"><Globe size={12} /> {app.website}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Info Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 p-3 border border-gray-100">
+                        <p className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">Event</p>
+                        <p className="font-semibold text-lavrs-dark text-xs">{event?.title || '—'}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 border border-gray-100">
+                        <p className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">Datum</p>
+                        <p className="font-semibold text-lavrs-dark text-xs">{formatEventDateLong(event?.date) || '—'}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 border border-gray-100">
+                        <p className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">Kategorie</p>
+                        <p className="font-semibold text-lavrs-dark text-xs">{getZoneCategoryLabel(app.zoneCategory)}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 border border-gray-100">
+                        <p className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">Podáno</p>
+                        <p className="font-semibold text-lavrs-dark text-xs">{formatDate(app.submittedAt)}</p>
+                      </div>
+                    </div>
+
+                    {/* Contact */}
+                    <div className="space-y-2">
+                      <p className="text-[9px] text-gray-400 uppercase font-bold">Kontakt</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="bg-gray-50 p-3 border border-gray-100 flex items-center gap-2">
+                          <User size={14} className="text-gray-400 shrink-0" />
+                          <span className="text-xs font-semibold text-gray-700 truncate">{app.contactPerson || '—'}</span>
+                        </div>
+                        <div className="bg-gray-50 p-3 border border-gray-100 flex items-center gap-2">
+                          <Mail size={14} className="text-gray-400 shrink-0" />
+                          <span className="text-xs font-semibold text-gray-700 truncate">{app.email || '—'}</span>
+                        </div>
+                        <div className="bg-gray-50 p-3 border border-gray-100 flex items-center gap-2">
+                          <Phone size={14} className="text-gray-400 shrink-0" />
+                          <span className="text-xs font-semibold text-gray-700">{app.phone || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Billing */}
+                    <div className="space-y-2">
+                      <p className="text-[9px] text-gray-400 uppercase font-bold">Fakturace</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-gray-50 p-3 border border-gray-100">
+                          <p className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">Firma</p>
+                          <p className="text-xs font-semibold text-gray-700 truncate">{app.billingName || '—'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 border border-gray-100">
+                          <p className="text-[9px] text-gray-400 uppercase font-bold mb-0.5">IČO</p>
+                          <p className="text-xs font-semibold text-gray-700">{app.ic || '—'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: Table layout */}
+      <div className="hidden md:block bg-white border border-gray-100 shadow-sm overflow-hidden">
         <table className="w-full text-sm table-fixed">
           <thead className="bg-lavrs-beige/50 text-gray-500 text-[10px] uppercase tracking-widest border-b border-gray-100">
             <tr>
@@ -245,7 +356,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                               <div className="w-20 h-20 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-3xl shadow-lg shrink-0">
                                 {app.brandName[0]}
                               </div>
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0">
                                 <h3 className="text-2xl font-extrabold text-lavrs-dark mb-2">{app.brandName}</h3>
                                 <div className="flex gap-4 flex-wrap">
                                   {app.instagram && (
@@ -264,46 +375,34 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
 
                             {/* Info Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                              {/* Event Info */}
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Event</p>
                                 <p className="font-semibold text-lavrs-dark">{event?.title || '—'}</p>
                               </div>
-
-                              {/* Date Info */}
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Datum</p>
                                 <p className="font-semibold text-lavrs-dark">{formatEventDateLong(event?.date) || '—'}</p>
                               </div>
-
-                              {/* Location */}
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Místo</p>
                                 <p className="font-semibold text-lavrs-dark">{event?.location || '—'}</p>
                               </div>
-
-                              {/* Category */}
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Kategorie zóny</p>
                                 <p className="font-semibold text-lavrs-dark">{getZoneCategoryLabel(app.zoneCategory)}</p>
                               </div>
-
-                              {/* Status */}
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Stav</p>
                                 <div className={`inline-block px-3 py-1 rounded-none text-[9px] font-bold uppercase ${getStatusBadge(app.status).bg} ${getStatusBadge(app.status).text}`}>
                                   {getStatusBadge(app.status).label}
                                 </div>
                               </div>
-
-                              {/* Submitted Date */}
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Podáno</p>
                                 <p className="font-semibold text-lavrs-dark">{formatDate(app.submittedAt)}</p>
                               </div>
                             </div>
 
-                            {/* Description */}
                             {app.brandDescription && (
                               <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">Popis značky</p>
@@ -314,7 +413,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                             {/* Contact Information */}
                             <div>
                               <p className="text-[10px] text-gray-400 uppercase font-bold mb-3">Kontaktní údaje</p>
-                              <div className="grid grid-cols-3 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                   <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Osoba</p>
                                   <p className="font-semibold text-gray-700">{app.contactPerson || '—'}</p>
@@ -333,7 +432,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                             {/* Billing Information */}
                             <div>
                               <p className="text-[10px] text-gray-400 uppercase font-bold mb-3">Fakturační údaje</p>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                   <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Firma</p>
                                   <p className="font-semibold text-gray-700">{app.billingName || '—'}</p>
@@ -348,7 +447,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                                     <p className="font-semibold text-gray-700">{app.dic}</p>
                                   </div>
                                 )}
-                                <div className={`bg-white p-4 rounded-none border border-gray-100 shadow-sm ${app.dic ? '' : 'col-span-2'}`}>
+                                <div className={`bg-white p-4 rounded-none border border-gray-100 shadow-sm ${app.dic ? '' : 'sm:col-span-2'}`}>
                                   <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Adresa</p>
                                   <p className="font-semibold text-gray-700">{app.billingAddress || '—'}</p>
                                 </div>

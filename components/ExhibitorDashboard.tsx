@@ -144,8 +144,8 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[10s]"
                 alt={slide.title}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/60 to-lavrs-dark/30 flex items-center px-12 py-8">
-                <div className="w-full space-y-4 pr-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-lavrs-dark/90 via-lavrs-dark/60 to-lavrs-dark/30 flex items-center px-5 md:px-12 py-6 md:py-8">
+                <div className="w-full space-y-3 md:space-y-4 pr-4 md:pr-8">
                   <span className="px-3 py-1 bg-lavrs-red text-white text-[10px] font-black tracking-widest uppercase">
                     {slide.tag}
                   </span>
@@ -160,7 +160,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
             </div>
           ))}
           {/* Progress indicators */}
-          <div className="absolute bottom-6 left-12 flex gap-3 z-10">
+          <div className="absolute bottom-4 left-5 md:bottom-6 md:left-12 flex gap-3 z-10">
             {slides.map((_, i) => (
               <div
                 key={i}
@@ -186,13 +186,13 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
 
           if (isReview) {
             return (
-              <div key={app.id} className="bg-blue-50 border border-blue-100 rounded-none p-8 flex flex-col md:flex-row items-center justify-between gap-6 animate-fadeIn transition-all relative group/box">
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-blue-500 rounded-none flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-200">
-                    <Clock size={24} />
+              <div key={app.id} className="bg-blue-50 border border-blue-100 rounded-none p-5 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 animate-fadeIn transition-all relative group/box">
+                <div className="flex gap-3 md:gap-4 min-w-0 pr-8 md:pr-0">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500 rounded-none flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-200">
+                    <Clock size={20} />
                   </div>
-                  <div>
-                    <h3 className="text-xl text-lavrs-dark">
+                  <div className="min-w-0">
+                    <h3 className="text-base md:text-xl text-lavrs-dark leading-snug">
                       Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDateRange(event.date, event?.endDate) : ''}</span>
                     </h3>
                     <p className="text-blue-700 font-bold text-sm mt-1">Nyní čekáme na přijetí vaší platby. Jakmile ji zpracujeme, budeme vás informovat e-mailem a zašleme vám fakturu.</p>
@@ -211,23 +211,23 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
           }
 
           return (
-            <div key={app.id} className="bg-lavrs-red/5 border border-lavrs-red/20 rounded-none p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex gap-4">
-                <div className="w-12 h-12 bg-lavrs-red rounded-none flex items-center justify-center text-white shrink-0">
-                  <Clock size={24} />
+            <div key={app.id} className="bg-lavrs-red/5 border border-lavrs-red/20 rounded-none p-5 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6">
+              <div className="flex gap-3 md:gap-4 min-w-0">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-lavrs-red rounded-none flex items-center justify-center text-white shrink-0">
+                  <Clock size={20} />
                 </div>
-                <div>
-                  <h3 className="text-xl text-lavrs-dark">
+                <div className="min-w-0">
+                  <h3 className="text-base md:text-xl text-lavrs-dark leading-snug">
                     Platba za <span className="font-black">{event?.title || 'LAVRS market'} {event ? formatEventDateRange(event.date, event?.endDate) : ''}</span>
                   </h3>
-                  <p className="text-gray-600">Tvoje přihláška byla schválena! Proveď platbu pro potvrzení místa.</p>
+                  <p className="text-gray-600 text-sm mt-1">Tvoje přihláška byla schválena! Proveď platbu pro potvrzení místa.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-8">
+              <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto shrink-0">
                 <CountdownDisplay remaining={remaining} />
-                <button 
+                <button
                   onClick={() => onPayment(app.id)}
-                  className="bg-lavrs-dark text-white px-8 py-4 rounded-none font-bold uppercase tracking-widest text-xs hover:bg-lavrs-red transition-all flex items-center gap-2 group shadow-xl"
+                  className="bg-lavrs-dark text-white px-5 md:px-8 py-3 md:py-4 rounded-none font-bold uppercase tracking-widest text-xs hover:bg-lavrs-red transition-all flex items-center gap-2 group shadow-xl whitespace-nowrap flex-1 md:flex-none justify-center"
                 >
                   Zaplatit nyní <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </button>
@@ -238,7 +238,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
       </div>
 
       {/* Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 
         {/* Upcoming Events - Column 1 & 2 */}
         <div className="lg:col-span-2 space-y-8">
@@ -267,7 +267,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                     {event.status === 'open' ? 'Otevřeno' : event.status === 'closed' ? 'Zavřeno' : event.status === 'soldout' ? 'Vyprodáno' : 'WAITLIST'}
                   </div>
                 </div>
-                <div className="pt-8 pb-10 px-8">
+                <div className="pt-5 pb-6 px-5 md:pt-8 md:pb-10 md:px-8">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
                     <span className="bg-lavrs-red text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest leading-none">
                       {formatEventDateRange(event.date, event?.endDate)}
@@ -299,8 +299,8 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
         {/* Status Column */}
         <div className="space-y-8">
           {/* Application Status */}
-          <div className="bg-white rounded-none p-8 shadow-sm border border-gray-100 space-y-8">
-            <h3 className="text-xl font-bold flex items-center gap-2">
+          <div className="bg-white rounded-none p-5 md:p-8 shadow-sm border border-gray-100 space-y-6 md:space-y-8">
+            <h3 className="text-lg md:text-xl font-bold flex items-center gap-2">
               Moje Aktivity
             </h3>
             <div className="space-y-8 relative">
@@ -375,8 +375,8 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
           </div>
 
           {/* My Brand Box */}
-          <div className="bg-white rounded-none p-8 shadow-sm border border-gray-100 space-y-6">
-            <h3 className="text-xl font-bold">Moje značka</h3>
+          <div className="bg-white rounded-none p-5 md:p-8 shadow-sm border border-gray-100 space-y-4 md:space-y-6">
+            <h3 className="text-lg md:text-xl font-bold">Moje značka</h3>
             <div className="space-y-4">
               {brands.map(brand => (
                 <div key={brand.id} className="group p-5 bg-lavrs-beige/50 border border-transparent hover:border-lavrs-red/30 transition-all cursor-pointer" onClick={() => onNavigate('PROFILE')}>
@@ -393,15 +393,15 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
           </div>
 
           {/* Social Media Box */}
-          <div className="bg-white rounded-none p-8 shadow-sm border border-gray-100 space-y-6">
-            <h3 className="text-xl font-bold text-lavrs-dark">Sleduj sociální sítě<br />LAVRS market</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <a href="https://www.instagram.com/lavrsmarket/" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
-                <Instagram size={32} className="mb-2 group-hover:scale-110 transition-transform" />
+          <div className="bg-white rounded-none p-5 md:p-8 shadow-sm border border-gray-100 space-y-4 md:space-y-6">
+            <h3 className="text-lg md:text-xl font-bold text-lavrs-dark">Sleduj sociální sítě<br />LAVRS market</h3>
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <a href="https://www.instagram.com/lavrsmarket/" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center py-6 md:py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
+                <Instagram size={28} className="mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Instagram</span>
               </a>
-              <a href="https://www.facebook.com/Lavrsmarket" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
-                <Facebook size={32} className="mb-2 group-hover:scale-110 transition-transform" />
+              <a href="https://www.facebook.com/Lavrsmarket" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center py-6 md:py-8 bg-lavrs-red text-white hover:bg-white hover:text-lavrs-red transition-all border border-lavrs-red/20 group">
+                <Facebook size={28} className="mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Facebook</span>
               </a>
             </div>

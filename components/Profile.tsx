@@ -17,7 +17,7 @@ const BrandEditForm: React.FC<{
     handleSave: () => void;
     setBrandToDeleteId: (id: string) => void;
 }> = ({ editForm, updateFormField, cancelEditing, handleSave, setBrandToDeleteId }) => (
-    <div className="p-8 space-y-10 animate-fadeIn">
+    <div className="p-5 md:p-8 space-y-8 md:space-y-10 animate-fadeIn">
         {/* Part 1: BRAND INFO */}
         <div className="space-y-6">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
@@ -76,13 +76,13 @@ const BrandEditForm: React.FC<{
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Kontaktní osoba</label>
                     <input
                         value={editForm.contactPerson}
                         onChange={(e) => updateFormField('contactPerson', e.target.value)}
-                        className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                        className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
                     />
                 </div>
                 <div className="space-y-2">
@@ -90,15 +90,15 @@ const BrandEditForm: React.FC<{
                     <input
                         value={editForm.email}
                         onChange={(e) => updateFormField('email', e.target.value)}
-                        className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                        className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
                     />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2 md:col-span-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Telefon</label>
                     <input
                         value={editForm.phone}
                         onChange={(e) => updateFormField('phone', e.target.value)}
-                        className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                        className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
                     />
                 </div>
             </div>
@@ -111,16 +111,16 @@ const BrandEditForm: React.FC<{
                 <h4 className="text-sm font-bold text-lavrs-dark uppercase tracking-tight">Fakturační údaje</h4>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Firma / Jméno</label>
                     <input
                         value={editForm.billingName}
                         onChange={(e) => updateFormField('billingName', e.target.value)}
-                        className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all font-semibold"
+                        className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all font-semibold"
                     />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">IČ</label>
                         <input
@@ -140,13 +140,13 @@ const BrandEditForm: React.FC<{
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Fakturační adresa</label>
                     <input
                         value={editForm.billingAddress}
                         onChange={(e) => updateFormField('billingAddress', e.target.value)}
-                        className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                        className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
                     />
                 </div>
                 <div className="space-y-2">
@@ -154,30 +154,30 @@ const BrandEditForm: React.FC<{
                     <input
                         value={editForm.billingEmail}
                         onChange={(e) => updateFormField('billingEmail', e.target.value)}
-                        className="w-full bg-gray-50 px-6 py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                        className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
                     />
                 </div>
             </div>
         </div>
 
         {/* FORM ACTIONS */}
-        <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-gray-100">
+        <div className="flex flex-col sm:flex-row justify-end gap-3 md:gap-4 pt-6 mt-6 border-t border-gray-100">
             <button
                 onClick={cancelEditing}
-                className="px-8 py-4 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-all"
+                className="px-6 md:px-8 py-3 md:py-4 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-all order-2 sm:order-1"
             >
                 Zrušit změny
             </button>
             <button
                 onClick={handleSave}
                 disabled={!editForm.brandName.trim()}
-                className={`px-10 py-4 rounded-none font-bold transition-all shadow-xl flex items-center gap-2 ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
+                className={`px-8 md:px-10 py-3 md:py-4 rounded-none font-bold transition-all shadow-xl flex items-center justify-center gap-2 order-1 sm:order-2 ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
             >
                 <Check size={18} /> Uložit úpravy
             </button>
             <button
                 onClick={() => setBrandToDeleteId(editForm.id)}
-                className="ml-auto p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-none transition-all"
+                className="sm:ml-auto p-3 md:p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-none transition-all order-3 self-end"
                 title="Smazat značku"
             >
                 <Trash2 size={20} />
@@ -338,12 +338,12 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                     {/* Add NEW brand form (if it's not in the brands list yet) */}
                     {editingBrandId && !brands.find(b => b.id === editingBrandId) && editForm && (
                         <div className="bg-white rounded-none border border-lavrs-red shadow-xl overflow-hidden animate-fadeIn">
-                            <div className="p-8 bg-lavrs-beige/30 border-b border-lavrs-red/10 flex items-center gap-6">
-                                <div className="w-14 h-14 rounded-none bg-lavrs-red text-white flex items-center justify-center">
-                                    <Plus size={28} />
+                            <div className="p-5 md:p-8 bg-lavrs-beige/30 border-b border-lavrs-red/10 flex items-center gap-4 md:gap-6">
+                                <div className="w-10 h-10 md:w-14 md:h-14 rounded-none bg-lavrs-red text-white flex items-center justify-center shrink-0">
+                                    <Plus size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-bold text-lavrs-dark">Nová značka</h3>
+                                    <h3 className="text-lg md:text-2xl font-bold text-lavrs-dark">Nová značka</h3>
                                     <p className="text-xs text-gray-400 mt-1">Vyplňte údaje pro vaši novou vizitku</p>
                                 </div>
                             </div>
@@ -377,13 +377,13 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                         <div key={brand.id} className={`bg-white rounded-none border transition-all overflow-hidden ${editingBrandId === brand.id ? 'border-lavrs-red shadow-xl' : 'border-gray-100 shadow-sm hover:border-lavrs-pink'}`}>
 
                             {/* BRAND HEADER (Read Mode) */}
-                            <div className={`p-8 flex items-center justify-between ${editingBrandId === brand.id ? 'bg-lavrs-beige/30 border-b border-lavrs-red/10' : ''}`}>
-                                <div className="flex items-center gap-6">
-                                    <div className={`w-14 h-14 rounded-none flex items-center justify-center transition-transform ${editingBrandId === brand.id ? 'bg-lavrs-red text-white' : 'bg-lavrs-beige text-lavrs-red'}`}>
-                                        <Sparkles size={28} />
+                            <div className={`p-5 md:p-8 flex items-center justify-between ${editingBrandId === brand.id ? 'bg-lavrs-beige/30 border-b border-lavrs-red/10' : ''}`}>
+                                <div className="flex items-center gap-4 md:gap-6 min-w-0">
+                                    <div className={`w-10 h-10 md:w-14 md:h-14 rounded-none flex items-center justify-center transition-transform shrink-0 ${editingBrandId === brand.id ? 'bg-lavrs-red text-white' : 'bg-lavrs-beige text-lavrs-red'}`}>
+                                        <Sparkles size={24} />
                                     </div>
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-lavrs-dark">{brand.brandName}</h3>
+                                    <div className="min-w-0">
+                                        <h3 className="text-lg md:text-2xl font-bold text-lavrs-dark truncate">{brand.brandName}</h3>
                                         <div className="flex gap-4 text-xs text-gray-400 mt-1">
                                             {brand.instagram && <span className="flex items-center gap-1"><Instagram size={14} /> {brand.instagram}</span>}
                                             {brand.website && <span className="flex items-center gap-1"><Globe size={14} /> {brand.website}</span>}
@@ -417,13 +417,13 @@ const ProfileInner: React.FC<ProfileProps> = () => {
             </section>
 
             {/* Account Settings at the Bottom */}
-            <section className="bg-white p-8 rounded-none border border-gray-100 shadow-sm space-y-8 mt-12">
+            <section className="bg-white p-5 md:p-8 rounded-none border border-gray-100 shadow-sm space-y-6 md:space-y-8 mt-8 md:mt-12">
                 <div className="flex items-center gap-3">
                     <User className="text-lavrs-red" size={24} />
-                    <h2 className="text-xl font-bold text-lavrs-dark">Osobní nastavení účtu</h2>
+                    <h2 className="text-lg md:text-xl font-bold text-lavrs-dark">Osobní nastavení účtu</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Vaše jméno</label>
                         <input
@@ -533,7 +533,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                         className="absolute inset-0 bg-lavrs-dark/40 backdrop-blur-sm animate-fadeIn"
                         onClick={() => setBrandToDeleteId(null)}
                     />
-                    <div className="relative bg-white p-8 rounded-none shadow-2xl max-w-md w-full animate-fadeIn border border-gray-100">
+                    <div className="relative bg-white p-6 md:p-8 rounded-none shadow-2xl max-w-md w-full animate-fadeIn border border-gray-100 mx-4 md:mx-0">
                         <div className="w-16 h-16 bg-red-50 text-red-500 rounded-none flex items-center justify-center mb-6 mx-auto">
                             <Trash2 size={32} />
                         </div>
