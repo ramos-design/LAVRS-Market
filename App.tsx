@@ -53,6 +53,8 @@ const BannerManager = lazyWithRetry(() => import('./components/BannerManager'));
 const CategoryManager = lazyWithRetry(() => import('./components/CategoryManager'));
 const ToastProvider = lazyWithRetry(() => import('./components/ToastProvider'));
 const ResetPassword = lazyWithRetry(() => import('./components/ResetPassword'));
+const PrivacyPolicy = lazyWithRetry(() => import('./components/PrivacyPolicy'));
+const TermsOfService = lazyWithRetry(() => import('./components/TermsOfService'));
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -722,6 +724,14 @@ const App: React.FC = () => {
 
           {currentScreen === 'CONTACT' && (
             <Contact />
+          )}
+
+          {currentScreen === 'PRIVACY' && (
+            <PrivacyPolicy onBack={() => setCurrentScreen('DASHBOARD')} />
+          )}
+
+          {(currentScreen === 'TERMS' || currentScreen === 'STORNO') && (
+            <TermsOfService onBack={() => setCurrentScreen('DASHBOARD')} scrollToStorno={currentScreen === 'STORNO'} />
           )}
 
           {currentScreen === 'PROFILE' && (

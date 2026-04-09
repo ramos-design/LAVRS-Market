@@ -109,10 +109,10 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
                         </button>
 
                         <div className="grid grid-cols-1 gap-1">
-                            <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60">Zpracování osobních údajů</a>
-                            <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60">Obchodní podmínky</a>
-                            <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60">Storno podmínky</a>
-                            <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60">Kontaktujte nás</a>
+                            <button onClick={() => handleNavigate('PRIVACY')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</button>
+                            <button onClick={() => handleNavigate('TERMS')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</button>
+                            <button onClick={() => handleNavigate('STORNO')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Storno podmínky</button>
+                            <button onClick={() => handleNavigate('CONTACT')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Kontaktujte nás</button>
                         </div>
                     </div>
                 </div>

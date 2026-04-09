@@ -11,6 +11,7 @@ import {
     DbEventPlan, DbZone, DbStand, DbBanner,
     DbEmailTemplate, DbEmailAttachment, DbInvoice, DbCompanySettings,
 } from '../lib/database';
+import { supabase } from '../lib/supabase';
 import { dbInvoiceToApp, dbCompanySettingsToApp } from '../lib/mappers';
 import { Invoice, CompanySettings } from '../types';
 import { queryEmitter } from '../lib/queryEmitter';
@@ -232,11 +233,36 @@ export function useApplications(options: UserScopedQueryOptions = {}) {
         createApplication: async (app: Omit<DbApplication, 'created_at'>): Promise<DbApplication> => {
             const created = await applicationsDb.create(app);
             queryEmitter.invalidatePattern(/^applications:/);
+
+            // Fire-and-forget: trigger confirmation email via edge function
+            supabase.functions.invoke('send-email', {
+                body: {
+                    type: 'INSERT',
+                    table: 'applications',
+                    record: created,
+                },
+            }).catch((err) => console.warn('send-email edge function failed:', err));
+
             return created;
         },
         updateStatus: async (id: string, status: string, paymentDeadline?: string, approvedAt?: string) => {
+            // Capture old record before update (for email trigger)
+            const oldRecord = (query.data || []).find((a: DbApplication) => a.id === id);
             const result = await applicationsDb.updateStatus(id, status, paymentDeadline, approvedAt);
             queryEmitter.invalidatePattern(/^applications:/);
+
+            // Fire-and-forget: trigger automated email via edge function
+            if (oldRecord) {
+                supabase.functions.invoke('send-email', {
+                    body: {
+                        type: 'UPDATE',
+                        table: 'applications',
+                        record: result,
+                        old_record: oldRecord,
+                    },
+                }).catch((err) => console.warn('send-email edge function failed:', err));
+            }
+
             return result;
         },
         updateApplication: async (id: string, updates: Partial<DbApplication>) => {

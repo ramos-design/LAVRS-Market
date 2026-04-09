@@ -103,15 +103,10 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignO
       <div className="pt-8 border-t border-white/10">
 
         <div className="grid grid-cols-1 gap-2">
-          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</a>
-          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</a>
-          <a href="#" className="text-[10px] uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Storno podmínky</a>
-          <button 
-            onClick={() => onNavigate('CONTACT')}
-            className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors"
-          >
-            Kontaktujte nás
-          </button>
+          <button onClick={() => onNavigate('PRIVACY')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</button>
+          <button onClick={() => onNavigate('TERMS')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</button>
+          <button onClick={() => onNavigate('STORNO')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Storno podmínky</button>
+          <button onClick={() => onNavigate('CONTACT')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Kontaktujte nás</button>
         </div>
       </div>
     </aside>
