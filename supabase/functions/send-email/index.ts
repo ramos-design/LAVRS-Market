@@ -35,7 +35,18 @@ const getHtmlTemplate = (title: string, bodyText: string) => {
     + '</td></tr></table></td></tr></table></body></html>';
 };
 
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 serve(async (req) => {
+    // Handle CORS preflight
+    if (req.method === "OPTIONS") {
+        return new Response("ok", { headers: corsHeaders });
+    }
+
     try {
         const payload = await req.json();
         const type = (payload.type || "").toUpperCase();
@@ -46,7 +57,7 @@ serve(async (req) => {
         console.log(`--- Webhook Triggered: ${table} | ${type} ---`);
 
         if (table !== 'applications') {
-            return new Response(JSON.stringify({ message: "Ignored (not applications table)" }), { status: 200 });
+            return new Response(JSON.stringify({ message: "Ignored (not applications table)" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         let templateId = '';
@@ -72,7 +83,7 @@ serve(async (req) => {
 
         if (!templateId) {
             console.log("No status change requiring email.");
-            return new Response(JSON.stringify({ message: "No action needed" }), { status: 200 });
+            return new Response(JSON.stringify({ message: "No action needed" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -94,7 +105,7 @@ serve(async (req) => {
             .single();
 
         if (tmplError || !template) throw new Error(`Template '${templateId}' not found.`);
-        if (!template.enabled) return new Response(JSON.stringify({ message: "Template disabled" }), { status: 200 });
+        if (!template.enabled) return new Response(JSON.stringify({ message: "Template disabled" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
         // 3. Fetch Attachments
         const { data: attachmentsData } = await supabase
@@ -218,10 +229,10 @@ serve(async (req) => {
         await client.close();
         console.log("Email sent successfully!");
 
-        return new Response(JSON.stringify({ message: "Done" }), { status: 200 });
+        return new Response(JSON.stringify({ message: "Done" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     } catch (err: any) {
         console.error("Critical error:", err.message);
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 });
