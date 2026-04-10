@@ -696,8 +696,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                                 const yyyy = evDate.getFullYear();
 
                                 const { supabase } = await import('../lib/supabase');
-                                const { error: fnError } = await supabase.functions.invoke('send-invoice-notification', {
-                                  body: {
+                                const invoiceBody = {
                                     brandName: activeApp.brandName || '',
                                     contactPerson: activeApp.contactPerson || '',
                                     eventName: activeEvent.title || '',
@@ -707,13 +706,29 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                                     totalAmountCzk: (invoiceResult.totalAmountWithDph / 100).toLocaleString('cs-CZ'),
                                     pdfBase64,
                                     xmlString: invoiceResult.xmlString,
-                                    recipientEmail: 'info@lavrs.cz',
-                                  },
+                                };
+
+                                // 1. Send to admin (info@lavrs.cz)
+                                const { error: fnError } = await supabase.functions.invoke('send-invoice-notification', {
+                                  body: { ...invoiceBody, recipientEmail: 'info@lavrs.cz', recipientType: 'admin' },
                                 });
                                 if (fnError) {
-                                  console.error('[Invoice email] Edge Function error:', fnError);
+                                  console.error('[Invoice email] Admin notification error:', fnError);
                                 } else {
                                   console.log('[Invoice email] Notification sent to info@lavrs.cz');
+                                }
+
+                                // 2. Send invoice to exhibitor
+                                const exhibitorEmail = billingEmail || activeApp.email || '';
+                                if (exhibitorEmail) {
+                                  const { error: exError } = await supabase.functions.invoke('send-invoice-notification', {
+                                    body: { ...invoiceBody, recipientEmail: exhibitorEmail, recipientType: 'exhibitor' },
+                                  });
+                                  if (exError) {
+                                    console.error('[Invoice email] Exhibitor notification error:', exError);
+                                  } else {
+                                    console.log('[Invoice email] Invoice sent to exhibitor:', exhibitorEmail);
+                                  }
                                 }
                               } catch (emailErr) {
                                 console.error('[Invoice email] Failed (non-blocking):', emailErr);
