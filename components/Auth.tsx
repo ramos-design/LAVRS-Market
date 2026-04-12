@@ -21,8 +21,22 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
     const [resetLoading, setResetLoading] = useState(false);
     const [resetSuccess, setResetSuccess] = useState(false);
 
+    const passwordChecks = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+    };
+    const isPasswordValid = Object.values(passwordChecks).every(Boolean);
+
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!isLogin && !isPasswordValid) {
+            setError('Heslo nesplňuje požadavky na bezpečnost.');
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -298,6 +312,21 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                         </button>
                                     </div>
+                                    {!isLogin && password.length > 0 && (
+                                        <div className="mt-2 space-y-1 px-1">
+                                            {[
+                                                { key: 'length' as const, label: 'Minimálně 8 znaků' },
+                                                { key: 'uppercase' as const, label: 'Velké písmeno (A-Z)' },
+                                                { key: 'lowercase' as const, label: 'Malé písmeno (a-z)' },
+                                                { key: 'number' as const, label: 'Číslice (0-9)' },
+                                            ].map(({ key, label }) => (
+                                                <div key={key} className={`text-[10px] font-bold flex items-center gap-2 transition-colors ${passwordChecks[key] ? 'text-green-400' : 'text-gray-500'}`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full transition-colors ${passwordChecks[key] ? 'bg-green-400' : 'bg-gray-600'}`} />
+                                                    {label}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {isLogin && (
