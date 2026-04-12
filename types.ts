@@ -158,6 +158,7 @@ export interface BrandProfile {
   dic?: string;
   billingAddress?: string;
   billingEmail?: string;
+  deletionRequestedAt?: string;
 }
 
 export interface Banner {

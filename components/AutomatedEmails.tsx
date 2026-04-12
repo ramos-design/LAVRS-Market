@@ -15,6 +15,7 @@ const TEMPLATE_VARIABLES = [
     { key: '{{payment_deadline}}', label: 'Splatnost faktury', example: '20. března 2026' },
     { key: '{{invoice_amount}}', label: 'Částka k úhradě', example: '3 500 Kč' },
     { key: '{{invoice_number}}', label: 'Číslo faktury', example: 'FV-2026-0042' },
+    { key: '{{zone_type}}', label: 'Kategorie spotu', example: 'Vintage & Second-hand' },
 ];
 
 /* ─── Default email bodies ───────────────────────────────────── */

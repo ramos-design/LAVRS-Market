@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Search } from 'lucide-react';
+import { Heart, Search, AlertTriangle } from 'lucide-react';
 import { AppStatus, ZoneCategory, Application, BrandProfile, MarketEvent } from '../types';
 
 interface BrandsListProps {
@@ -73,6 +73,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
       dic?: string;
       billingAddress?: string;
       billingEmail?: string;
+      deletionRequestedAt?: string;
     }>();
 
     const isApprovedStatus = (status?: string) => {
@@ -131,6 +132,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
           dic: brand.dic,
           billingAddress: brand.billingAddress,
           billingEmail: brand.billingEmail,
+          deletionRequestedAt: brand.deletionRequestedAt,
         });
       } else {
         const existing = byName.get(key)!;
@@ -142,6 +144,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
           dic: existing.dic || brand.dic,
           billingAddress: existing.billingAddress || brand.billingAddress,
           billingEmail: existing.billingEmail || brand.billingEmail,
+          deletionRequestedAt: existing.deletionRequestedAt || brand.deletionRequestedAt,
         });
       }
     });
@@ -245,7 +248,14 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                         <Heart size={14} className="text-lavrs-red fill-lavrs-red flex-shrink-0" />
                       )}
                     </div>
-                    <div className="text-[11px] text-gray-400 truncate">{row.instagram || row.website || '—'}</div>
+                    {row.deletionRequestedAt ? (
+                      <div className="flex items-center gap-1.5 mt-1 px-2 py-1 bg-amber-50 border border-amber-200 w-fit">
+                        <AlertTriangle size={12} className="text-amber-500 flex-shrink-0" />
+                        <span className="text-[11px] font-semibold text-amber-600">Vystavovatel žádá o smazání</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-gray-400 truncate">{row.instagram || row.website || '—'}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 max-w-0">
                     <div className="font-semibold text-gray-700 truncate">{row.contactPerson || '—'}</div>

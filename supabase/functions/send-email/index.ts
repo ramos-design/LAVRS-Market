@@ -194,6 +194,7 @@ Deno.serve(async (req) => {
                 ? (invoiceData.amount_czk / 100).toLocaleString('cs-CZ') + ' K\u010d'
                 : "Dle faktury",
             '{{invoice_number}}': invoiceData?.invoice_number || app.id.split('-').pop()?.toUpperCase() || "",
+            '{{zone_type}}': app.zone_category || "",
         };
 
         Object.entries(vars).forEach(([k, v]) => {

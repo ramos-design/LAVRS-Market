@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock, Pencil } from 'lucide-react';
+import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock, Pencil, Clock } from 'lucide-react';
 import { BrandProfile } from '../types';
 import { useBrandProfiles } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
@@ -16,7 +16,8 @@ const BrandEditForm: React.FC<{
     cancelEditing: () => void;
     handleSave: () => void;
     setBrandToDeleteId: (id: string) => void;
-}> = ({ editForm, updateFormField, cancelEditing, handleSave, setBrandToDeleteId }) => (
+    deletionRequested?: boolean;
+}> = ({ editForm, updateFormField, cancelEditing, handleSave, setBrandToDeleteId, deletionRequested }) => (
     <div className="p-5 md:p-8 space-y-8 md:space-y-10 animate-fadeIn">
         {/* Part 1: BRAND INFO */}
         <div className="space-y-6">
@@ -175,19 +176,26 @@ const BrandEditForm: React.FC<{
             >
                 <Check size={18} /> Uložit úpravy
             </button>
-            <button
-                onClick={() => setBrandToDeleteId(editForm.id)}
-                className="sm:ml-auto p-3 md:p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-none transition-all order-3 self-end"
-                title="Smazat značku"
-            >
-                <Trash2 size={20} />
-            </button>
+            {deletionRequested ? (
+                <div className="sm:ml-auto flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-600 text-xs font-semibold order-3 self-end">
+                    <Clock size={16} />
+                    Čeká na smazání
+                </div>
+            ) : (
+                <button
+                    onClick={() => setBrandToDeleteId(editForm.id)}
+                    className="sm:ml-auto p-3 md:p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-none transition-all order-3 self-end"
+                    title="Požádat o smazání značky"
+                >
+                    <Trash2 size={20} />
+                </button>
+            )}
         </div>
     </div>
 );
 
 const ProfileInner: React.FC<ProfileProps> = () => {
-    const { profiles: dbProfiles, createProfile, updateProfile, deleteProfile, loading } = useBrandProfiles();
+    const { profiles: dbProfiles, createProfile, updateProfile, requestDeletion, loading } = useBrandProfiles();
     const brands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
 
     const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
@@ -261,9 +269,9 @@ const ProfileInner: React.FC<ProfileProps> = () => {
         }
     };
 
-    const handleDelete = async () => {
+    const handleRequestDeletion = async () => {
         if (brandToDeleteId) {
-            await deleteProfile(brandToDeleteId);
+            await requestDeletion(brandToDeleteId);
             setBrandToDeleteId(null);
             if (editingBrandId === brandToDeleteId) {
                 cancelEditing();
@@ -394,10 +402,17 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                     </div>
                                     <div className="min-w-0">
                                         <h3 className="text-lg md:text-2xl font-bold text-lavrs-dark truncate">{brand.brandName}</h3>
-                                        <div className="hidden md:flex gap-4 text-xs text-gray-400 mt-1">
-                                            {brand.instagram && <span className="flex items-center gap-1"><Instagram size={14} /> {brand.instagram}</span>}
-                                            {brand.website && <span className="flex items-center gap-1"><Globe size={14} /> {brand.website}</span>}
-                                        </div>
+                                        {brand.deletionRequestedAt ? (
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                                <Clock size={14} className="text-amber-500" />
+                                                <span className="text-xs font-semibold text-amber-600">Zažádáno o smazání značky</span>
+                                            </div>
+                                        ) : (
+                                            <div className="hidden md:flex gap-4 text-xs text-gray-400 mt-1">
+                                                {brand.instagram && <span className="flex items-center gap-1"><Instagram size={14} /> {brand.instagram}</span>}
+                                                {brand.website && <span className="flex items-center gap-1"><Globe size={14} /> {brand.website}</span>}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -420,6 +435,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                     cancelEditing={cancelEditing}
                                     handleSave={handleSave}
                                     setBrandToDeleteId={setBrandToDeleteId}
+                                    deletionRequested={!!brand.deletionRequestedAt}
                                 />
                             )}
                         </div>
@@ -553,7 +569,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                 )}
             </section>
 
-            {/* Delete Confirmation Modal */}
+            {/* Deletion Request Modal */}
             {brandToDeleteId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div
@@ -561,25 +577,25 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                         onClick={() => setBrandToDeleteId(null)}
                     />
                     <div className="relative bg-white p-6 md:p-8 rounded-none shadow-2xl max-w-md w-full animate-fadeIn border border-gray-100 mx-4 md:mx-0">
-                        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-none flex items-center justify-center mb-6 mx-auto">
-                            <Trash2 size={32} />
+                        <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-none flex items-center justify-center mb-6 mx-auto">
+                            <Info size={32} />
                         </div>
-                        <h3 className="text-2xl font-bold text-lavrs-dark text-center mb-2">Opravdu smazat značku?</h3>
+                        <h3 className="text-2xl font-bold text-lavrs-dark text-center mb-2">Požádat o smazání značky?</h3>
                         <p className="text-gray-500 text-center text-sm mb-8 leading-relaxed">
-                            Tato akce je nevratná. Dojde k odstranění uložných údajů o značce <strong>{brands.find(b => b.id === brandToDeleteId)?.brandName}</strong> z vašeho profilu.
+                            Chcete požádat administrátora o smazání vaší značky <strong>{brands.find(b => b.id === brandToDeleteId)?.brandName}</strong>?
                         </p>
                         <div className="flex gap-4">
                             <button
                                 onClick={() => setBrandToDeleteId(null)}
                                 className="flex-1 px-6 py-4 rounded-none font-bold text-gray-500 hover:bg-gray-50 transition-all border-2 border-transparent"
                             >
-                                Zrušit
+                                Ne
                             </button>
                             <button
-                                onClick={handleDelete}
-                                className="flex-1 px-6 py-4 rounded-none font-bold bg-red-500 text-white hover:bg-red-600 transition-all shadow-lg shadow-red-200"
+                                onClick={handleRequestDeletion}
+                                className="flex-1 px-6 py-4 rounded-none font-bold bg-lavrs-red text-white hover:bg-lavrs-dark transition-all shadow-lg"
                             >
-                                Ano, smazat
+                                Ano
                             </button>
                         </div>
                     </div>

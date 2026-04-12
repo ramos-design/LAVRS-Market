@@ -771,3 +771,8 @@ Doufáme, že se Vám event líbil a byl pro Vás přínosný.
 
 S pozdravem,
 Tým LAVRS market' WHERE id = 'post-event';
+
+-- ═══════════════════════════════════════════════════════════
+-- Brand deletion request
+-- ═══════════════════════════════════════════════════════════
+ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ DEFAULT NULL;

@@ -81,6 +81,7 @@ export interface DbBrandProfile {
     dic: string | null;
     billing_address: string | null;
     billing_email: string | null;
+    deletion_requested_at: string | null;
     created_at?: string;
 }
 
@@ -376,6 +377,14 @@ export const brandProfilesDb = {
 
     async delete(id: string): Promise<void> {
         const { error } = await supabase.from('brand_profiles').delete().eq('id', id);
+        if (error) throw error;
+    },
+
+    async requestDeletion(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('brand_profiles')
+            .update({ deletion_requested_at: new Date().toISOString() })
+            .eq('id', id);
         if (error) throw error;
     },
 };

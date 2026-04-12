@@ -473,11 +473,8 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-lavrs-dark/80 via-transparent to-transparent flex items-end">
                       <div className="p-6 md:p-12 text-white">
-                        <span className="flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mb-2 md:mb-4 text-lavrs-pink">
-                          <Sparkles size={14} /> Připravujeme pro vás
-                        </span>
                         <h1 className="text-2xl md:text-5xl font-bold mb-1 md:mb-2">{event.title}</h1>
-                        <p className="text-sm md:text-lg opacity-90 italic">Unikátní setkání lokálních tvůrců a milovníků cirkulární módy.</p>
+                        {event.subtitle && <p className="text-sm md:text-lg opacity-90 italic">{event.subtitle}</p>}
                       </div>
                     </div>
                   </div>

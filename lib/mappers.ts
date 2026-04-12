@@ -172,6 +172,7 @@ export function dbBrandProfileToApp(p: DbBrandProfile): BrandProfile {
         dic: p.dic || undefined,
         billingAddress: p.billing_address || undefined,
         billingEmail: p.billing_email || undefined,
+        deletionRequestedAt: p.deletion_requested_at || undefined,
     };
 }
 
@@ -192,6 +193,7 @@ export function appBrandProfileToDb(p: BrandProfile, userId?: string | null): Om
         dic: p.dic || null,
         billing_address: p.billingAddress || null,
         billing_email: p.billingEmail || null,
+        deletion_requested_at: p.deletionRequestedAt || null,
     };
 }
 

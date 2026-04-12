@@ -210,6 +210,10 @@ export function useBrandProfiles(options: UserScopedQueryOptions = {}) {
             await brandProfilesDb.delete(id);
             queryEmitter.invalidatePattern(/^brand_profiles:/);
         },
+        requestDeletion: async (id: string) => {
+            await brandProfilesDb.requestDeletion(id);
+            queryEmitter.invalidatePattern(/^brand_profiles:/);
+        },
     };
 }
 
