@@ -25,7 +25,7 @@ děkujeme za Vaši přihlášku na {{event_name}} ({{event_date}}) za značku {{
 
 Vaše přihláška byla úspěšně přijata a nyní čeká na posouzení naším kurátorským týmem.
 
-O výsledku Vás budeme informovat emailem do 5 pracovních dnů.
+O výsledku Vás budeme informovat emailem do 7 pracovních dnů.
 
 S pozdravem,
 Tým LAVRS market`,

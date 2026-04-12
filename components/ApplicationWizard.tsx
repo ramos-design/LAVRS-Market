@@ -848,7 +848,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                 <div className="bg-lavrs-beige p-6 rounded-none flex gap-4 border border-gray-100">
                   <ShieldCheck className="text-lavrs-red shrink-0" size={24} />
                   <p className="text-[10px] text-gray-500 leading-relaxed font-medium">
-                    Vaše přihláška bude nyní odeslána k posouzení našim kurátorům. O výsledku vás budeme informovat e-mailem standardně do 5 pracovních dní.
+                    Vaše přihláška bude nyní odeslána k posouzení našim kurátorům. O výsledku vás budeme informovat e-mailem standardně do 7 pracovních dní.
                   </p>
                 </div>
               </div>

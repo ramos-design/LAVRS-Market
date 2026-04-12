@@ -386,7 +386,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                     </div>
                                     <div className="min-w-0">
                                         <h3 className="text-lg md:text-2xl font-bold text-lavrs-dark truncate">{brand.brandName}</h3>
-                                        <div className="flex gap-4 text-xs text-gray-400 mt-1">
+                                        <div className="hidden md:flex gap-4 text-xs text-gray-400 mt-1">
                                             {brand.instagram && <span className="flex items-center gap-1"><Instagram size={14} /> {brand.instagram}</span>}
                                             {brand.website && <span className="flex items-center gap-1"><Globe size={14} /> {brand.website}</span>}
                                         </div>
