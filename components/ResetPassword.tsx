@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import HeartLoader from './HeartLoader';
+import { translateAuthError } from '../lib/authErrors';
 
 interface ResetPasswordProps {
     onSuccess?: () => void;
@@ -105,7 +106,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onCancel }) =>
             }, 2000);
         } catch (err: any) {
             console.error('Reset error:', err);
-            setError(err.message || 'Nepodařilo se změnit heslo.');
+            setError(translateAuthError(err.message, 'Nepodařilo se změnit heslo.'));
         } finally {
             setLoading(false);
         }

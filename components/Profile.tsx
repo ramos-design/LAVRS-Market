@@ -3,6 +3,7 @@ import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe
 import { BrandProfile } from '../types';
 import { useBrandProfiles } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
+import { translateAuthError } from '../lib/authErrors';
 import { dbBrandProfileToApp, appBrandProfileToDb } from '../lib/mappers';
 import { supabase } from '../lib/supabase';
 
@@ -328,7 +329,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                 setPasswordMessage(null);
             }, 2000);
         } catch (e: any) {
-            setPasswordMessage({ type: 'error', text: e.message || 'Nepodařilo se změnit heslo.' });
+            setPasswordMessage({ type: 'error', text: translateAuthError(e.message, 'Nepodařilo se změnit heslo.') });
         } finally {
             setPasswordLoading(false);
         }

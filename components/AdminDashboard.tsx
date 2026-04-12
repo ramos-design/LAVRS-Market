@@ -158,9 +158,11 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
       if (normalized !== AppStatus.PAID) return sum;
       const submittedAtMs = app.submittedAt ? new Date(app.submittedAt).getTime() : 0;
       if (submittedAtMs && submittedAtMs < sinceMs) return sum;
-      const prices = eventPrices[app.eventId] || {};
-      const priceStr = app.zoneCategory ? prices[app.zoneCategory] : undefined;
-      return sum + parsePrice(priceStr);
+      // Use customPrice if set by curator, otherwise look up from category pricing
+      const price = app.customPrice != null && app.customPrice > 0
+        ? app.customPrice
+        : parsePrice(app.zoneCategory ? (eventPrices[app.eventId] || {})[app.zoneCategory] : undefined);
+      return sum + price;
     }, 0);
   }, [applications, eventPrices]);
 

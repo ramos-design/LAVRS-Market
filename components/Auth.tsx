@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import HeartLoader from './HeartLoader';
+import { translateAuthError } from '../lib/authErrors';
 
 interface AuthProps {
     onSuccess?: () => void;
@@ -78,7 +79,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
             }
         } catch (err: any) {
             console.error('Auth error detail:', err);
-            setError(err.message || 'Akce se nezdařila. Zkontrolujte připojení k internetu.');
+            setError(translateAuthError(err.message, 'Akce se nezdařila. Zkontrolujte připojení k internetu.'));
         } finally {
             clearTimeout(timeout);
             setLoading(false);
@@ -101,7 +102,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
             setResetEmail('');
         } catch (err: any) {
             console.error('Reset password error:', err);
-            setError(err.message || 'Nepodařilo se odeslat odkaz na reset hesla.');
+            setError(translateAuthError(err.message, 'Nepodařilo se odeslat odkaz na reset hesla.'));
         } finally {
             setResetLoading(false);
         }

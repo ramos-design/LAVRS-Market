@@ -168,7 +168,7 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                 <AlertCircle className="text-blue-500 shrink-0" size={24} />
                 <div className="text-sm">
                     <p className="text-blue-900 font-bold mb-1">Potřebujete změnit údaje v přihlášce?</p>
-                    <p className="text-blue-700 font-medium">Změny v již odeslaných přihláškách řešíme individuálně. Napište nám na <span className="underline cursor-pointer">hello@lavrs.cz</span>.</p>
+                    <p className="text-blue-700 font-medium">Změny v již odeslaných přihláškách řešíme individuálně. Napište nám na <span className="underline cursor-pointer">info@lavrs.cz</span>.</p>
                 </div>
             </div>
         </div>
