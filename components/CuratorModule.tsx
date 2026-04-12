@@ -176,7 +176,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
       {/* Header with Stats */}
       <header className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark mb-2">Aktivní přihlášky</h2>
+          <h2 className="text-4xl font-extrabold tracking-tight text-lavrs-dark mb-2">Výběr přihlášek</h2>
           <p className="text-sm text-gray-500">Správa a posuzování přihlášek vystavovatelů</p>
         </div>
         <div className="flex gap-4">

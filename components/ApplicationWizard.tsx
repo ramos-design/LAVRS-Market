@@ -498,8 +498,13 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     <section className="space-y-4 md:space-y-6 mb-8 md:mb-16">
                       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">O tomto eventu</h3>
                       <div className="prose prose-sm text-gray-600 leading-relaxed text-base md:text-lg italic">
-                        <p>LAVRS market není jen prodejní akce. Je to komunita. Pro nadcházející edici v prostorách Vnitroblocku jsme připravili kurátorovaný výběr těch nejlepších lokálních značek, které kladou důraz na udržitelnost a kvalitu zpracování.</p>
-                        <p className="mt-4">Čeká vás doprovodný program, workshopy zaměřené na upcyklaci a samozřejmě ta nejlepší atmosféra, kterou jinde nezažijete. Buďte součástí změny, kterou chcete vidět v módním průmyslu.</p>
+                        {event.description ? (
+                          event.description.split('\n').filter(p => p.trim()).map((paragraph, i) => (
+                            <p key={i} className={i > 0 ? 'mt-4' : ''}>{paragraph}</p>
+                          ))
+                        ) : (
+                          <p>Popis eventu nebyl zatím vyplněn.</p>
+                        )}
                       </div>
                     </section>
                   </div>
