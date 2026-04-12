@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
 
 const smtpHost = Deno.env.get("SMTP_HOST")!;
@@ -57,7 +56,7 @@ function buildEmailHtml(title: string, brandName: string, contactPerson: string,
     + '</table></td></tr></table></body></html>';
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
     if (req.method === "OPTIONS") {
         return new Response("ok", {
             headers: {
