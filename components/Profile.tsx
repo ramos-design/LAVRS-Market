@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock } from 'lucide-react';
+import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock, Pencil } from 'lucide-react';
 import { BrandProfile } from '../types';
 import { useBrandProfiles } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
@@ -288,11 +288,19 @@ const ProfileInner: React.FC<ProfileProps> = () => {
     const [passwordLoading, setPasswordLoading] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    const passwordRequirements = {
+        minLength: newPassword.length >= 8,
+        hasUppercase: /[A-Z]/.test(newPassword),
+        hasLowercase: /[a-z]/.test(newPassword),
+        hasNumber: /[0-9]/.test(newPassword),
+    };
+    const allRequirementsMet = Object.values(passwordRequirements).every(Boolean);
+
     const handlePasswordChange = async () => {
         setPasswordMessage(null);
 
-        if (newPassword.length < 6) {
-            setPasswordMessage({ type: 'error', text: 'Heslo musí mít alespoň 6 znaků.' });
+        if (!allRequirementsMet) {
+            setPasswordMessage({ type: 'error', text: 'Heslo musí mít alespoň 8 znaků, velké a malé písmeno a číslici.' });
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -396,9 +404,10 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                 {editingBrandId !== brand.id && (
                                     <button
                                         onClick={() => startEditing(brand)}
-                                        className="bg-white border-2 border-gray-100 text-gray-600 px-6 py-3 rounded-none text-xs font-bold hover:border-lavrs-red hover:text-lavrs-red transition-all"
+                                        className="bg-white border-2 border-gray-100 text-gray-600 rounded-none hover:border-lavrs-red hover:text-lavrs-red transition-all px-3 py-3 md:px-6 md:py-3"
                                     >
-                                        Upravit vše
+                                        <Pencil size={18} className="md:hidden" />
+                                        <span className="hidden md:inline text-xs font-bold">Upravit vše</span>
                                     </button>
                                 )}
                             </div>
@@ -467,7 +476,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                         type={showNewPassword ? 'text' : 'password'}
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
-                                        placeholder="Minimálně 6 znaků"
+                                        placeholder="Min. 8 znaků, velké/malé písmeno, číslice"
                                         className="w-full bg-gray-50 px-6 py-4 pr-14 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
                                     />
                                     <button
@@ -478,6 +487,22 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                         {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
                                 </div>
+                                {newPassword && (
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 ml-4 mt-1">
+                                        <span className={`text-[11px] font-medium ${passwordRequirements.minLength ? 'text-green-500' : 'text-gray-400'}`}>
+                                            {passwordRequirements.minLength ? '✓' : '○'} 8+ znaků
+                                        </span>
+                                        <span className={`text-[11px] font-medium ${passwordRequirements.hasUppercase ? 'text-green-500' : 'text-gray-400'}`}>
+                                            {passwordRequirements.hasUppercase ? '✓' : '○'} Velké písmeno
+                                        </span>
+                                        <span className={`text-[11px] font-medium ${passwordRequirements.hasLowercase ? 'text-green-500' : 'text-gray-400'}`}>
+                                            {passwordRequirements.hasLowercase ? '✓' : '○'} Malé písmeno
+                                        </span>
+                                        <span className={`text-[11px] font-medium ${passwordRequirements.hasNumber ? 'text-green-500' : 'text-gray-400'}`}>
+                                            {passwordRequirements.hasNumber ? '✓' : '○'} Číslice
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Potvrzení hesla</label>
@@ -518,7 +543,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                             </button>
                             <button
                                 onClick={handlePasswordChange}
-                                disabled={passwordLoading || !newPassword || !confirmPassword}
+                                disabled={passwordLoading || !newPassword || !confirmPassword || !allRequirementsMet}
                                 className="bg-lavrs-red text-white px-8 py-3 rounded-none font-bold hover:bg-lavrs-dark transition-all shadow-lg flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {passwordLoading ? 'Ukládám...' : <><Check size={16} /> Uložit nové heslo</>}
