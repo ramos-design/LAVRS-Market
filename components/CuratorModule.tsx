@@ -1,12 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart } from 'lucide-react';
-import { Application, AppStatus, ZoneCategory, MarketEvent } from '../types';
+import { Application, AppStatus, ZoneCategory, MarketEvent, BrandProfile } from '../types';
 import { DbApplication } from '../lib/database';
 
 interface CuratorModuleProps {
   onBack: () => void;
   events: MarketEvent[];
   applications: Application[];
+  brandProfiles: BrandProfile[];
   planPrices?: Array<{ event_id: string; prices: Record<string, string> }>;
   onUpdateStatus: (id: string, status: AppStatus) => void;
   onUpdateApplication: (id: string, updates: Partial<DbApplication>) => Promise<void>;
@@ -15,7 +16,7 @@ interface CuratorModuleProps {
   onPermanentDeleteAllTrash: () => Promise<void>;
 }
 
-const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, planPrices, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
+const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, brandProfiles, planPrices, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
 
   // Create a map for O(1) event lookups instead of O(n) find()
@@ -24,6 +25,17 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
     events.forEach(e => map.set(e.id, e));
     return map;
   }, [events]);
+
+  // Set of brand names (lowercase) that have a pending deletion request
+  const deletionRequestedBrands = React.useMemo(() => {
+    const set = new Set<string>();
+    brandProfiles.forEach(bp => {
+      if (bp.deletionRequestedAt) set.add(bp.brandName.toLowerCase());
+    });
+    return set;
+  }, [brandProfiles]);
+
+  const isBrandDeletionRequested = (brandName: string) => deletionRequestedBrands.has(brandName.toLowerCase());
 
   const deletedApplications = applications.filter(a => normalizeStatus(a.status) === AppStatus.DELETED);
   // Filter out applications that are already paid (those move to the event manager)
@@ -129,7 +141,11 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
   const getZoneCategoryLabel = (category?: ZoneCategory) => category || 'Neuvedeno';
 
-  const getStatusBadge = (status: AppStatus) => {
+  const getStatusBadge = (status: AppStatus, brandName?: string) => {
+    // If the brand has a pending deletion request, override badge
+    if (brandName && isBrandDeletionRequested(brandName) && normalizeStatus(status) !== AppStatus.DELETED) {
+      return { bg: 'bg-amber-100 border border-amber-300', text: 'text-amber-700', label: 'Žádost o smazání' };
+    }
     switch (normalizeStatus(status)) {
       case AppStatus.DELETED:
         return { bg: 'bg-gray-200', text: 'text-gray-600', label: 'V koši' };
@@ -280,7 +296,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
               </div>
             ) : (
               displayedApplications.map(app => {
-                const statusInfo = getStatusBadge(app.status);
+                const statusInfo = getStatusBadge(app.status, app.brandName);
                 const event = getEventDetails(app.eventId);
                 return (
                   <button
@@ -354,7 +370,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     </div>
                   </div>
                   {(() => {
-                    const statusBadge = getStatusBadge(selectedApp.status);
+                    const statusBadge = getStatusBadge(selectedApp.status, selectedApp.brandName);
                     return (
                       <div className={`px-4 py-2 rounded-none text-xs font-bold uppercase ${statusBadge.bg} ${statusBadge.text}`}>
                         {statusBadge.label}

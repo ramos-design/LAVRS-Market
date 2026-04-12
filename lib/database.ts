@@ -450,6 +450,17 @@ export const applicationsDb = {
         const { error } = await supabase.from('applications').delete().eq('id', id);
         if (error) throw error;
     },
+
+    async softDeleteByBrandProfileId(brandProfileId: string): Promise<number> {
+        const { data, error } = await supabase
+            .from('applications')
+            .update({ status: 'DELETED' })
+            .eq('brand_profile_id', brandProfileId)
+            .neq('status', 'DELETED')
+            .select('id');
+        if (error) throw error;
+        return data?.length || 0;
+    },
 };
 
 /* ═══════════════════════════════════════════════════════════

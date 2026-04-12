@@ -20,6 +20,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
     const [resetEmail, setResetEmail] = useState('');
     const [resetLoading, setResetLoading] = useState(false);
     const [resetSuccess, setResetSuccess] = useState(false);
+    const [sentToEmail, setSentToEmail] = useState('');
 
     const passwordChecks = {
         length: password.length >= 8,
@@ -95,6 +96,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
             });
 
             if (error) throw error;
+            setSentToEmail(resetEmail);
             setResetSuccess(true);
             setResetEmail('');
         } catch (err: any) {
@@ -116,6 +118,13 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                 {showResetPassword && (
                     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
                         <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 md:p-10 shadow-3xl w-full max-w-md">
+                            <div className="text-center mb-6">
+                                <img
+                                    src="https://wllstifewvjtdrzfgbxj.supabase.co/storage/v1/object/public/media/LAVRSmarket_logo_white.svg"
+                                    alt="LAVRS market"
+                                    className="h-12 mx-auto"
+                                />
+                            </div>
                             <h2 className="text-2xl font-black text-white mb-8">Obnovit heslo</h2>
 
                             {resetSuccess ? (
@@ -129,7 +138,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
 
                                     <div className="space-y-3">
                                         <p className="text-gray-300 font-medium">
-                                            Odkaz na obnovení hesla jsme odeslali na <span className="text-white font-bold">{resetEmail}</span>.
+                                            Odkaz na obnovení hesla jsme odeslali na e-mail <span className="text-white font-bold">{sentToEmail}</span>.
                                         </p>
                                         <p className="text-gray-400 text-sm">
                                             Zkontrolujte svou schránku a postupujte podle pokynů v e-mailu.
@@ -140,6 +149,7 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                                         onClick={() => {
                                             setShowResetPassword(false);
                                             setResetSuccess(false);
+                                            setSentToEmail('');
                                             setIsLogin(true);
                                         }}
                                         className="w-full bg-lavrs-red text-white py-4 rounded-none font-black uppercase tracking-widest text-xs hover:bg-lavrs-dark transition-all"

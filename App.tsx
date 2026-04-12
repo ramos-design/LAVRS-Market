@@ -158,7 +158,7 @@ const App: React.FC = () => {
   const { events: dbEvents, loading: eventsLoading, deleteEvent, createEvent } = useEvents(canFetchUserData);
   const {
     applications: dbApplications, loading: appsLoading,
-    createApplication, updateStatus: updateAppStatus, updateApplication, deleteApplication, permanentDeleteAllTrash,
+    createApplication, updateStatus: updateAppStatus, updateApplication, deleteApplication, permanentDeleteAllTrash, softDeleteByBrandProfileId,
   } = useApplications({
     enabled: canFetchUserData,
     userId: user?.id,
@@ -477,6 +477,9 @@ const App: React.FC = () => {
   };
 
   const handleDeleteBrandProfile = async (brandProfileId: string) => {
+    // Cascade: soft-delete all applications linked to this brand (move to trash)
+    await softDeleteByBrandProfileId(brandProfileId);
+    // Then delete the brand profile itself
     await deleteProfile(brandProfileId);
   };
 
@@ -743,6 +746,7 @@ const App: React.FC = () => {
               onBack={() => setCurrentScreen('DASHBOARD')}
               events={events}
               applications={applications}
+              brandProfiles={brandProfiles}
               planPrices={planPrices}
               onUpdateStatus={handleUpdateApplicationStatus}
               onUpdateApplication={updateApplication}

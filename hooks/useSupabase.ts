@@ -260,6 +260,11 @@ export function useApplications(options: UserScopedQueryOptions = {}) {
             }
             queryEmitter.invalidatePattern(/^applications:/);
         },
+        softDeleteByBrandProfileId: async (brandProfileId: string) => {
+            const count = await applicationsDb.softDeleteByBrandProfileId(brandProfileId);
+            queryEmitter.invalidatePattern(/^applications:/);
+            return count;
+        },
     };
 }
 
