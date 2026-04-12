@@ -1,4 +1,4 @@
-import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
+import nodemailer from "npm:nodemailer@6";
 
 const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
@@ -98,14 +98,13 @@ Deno.serve(async (req) => {
             zoneCategory, invoiceNumber, totalAmountCzk
         );
 
-        const attachments: any[] = [];
+        const attachments: { filename: string; content: Uint8Array; contentType: string }[] = [];
 
         if (pdfBase64 && pdfBase64.length > 100) {
             attachments.push({
                 filename: `${invoiceNumber || "faktura"}.pdf`,
                 content: base64ToUint8Array(pdfBase64),
                 contentType: "application/pdf",
-                encoding: "binary" as const,
             });
             console.log(`PDF attachment: ${pdfBase64.length} base64 chars`);
         } else {
@@ -118,34 +117,36 @@ Deno.serve(async (req) => {
                 filename: `${invoiceNumber || "faktura"}.isdoc`,
                 content: encoder.encode(xmlString),
                 contentType: "application/xml",
-                encoding: "binary" as const,
             });
             console.log(`ISDOC XML attachment: ${xmlString.length} chars`);
         } else {
             console.warn("XML string missing or too short, skipping attachment");
         }
 
-        const client = new SMTPClient({
-            connection: {
-                hostname: smtpHost,
-                port: smtpPort,
-                tls: smtpPort === 465,
-                auth: {
-                    username: smtpUsername,
-                    password: smtpPassword,
-                },
+        const transporter = nodemailer.createTransport({
+            host: smtpHost,
+            port: smtpPort,
+            secure: smtpPort === 465,
+            auth: {
+                user: smtpUsername,
+                pass: smtpPassword,
             },
         });
 
-        await client.send({
-            from: { name: senderName, mail: senderEmail },
+        const mailAttachments = attachments.map(a => ({
+            filename: a.filename,
+            content: a.content,
+            contentType: a.contentType,
+        }));
+
+        await transporter.sendMail({
+            from: `"${senderName}" <${senderEmail}>`,
             to: recipient,
             subject,
             html: finalHtml,
-            attachments: attachments.length > 0 ? attachments : undefined,
+            attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
         });
 
-        await client.close();
         console.log("Invoice notification email sent successfully!");
 
         return new Response(

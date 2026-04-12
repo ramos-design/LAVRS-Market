@@ -1,5 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
             .select('*')
             .eq('template_id', templateId);
 
-        const attachments = [];
+        const attachments: { filename: string; content: Uint8Array; contentType: string }[] = [];
         if (attachmentsData && attachmentsData.length > 0) {
             console.log(`Found ${attachmentsData.length} attachments. Downloading...`);
             for (const att of attachmentsData) {
@@ -126,14 +126,13 @@ Deno.serve(async (req) => {
                     const ext = att.file_name.split('.').pop()?.toLowerCase();
                     let contentType = att.file_type || "application/octet-stream";
                     if (ext === 'pdf') contentType = "application/pdf";
-                    else if (['jpg', 'jpeg'].includes(ext)) contentType = "image/jpeg";
+                    else if (['jpg', 'jpeg'].includes(ext!)) contentType = "image/jpeg";
                     else if (ext === 'png') contentType = "image/png";
 
                     attachments.push({
                         filename: att.file_name,
                         content: new Uint8Array(arrayBuffer),
                         contentType: contentType,
-                        encoding: "binary" as const
                     });
                     console.log(`- Attached: ${att.file_name} (${fileData.size} bytes, Type: ${contentType})`);
                 } else {
@@ -167,7 +166,6 @@ Deno.serve(async (req) => {
                             filename: `${invoice.invoice_number}.pdf`,
                             content: new Uint8Array(arrayBuffer),
                             contentType: "application/pdf",
-                            encoding: "binary" as const
                         });
                         console.log(`- Auto-attached invoice PDF: ${invoice.invoice_number}.pdf (${pdfData.size} bytes)`);
                     } else {
@@ -193,7 +191,7 @@ Deno.serve(async (req) => {
                 ? new Date(invoiceData.due_date).toLocaleDateString('cs-CZ')
                 : (app.payment_deadline ? new Date(app.payment_deadline).toLocaleDateString('cs-CZ') : "N/A"),
             '{{invoice_amount}}': invoiceData?.amount_czk
-                ? (invoiceData.amount_czk / 100).toLocaleString('cs-CZ') + ' Kč'
+                ? (invoiceData.amount_czk / 100).toLocaleString('cs-CZ') + ' K\u010d'
                 : "Dle faktury",
             '{{invoice_number}}': invoiceData?.invoice_number || app.id.split('-').pop()?.toUpperCase() || "",
         };
@@ -203,31 +201,34 @@ Deno.serve(async (req) => {
             subject = subject.split(k).join(v);
         });
 
-        const finalHtml = getHtmlTemplate(template.name || "Sdělení", body);
+        const finalHtml = getHtmlTemplate(template.name || "Sd\u011blen\u00ed", body);
 
-        // 5. Send with denomailer
-        const client = new SMTPClient({
-            connection: {
-                hostname: smtpHost,
-                port: smtpPort,
-                tls: smtpPort === 465,
-                auth: {
-                    username: smtpUsername,
-                    password: smtpPassword,
-                },
+        // 5. Send with nodemailer
+        const transporter = nodemailer.createTransport({
+            host: smtpHost,
+            port: smtpPort,
+            secure: smtpPort === 465,
+            auth: {
+                user: smtpUsername,
+                pass: smtpPassword,
             },
         });
 
+        const mailAttachments = attachments.map(a => ({
+            filename: a.filename,
+            content: a.content,
+            contentType: a.contentType,
+        }));
+
         console.log(`Sending '${templateId}' to ${app.email}...`);
-        await client.send({
-            from: { name: senderName, mail: senderEmail },
+        await transporter.sendMail({
+            from: `"${senderName}" <${senderEmail}>`,
             to: app.email,
             subject: subject,
             html: finalHtml,
-            attachments: attachments.length > 0 ? attachments : undefined,
+            attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
         });
 
-        await client.close();
         console.log("Email sent successfully!");
 
         return new Response(JSON.stringify({ message: "Done" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
