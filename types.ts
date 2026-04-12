@@ -27,9 +27,6 @@ export interface Category {
 }
 
 
-// Keep old ZoneType for backward compatibility
-export const ZoneType = SpotSize;
-export type ZoneType = SpotSize;
 
 export interface MarketEvent {
   id: string;
@@ -62,7 +59,6 @@ export interface Application {
   billingEmail: string;
 
   // Configuration
-  zone: ZoneType; // Spot size (S/M/L)
   zoneCategory?: ZoneCategory; // Brand category
   status: AppStatus;
   submittedAt: string;
@@ -157,7 +153,6 @@ export interface BrandProfile {
   contactPerson?: string;
   phone?: string;
   email?: string;
-  zone?: ZoneType;
   billingName?: string;
   ic?: string;
   dic?: string;

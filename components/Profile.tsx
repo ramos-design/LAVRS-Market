@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock } from 'lucide-react';
-import { BrandProfile, ZoneType } from '../types';
+import { BrandProfile } from '../types';
 import { useBrandProfiles } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
 import { dbBrandProfileToApp, appBrandProfileToDb } from '../lib/mappers';
@@ -231,10 +231,12 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                 alert('Název značky je povinný údaj.');
                 return;
             }
-            const dbBrand = appBrandProfileToDb(editForm);
+            const dbBrand = appBrandProfileToDb(editForm, authUser?.id);
             const exists = brands.find(b => b.id === editForm.id);
             if (exists) {
-                await updateProfile(editForm.id, dbBrand);
+                // Strip user_id from updates — it must never be overwritten
+                const { user_id, ...safeUpdates } = dbBrand;
+                await updateProfile(editForm.id, safeUpdates);
             } else {
                 await createProfile(dbBrand);
             }

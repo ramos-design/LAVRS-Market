@@ -367,7 +367,9 @@ export const brandProfilesDb = {
     },
 
     async update(id: string, updates: Partial<DbBrandProfile>): Promise<DbBrandProfile> {
-        const { data, error } = await supabase.from('brand_profiles').update(updates).eq('id', id).select().single();
+        // Never allow user_id to be overwritten — prevents brand "disappearing"
+        const { user_id, ...safeUpdates } = updates as any;
+        const { data, error } = await supabase.from('brand_profiles').update(safeUpdates).eq('id', id).select().single();
         if (error) throw error;
         return data;
     },

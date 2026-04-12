@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
-import { ZoneType, ZoneCategory, SpotSize, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
-import { ZONE_DETAILS } from '../constants';
+import { ZoneCategory, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
 import { useEvents, useBrandProfiles, useCategories } from '../hooks/useSupabase';
 import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb, formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
@@ -41,7 +40,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
 
-  const [selectedZone, setSelectedZone] = useState<SpotSize | null>(null); // Spot size (S/M/L)
   const [selectedZoneCategory, setSelectedZoneCategory] = useState<ZoneCategory | null>(null); // Brand category
 
   const [billingName, setBillingName] = useState('');
@@ -78,12 +76,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   useEffect(() => {
     setTotalSteps(isWaitlist ? 1 : 5);
   }, [isWaitlist]);
-
-  useEffect(() => {
-    if (selectedZoneCategory && !selectedZone) {
-      setSelectedZone(SpotSize.M);
-    }
-  }, [selectedZoneCategory, selectedZone]);
 
   const extrasList = eventPlan?.extras || [
     { id: 'extra-chair', label: 'Extra Židle', price: '200 Kč' },
@@ -135,7 +127,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
       setContactPerson('');
       setPhone('');
       setEmail('');
-      setSelectedZone(null);
       setBillingName('');
       setIc('');
       setDic('');
@@ -152,7 +143,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
         setContactPerson(brand.contactPerson || '');
         setPhone(brand.phone || '');
         setEmail(brand.email || '');
-        setSelectedZone(null);
         setBillingName(brand.billingName || '');
         setIc(brand.ic || '');
         setDic(brand.dic || '');
@@ -178,7 +168,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
         contactPerson,
         phone,
         email,
-        zone: selectedZone || undefined,
         billingName,
         ic,
         dic,
@@ -207,7 +196,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
         ic: ic || '',
         billingAddress: billingAddress || '',
         billingEmail: billingEmail || '',
-        zone: selectedZone || SpotSize.S,
         zoneCategory: selectedZoneCategory || undefined,
         status: isWaitlist ? AppStatus.WAITLIST : AppStatus.PENDING,
         submittedAt: new Date().toISOString(),
@@ -227,7 +215,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, currentBrandId, userId, brandName, brandDescription, instagram, website, contactPerson, phone, email, selectedZone, billingName, ic, dic, billingAddress, billingEmail, saveToProfile, createProfile, selectedZoneCategory, isWaitlist, isSoldout, eventId, consentGDPR, consentOrg, consentStorno, consentNewsletter, extraNote, onApply]);
+  }, [isSubmitting, currentBrandId, userId, brandName, brandDescription, instagram, website, contactPerson, phone, email, billingName, ic, dic, billingAddress, billingEmail, saveToProfile, createProfile, selectedZoneCategory, isWaitlist, isSoldout, eventId, consentGDPR, consentOrg, consentStorno, consentNewsletter, extraNote, onApply]);
 
   const checkIsFull = (category: ZoneCategory | null) => {
     const plan = eventPlan;
@@ -534,13 +522,8 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                         : 'border-white bg-white/60 hover:border-lavrs-pink'
                         }`}
                     >
-                      <div className="flex items-center justify-between mb-1 md:mb-2">
+                      <div className="mb-1 md:mb-2">
                         <p className="text-base md:text-2xl font-black text-lavrs-dark leading-tight">{cat.name}</p>
-                        {selectedZoneCategory === cat.id && (
-                          <div className="w-6 h-6 bg-lavrs-red text-white flex items-center justify-center">
-                            <Check size={16} strokeWidth={4} />
-                          </div>
-                        )}
                       </div>
                       <p className="text-xs md:text-sm text-gray-500 font-medium">{cat.description}</p>
                     </button>

@@ -181,13 +181,15 @@ serve(async (req) => {
         // 4. Substitution
         let body = template.body || "";
         let subject = template.subject || "";
+        const formattedDate = event.date
+            ? new Date(event.date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })
+            : "";
         const vars: Record<string, string> = {
             '{{event_name}}': event.title || "LAVRS market",
-            '{{event_date}}': event.date || "",
+            '{{event_date}}': formattedDate,
             '{{event_location}}': event.location || "",
             '{{contact_person}}': app.contact_person || "",
             '{{brand_name}}': app.brand_name || "",
-            '{{zone_type}}': app.zone || "",
             '{{payment_deadline}}': invoiceData?.due_date
                 ? new Date(invoiceData.due_date).toLocaleDateString('cs-CZ')
                 : (app.payment_deadline ? new Date(app.payment_deadline).toLocaleDateString('cs-CZ') : "N/A"),

@@ -12,7 +12,6 @@ const TEMPLATE_VARIABLES = [
     { key: '{{event_date}}', label: 'Datum eventu', example: '15. března 2026' },
     { key: '{{event_location}}', label: 'Místo konání', example: 'Vnitroblock, Praha 7' },
     { key: '{{contact_person}}', label: 'Kontaktní osoba', example: 'Tereza Nováková' },
-    { key: '{{zone_type}}', label: 'Velikost spotu', example: 'M' },
     { key: '{{payment_deadline}}', label: 'Splatnost faktury', example: '20. března 2026' },
     { key: '{{invoice_amount}}', label: 'Částka k úhradě', example: '3 500 Kč' },
     { key: '{{invoice_number}}', label: 'Číslo faktury', example: 'FV-2026-0042' },
@@ -22,9 +21,9 @@ const TEMPLATE_VARIABLES = [
 const DEFAULT_BODIES: Record<string, string> = {
     'confirm-application': `Dobrý den, {{contact_person}},
 
-děkujeme za Vaši přihlášku na {{event_name}}!
+děkujeme za Vaši přihlášku na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
 
-Vaše přihláška za značku {{brand_name}} byla úspěšně přijata a nyní čeká na posouzení naším kurátorským týmem.
+Vaše přihláška byla úspěšně přijata a nyní čeká na posouzení naším kurátorským týmem.
 
 O výsledku Vás budeme informovat emailem do 5 pracovních dnů.
 
@@ -33,9 +32,7 @@ Tým LAVRS market`,
 
     'application-approved': `Dobrý den, {{contact_person}},
 
-s radostí Vám oznamujeme, že Vaše přihláška za značku {{brand_name}} na {{event_name}} byla schválena! 🎉
-
-Rezervovali jsme pro Vás spot velikosti {{zone_type}}.
+s radostí Vám oznamujeme, že Vaše přihláška za značku {{brand_name}} na {{event_name}} ({{event_date}}) byla schválena! 🎉
 
 Pro potvrzení Vaší účasti prosím uhraďte fakturu v příloze do {{payment_deadline}}.
 
@@ -49,7 +46,7 @@ Tým LAVRS market`,
 
     'application-rejected': `Dobrý den, {{contact_person}},
 
-děkujeme za Váš zájem o účast na {{event_name}}.
+děkujeme za Váš zájem o účast na {{event_name}} ({{event_date}}).
 
 Bohužel Vám musíme sdělit, že Vaše přihláška za značku {{brand_name}} nebyla tentokrát schválena. Kapacita eventu je omezená a výběr je vždy velmi náročný.
 
@@ -62,7 +59,7 @@ Tým LAVRS market`,
 
     'application-waitlist': `Dobrý den, {{contact_person}},
 
-děkujeme za Váš zájem o účast na {{event_name}} se značkou {{brand_name}}.
+děkujeme za Váš zájem o účast na {{event_name}} ({{event_date}}) se značkou {{brand_name}}.
 
 Vaše přihláška nás zaujala, bohužel však aktuální kapacita eventu je již plně obsazena. Rádi bychom Vás zařadili na waitlist — pokud se uvolní místo, budeme Vás neprodleně kontaktovat.
 
@@ -75,12 +72,12 @@ Tým LAVRS market`,
 
     'payment-confirmed': `Dobrý den, {{contact_person}},
 
-potvrzujeme přijetí Vaší platby za účast na {{event_name}}.
+potvrzujeme přijetí Vaší platby za účast na {{event_name}} ({{event_date}}).
 
 Částka: {{invoice_amount}}
 Číslo faktury: {{invoice_number}}
 
-Vaše místo (spot {{zone_type}}) je nyní závazně rezervováno. Organizační instrukce Vám zašleme několik dní před akcí.
+Vaše místo je nyní závazně rezervováno. Organizační instrukce Vám zašleme několik dní před akcí.
 
 Děkujeme a těšíme se na Vás!
 
@@ -89,7 +86,7 @@ Tým LAVRS market`,
 
     'payment-reminder': `Dobrý den, {{contact_person}},
 
-rádi bychom Vám připomněli blížící se termín splatnosti faktury za {{event_name}}.
+rádi bychom Vám připomněli blížící se termín splatnosti faktury za {{event_name}} ({{event_date}}).
 
 Číslo faktury: {{invoice_number}}
 Částka: {{invoice_amount}}
@@ -102,7 +99,7 @@ Tým LAVRS market`,
 
     'payment-last-call': `Dobrý den, {{contact_person}},
 
-toto je poslední upomínka k úhradě faktury za {{event_name}}.
+toto je poslední upomínka k úhradě faktury za {{event_name}} ({{event_date}}).
 
 Číslo faktury: {{invoice_number}}
 Částka: {{invoice_amount}}
@@ -122,8 +119,6 @@ Tým LAVRS market`,
 🕐 Příjezd a setup: 7:00 – 9:00
 🚪 Start pro návštěvníky: 10:00
 🔚 Konec: 18:00, úklid do 19:30
-
-Váš spot: {{zone_type}}
 
 Podrobné informace a mapku naleznete v příloze.
 
@@ -149,7 +144,7 @@ Tým LAVRS market`,
 
     'post-event': `Dobrý den, {{contact_person}},
 
-děkujeme za Vaši účast na {{event_name}}! 🙏
+děkujeme za Vaši účast na {{event_name}} ({{event_date}})! 🙏
 
 Doufáme, že se Vám event líbil a byl pro Vás přínosný. Budeme rádi za Vaši zpětnou vazbu — pomůže nám vylepšit další akce.
 
@@ -162,7 +157,7 @@ Tým LAVRS market`,
 
     'payment-submitted': `Dobrý den, {{contact_person}},
 
-děkujeme za potvrzení platby za účast na {{event_name}} za značku {{brand_name}}.
+děkujeme za potvrzení platby za účast na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
 
 Vaše faktura je přiložena v příloze tohoto emailu.
 

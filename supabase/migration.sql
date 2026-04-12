@@ -249,8 +249,24 @@ CREATE POLICY "Individuals can view their own brand profiles." ON brand_profiles
 DROP POLICY IF EXISTS "Individuals can insert their own brand profiles." ON brand_profiles;
 CREATE POLICY "Individuals can insert their own brand profiles." ON brand_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Individuals can update their own brand profiles." ON brand_profiles;
+CREATE POLICY "Individuals can update their own brand profiles." ON brand_profiles FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Individuals can delete their own brand profiles." ON brand_profiles;
+CREATE POLICY "Individuals can delete their own brand profiles." ON brand_profiles FOR DELETE USING (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "Admins can view all brand profiles." ON brand_profiles;
 CREATE POLICY "Admins can view all brand profiles." ON brand_profiles FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+DROP POLICY IF EXISTS "Admins can update all brand profiles." ON brand_profiles;
+CREATE POLICY "Admins can update all brand profiles." ON brand_profiles FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+);
+
+DROP POLICY IF EXISTS "Admins can delete all brand profiles." ON brand_profiles;
+CREATE POLICY "Admins can delete all brand profiles." ON brand_profiles FOR DELETE USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
 );
 
@@ -647,3 +663,111 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 ALTER TABLE events ADD COLUMN IF NOT EXISTS end_date TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS capacity INT;
+
+-- ============================================
+-- 16. Add event_date to email template bodies
+-- ============================================
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+děkujeme za Vaši přihlášku na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
+
+Vaše přihláška byla úspěšně přijata a nyní čeká na posouzení naším kurátorským týmem.
+
+O výsledku Vás budeme informovat emailem do 5 pracovních dnů.
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'confirm-application';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+s radostí Vám oznamujeme, že Vaše přihláška za značku {{brand_name}} na {{event_name}} ({{event_date}}) byla schválena! 🎉
+
+Rezervovali jsme pro Vás spot velikosti {{zone_type}}.
+
+Pro potvrzení Vaší účasti prosím uhraďte fakturu v příloze do {{payment_deadline}}.
+
+Částka k úhradě: {{invoice_amount}}
+Číslo faktury: {{invoice_number}}
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'application-approved';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+děkujeme za Váš zájem o účast na {{event_name}} ({{event_date}}).
+
+Bohužel Vám musíme sdělit, že Vaše přihláška za značku {{brand_name}} nebyla tentokrát schválena.
+
+Můžete se zapsat na waitlist — pokud se uvolní místo, ozveme se Vám.
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'application-rejected';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+děkujeme za Váš zájem o účast na {{event_name}} ({{event_date}}) se značkou {{brand_name}}.
+
+Vaše přihláška nás zaujala, bohužel však aktuální kapacita eventu je již plně obsazena. Rádi bychom Vás zařadili na waitlist — pokud se uvolní místo, budeme Vás neprodleně kontaktovat.
+
+Nemusíte nic dalšího podnikat, o případném uvolnění místa Vás budeme informovat emailem.
+
+Děkujeme za pochopení a těšíme se na případnou spolupráci!
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'application-waitlist';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+potvrzujeme přijetí Vaší platby za účast na {{event_name}} ({{event_date}}).
+
+Částka: {{invoice_amount}}
+Číslo faktury: {{invoice_number}}
+
+Vaše místo (spot {{zone_type}}) je nyní závazně rezervováno.
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'payment-confirmed';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+rádi bychom Vám připomněli blížící se termín splatnosti faktury za {{event_name}} ({{event_date}}).
+
+Číslo faktury: {{invoice_number}}
+Částka: {{invoice_amount}}
+Splatnost: {{payment_deadline}}
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'payment-reminder';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+toto je poslední upomínka k úhradě faktury za {{event_name}} ({{event_date}}).
+
+⚠️ Pokud platba nebude připsána do konce dne splatnosti, Vaše místo bude automaticky uvolněno.
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'payment-last-call';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+děkujeme za potvrzení platby za účast na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
+
+Vaše faktura je přiložena v příloze tohoto emailu.
+
+Číslo faktury: {{invoice_number}}
+Částka k úhradě: {{invoice_amount}}
+Splatnost: {{payment_deadline}}
+
+Jakmile bude platba připsána na náš účet, obdržíte potvrzení o přijetí platby a závazné rezervaci Vašeho místa.
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'payment-submitted';
+
+UPDATE email_templates SET body = 'Dobrý den, {{contact_person}},
+
+děkujeme za Vaši účast na {{event_name}} ({{event_date}})! 🙏
+
+Doufáme, že se Vám event líbil a byl pro Vás přínosný.
+
+S pozdravem,
+Tým LAVRS market' WHERE id = 'post-event';

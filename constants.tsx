@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { LayoutDashboard, FileText, CreditCard, User, CheckCircle2, XCircle, Clock, ExternalLink } from 'lucide-react';
-import { MarketEvent, ZoneType, Application, AppStatus, ZoneCategory, Banner, Category } from './types';
+import { MarketEvent, Application, AppStatus, ZoneCategory, Banner, Category } from './types';
 
 export const INITIAL_CATEGORIES: Category[] = [
   { id: 'Secondhands', name: 'Secondhands', description: 'Vintage a second-hand móda' },
@@ -88,26 +88,6 @@ export const EVENTS: MarketEvent[] = [
 
 export const MOCK_APPLICATIONS: Application[] = [];
 
-export const ZONE_DETAILS = {
-  [ZoneType.S]: {
-    label: 'Spot S',
-    dimensions: '1.5 x 1.5m',
-    equipment: ['1x Stůl', '1x Židle'],
-    price: '2.500 Kč'
-  },
-  [ZoneType.M]: {
-    label: 'Spot M',
-    dimensions: '2.0 x 2.0m',
-    equipment: ['1x Stojan na šaty', '1x Stůl', '2x Židle'],
-    price: '4.200 Kč'
-  },
-  [ZoneType.L]: {
-    label: 'Spot L',
-    dimensions: '3.0 x 3.0m',
-    equipment: ['2x Stojan na šaty', '2x Stůl', '2x Židle', 'Zrcadlo'],
-    price: '6.800 Kč'
-  }
-};
 
 export const MOCK_EVENT_PLANS: { [key: string]: any } = {
   'mini-1': {
