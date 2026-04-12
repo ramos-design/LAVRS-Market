@@ -88,67 +88,76 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                 ) : visibleApplications.map((app) => {
                     const daysLeft = app.paymentDeadline ? getDaysLeft(app.paymentDeadline) : null;
                     return (
-                        <div key={app.id} className="bg-white p-4 md:p-6 rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden border-r-4 border-r-lavrs-red md:border-r md:border-r-gray-100">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
-                                    <div className="w-10 h-10 md:w-12 md:h-12 bg-lavrs-beige rounded-none flex items-center justify-center text-lavrs-red group-hover:scale-110 transition-transform shrink-0">
-                                        <FileText size={20} className="md:hidden" />
-                                        <FileText size={24} className="hidden md:block" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 md:gap-3 mb-1 flex-wrap">
-                                            <h3 className="font-bold text-lavrs-dark text-sm md:text-base">{app.brandName}</h3>
-                                            <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border ${getStatusStyle(app.status)}`}>
-                                                {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
-                                                    app.status === AppStatus.PENDING ? 'Čeká na posouzení' :
-                                                        app.status === AppStatus.REJECTED ? 'Zamítnuto' :
-                                                            app.status === AppStatus.WAITLIST ? 'Na waitlistu' :
-                                                                app.status === AppStatus.PAID ? 'Zaplaceno' :
-                                                                    app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
-                                                                        app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-wrap gap-x-3 gap-y-1 md:gap-4 text-xs text-gray-400">
-                                            <span className="flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
-                                            <span className="font-medium text-gray-500">{getEventTitle(app.eventId)} · {getEventDate(app.eventId)}</span>
-                                            <span className="hidden md:inline font-medium text-gray-500">ID: {invoiceNumberByAppId.get(app.id) || app.id}</span>
-                                        </div>
-                                        {app.status === AppStatus.APPROVED && app.paymentDeadline && (
-                                            <div className="mt-2 text-xs text-lavrs-dark">
-                                                <span className="font-bold">Splatnost faktury:</span> {formatDate(app.paymentDeadline)}
-                                                {' '}
-                                                {daysLeft !== null && daysLeft >= 0 ? (
-                                                    <span className="text-gray-500">(zbývá {daysLeft} dní)</span>
-                                                ) : (
-                                                    <span className="text-red-600 font-bold">Po splatnosti</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                        <div key={app.id} className="bg-white p-4 md:p-6 rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden border-l-4 border-l-lavrs-red">
+                            <div className="flex items-start gap-3 md:gap-4 mb-3">
+                                <div className="w-10 h-10 md:w-12 md:h-12 bg-lavrs-beige rounded-none flex items-center justify-center text-lavrs-red group-hover:scale-110 transition-transform shrink-0">
+                                    <FileText size={20} className="md:hidden" />
+                                    <FileText size={24} className="hidden md:block" />
                                 </div>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-bold text-lavrs-dark text-base md:text-lg leading-tight">{app.brandName}</h3>
+                                    <span className={`inline-block mt-1 text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border ${getStatusStyle(app.status)}`}>
+                                        {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
+                                            app.status === AppStatus.PENDING ? 'Čeká na posouzení' :
+                                                app.status === AppStatus.REJECTED ? 'Zamítnuto' :
+                                                    app.status === AppStatus.WAITLIST ? 'Na waitlistu' :
+                                                        app.status === AppStatus.PAID ? 'Zaplaceno' :
+                                                            app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
+                                                                app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
+                                    </span>
+                                </div>
+                            </div>
 
-                                <div className="shrink-0 ml-3 text-right">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Cena</p>
-                                    {(() => {
-                                        if (app.customPrice != null && app.customPrice > 0) {
-                                            return <p className="font-bold text-lavrs-dark text-sm md:text-base">{app.customPrice.toLocaleString('cs-CZ')} Kč</p>;
-                                        }
-                                        const rawPrice = app.zoneCategory ? pricesByEventId.get(app.eventId)?.[app.zoneCategory] : undefined;
-                                        if (rawPrice != null && rawPrice !== '') {
-                                            const num = Number(rawPrice);
-                                            if (!isNaN(num)) {
-                                                return <p className="font-bold text-lavrs-dark text-sm md:text-base">{num.toLocaleString('cs-CZ')} Kč</p>;
-                                            }
-                                            return (
-                                                <>
-                                                    <p className="font-bold text-lavrs-dark text-sm md:text-base">Dohodou</p>
-                                                    <p className="text-[10px] text-gray-400 mt-0.5">Částku upřesníme ve schválovacím řízení</p>
-                                                </>
-                                            );
-                                        }
-                                        return <p className="font-bold text-lavrs-dark text-sm md:text-base">—</p>;
-                                    })()}
+                            <div className="space-y-1.5 text-xs text-gray-500 pl-[52px] md:pl-[64px]">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400 w-24 shrink-0">Event:</span>
+                                    <span className="font-medium text-gray-700">{getEventTitle(app.eventId)}</span>
                                 </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400 w-24 shrink-0">Datum eventu:</span>
+                                    <span className="font-medium text-gray-700">{getEventDate(app.eventId)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400 w-24 shrink-0">Odesláno:</span>
+                                    <span className="font-medium text-gray-700 flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400 w-24 shrink-0">Cena:</span>
+                                    <span className="font-bold text-lavrs-dark">
+                                        {(() => {
+                                            if (app.customPrice != null && app.customPrice > 0) {
+                                                return <>{app.customPrice.toLocaleString('cs-CZ')} Kč</>;
+                                            }
+                                            const rawPrice = app.zoneCategory ? pricesByEventId.get(app.eventId)?.[app.zoneCategory] : undefined;
+                                            if (rawPrice != null && rawPrice !== '') {
+                                                const num = Number(rawPrice);
+                                                if (!isNaN(num)) {
+                                                    return <>{num.toLocaleString('cs-CZ')} Kč</>;
+                                                }
+                                                return <>Dohodou</>;
+                                            }
+                                            return <>—</>;
+                                        })()}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400 w-24 shrink-0">ID:</span>
+                                    <span className="font-medium text-gray-500">{invoiceNumberByAppId.get(app.id) || app.id}</span>
+                                </div>
+                                {app.status === AppStatus.APPROVED && app.paymentDeadline && (
+                                    <div className="flex items-center gap-1.5 pt-1">
+                                        <span className="text-gray-400 w-24 shrink-0">Splatnost:</span>
+                                        <span className="font-bold text-lavrs-dark">
+                                            {formatDate(app.paymentDeadline)}
+                                            {' '}
+                                            {daysLeft !== null && daysLeft >= 0 ? (
+                                                <span className="text-gray-500 font-normal">(zbývá {daysLeft} dní)</span>
+                                            ) : (
+                                                <span className="text-red-600">Po splatnosti</span>
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );
