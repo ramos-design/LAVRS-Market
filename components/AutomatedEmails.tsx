@@ -189,6 +189,23 @@ S pozdravem,
 Tým LAVRS market`,
 };
 
+/* ─── Required template definitions for auto-seeding ─────────── */
+const REQUIRED_TEMPLATES: Record<string, { name: string; subject: string; description: string; category: string }> = {
+    'confirm-application': { name: 'Potvrzení přihlášení', subject: 'Přihláška přijata - {{event_name}}', description: 'Automatický email odeslaný po úspěšném podání přihlášky k eventu.', category: 'application' },
+    'application-approved': { name: 'Schválení přihlášky', subject: 'Gratulujeme! Vaše přihláška byla schválena – {{event_name}}', description: 'Email s potvrzením schválení a přiloženou fakturou k úhradě.', category: 'application' },
+    'application-rejected': { name: 'Zamítnutí přihlášky', subject: 'Informace o vaší přihlášce na {{event_name}}', description: 'Zdvořilé zamítnutí přihlášky s možností zápisu na waitlist.', category: 'application' },
+    'application-waitlist': { name: 'Schválení přihlášky, není kapacita, možnost waitlistu', subject: 'Výsledek přihlášky na {{event_name}}', description: 'Schválení přihlášky do budoucna (nyní není místo).', category: 'application' },
+    'payment-confirmed': { name: 'Potvrzení přijaté platby', subject: 'Platba přijata - {{event_name}}', description: 'Potvrzení o úspěšném přijetí platby za event.', category: 'payment' },
+    'payment-reminder': { name: 'Platební upomínka', subject: 'Připomínka platby - {{event_name}}', description: 'Upomínka na blížící se termín splatnosti faktury.', category: 'payment' },
+    'payment-last-call': { name: 'Platební upomínka - Last Call', subject: 'URGENTNÍ: Poslední výzva k úhradě – {{event_name}}', description: 'Finální upomínka před zrušením rezervace místa.', category: 'payment' },
+    'payment-submitted': { name: 'Potvrzení odeslání platby', subject: 'Vaše platba byla odeslána - {{event_name}}', description: 'Automatický email odeslaný vystavovateli ihned po potvrzení platby. V příloze je automaticky přiložena faktura.', category: 'payment' },
+    'invoice-notification': { name: 'Nová objednávka (vystavovatel)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný vystavovateli po vygenerování objednávky s PDF přílohou.', category: 'payment' },
+    'invoice-notification-admin': { name: 'Nová objednávka (admin)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný adminovi po vygenerování objednávky.', category: 'payment' },
+    'event-instructions': { name: 'Organizační instrukce před akcí', subject: 'Důležité informace k {{event_name}}', description: 'Praktické informace o průběhu eventu, příjezdu, setup času atd.', category: 'event' },
+    'event-reminder': { name: 'Reminder těsně před akcí', subject: 'Už zítra! {{event_name}}', description: 'Připomínka den před konáním eventu.', category: 'event' },
+    'post-event': { name: 'Post-event email', subject: 'Děkujeme za účast na {{event_name}}', description: 'Poděkování po skončení eventu, možnost zpětné vazby a pozvánka na další akce.', category: 'event' },
+};
+
 /* ─── Main Component ────────────────────────────────────────── */
 const AutomatedEmails: React.FC = () => {
     const { templates, updateTemplate, createTemplate, deleteTemplate, loading: loadingTemplates } = useEmailTemplates();
@@ -217,6 +234,43 @@ const AutomatedEmails: React.FC = () => {
         }
       };
     }, []);
+
+    /* ─── Auto-seed missing templates ─────────────────────────── */
+    const seedingRef = useRef(false);
+    React.useEffect(() => {
+        if (loadingTemplates || !templates || seedingRef.current) return;
+
+        const existingIds = new Set(templates.map(t => t.id));
+        const missingIds = Object.keys(REQUIRED_TEMPLATES).filter(id => !existingIds.has(id));
+
+        if (missingIds.length === 0) return;
+
+        seedingRef.current = true;
+        console.log(`[AutomatedEmails] Seeding ${missingIds.length} missing templates:`, missingIds);
+
+        (async () => {
+            for (const id of missingIds) {
+                const meta = REQUIRED_TEMPLATES[id];
+                const body = DEFAULT_BODIES[id] || '';
+                try {
+                    await createTemplate({
+                        id,
+                        name: meta.name,
+                        subject: meta.subject,
+                        description: meta.description,
+                        body,
+                        category: meta.category,
+                        enabled: true,
+                        last_edited: new Date().toISOString(),
+                    } as any);
+                    console.log(`[AutomatedEmails] Seeded template: ${id}`);
+                } catch (err) {
+                    console.warn(`[AutomatedEmails] Failed to seed template ${id}:`, err);
+                }
+            }
+            seedingRef.current = false;
+        })();
+    }, [loadingTemplates, templates]); // eslint-disable-line react-hooks/exhaustive-deps
 
     /* ─── Handlers ────────────────────────────────────────────── */
 
