@@ -239,7 +239,7 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
 /**
  * Phase 2: Slow — renders the PDF. Call after prepareInvoiceData().
  */
-export async function generateInvoicePdf(invoiceData: GeneratedInvoice): Promise<Blob> {
+export async function generateInvoicePdf(invoiceData: GeneratedInvoice, isPaid?: boolean): Promise<Blob> {
     const p = (invoiceData as any)._pdfParams;
     if (!p) throw new Error('Missing PDF params — call prepareInvoiceData first');
 
@@ -269,8 +269,9 @@ export async function generateInvoicePdf(invoiceData: GeneratedInvoice): Promise
         customerIC: p.application.ic || '',
         customerDIC: p.application.dic || undefined,
         lineItems: p.lineItems,
-        qrDataUrl: p.qrDataUrl,
+        qrDataUrl: isPaid ? undefined : p.qrDataUrl, // Hide QR when paid (will show ZAPLACENO instead)
         invoiceNote: p.companySettings.invoiceNote || undefined,
+        isPaid: isPaid || false, // Pass isPaid flag to determine "VÝZVA K PLATBĚ" vs "DAŇOVÝ DOKLAD"
     };
 
     console.log('[PDF] Creating React element with props:', Object.keys(props));
@@ -292,8 +293,8 @@ export async function generateInvoicePdf(invoiceData: GeneratedInvoice): Promise
 /**
  * Full generation (both phases). Used by save flow.
  */
-export async function generateInvoice(params: GenerateInvoiceParams): Promise<GeneratedInvoice> {
+export async function generateInvoice(params: GenerateInvoiceParams, isPaid?: boolean): Promise<GeneratedInvoice> {
     const data = await prepareInvoiceData(params);
-    await generateInvoicePdf(data);
+    await generateInvoicePdf(data, isPaid);
     return data;
 }

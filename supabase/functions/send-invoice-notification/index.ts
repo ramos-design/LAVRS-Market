@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
             xmlString,
             recipientEmail,
             recipientType,
+            isPaymentConfirmed,
         } = payload;
 
         const recipient = recipientEmail || TEST_RECIPIENT;
@@ -107,14 +108,23 @@ Deno.serve(async (req) => {
 
         // --- Build hardcoded fallback template (always works, even without DB) ---
         console.log("Using hardcoded fallback template (no DB fetch required).");
-        const subject = `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
-        const emailTitle = isAdmin ? 'Nov\u00e1 objedn\u00e1vka (admin)' : 'Nov\u00e1 objedn\u00e1vka';
+        const isPaymentConfirmedEmail = isPaymentConfirmed === true;
+        const subject = isPaymentConfirmedEmail
+            ? `Platba ov\u011b\u0159ena: ${brandName} \u2014 ${eventName} (${zoneCategory})`
+            : `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
+        const emailTitle = isPaymentConfirmedEmail
+            ? (isAdmin ? 'Platba ov\u011b\u0159ena (admin)' : 'Platba ov\u011b\u0159ena')
+            : (isAdmin ? 'Nov\u00e1 objedn\u00e1vka (admin)' : 'Nov\u00e1 objedn\u00e1vka');
 
-        const footerText = isAdmin
-            ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
-            : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
-            + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
-            + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
+        const footerText = isPaymentConfirmedEmail
+            ? '<p><strong>Váš příspěvek byl potvrzený!</strong></p>'
+            + '<p>Daňový doklad (fakturu) si můžete stáhnout z vaší aplikace v sekci "Mé objednávky".</p>'
+            + '<p>Děkujeme za účast na LAVRS market!</p>'
+            : isAdmin
+            ? '<p>V příloze najdete vygenerovanou objednávku (PDF).</p>'
+            : '<p>V příloze najdete vygenerovanou objednávku (PDF).</p>'
+            + '<p>Pokud jste tuto objednávku již zaplatili, tento e-mail prosím ignorujte.</p>'
+            + '<p>Jakmile tým LAVRS market schválí Vaši platbu, obdržíte fakturu e-mailem a budete informováni o zařazení do eventu.</p>';
 
         const bodyHtml = '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>'
             + orderTableHtml
@@ -132,8 +142,11 @@ Deno.serve(async (req) => {
                 contentType: "application/pdf",
             });
             console.log(`PDF attachment: ${pdfBase64.length} base64 chars`);
-        } else {
+        } else if (!isPaymentConfirmedEmail) {
+            // Only warn if this is NOT a payment confirmation (where PDF generation happens elsewhere)
             console.warn("PDF base64 missing or too short, skipping attachment");
+        } else {
+            console.log("Payment confirmed: PDF will be generated separately in application");
         }
 
         if (xmlString && xmlString.length > 10) {

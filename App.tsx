@@ -928,12 +928,13 @@ V příloze najdete vygenerovanou objednávku (PDF).`
               companySettings={companySettings}
               allApplications={applications}
               onUpdateStatus={async (id, status) => {
-                // Bypass DB for this status as it's purely informative and constrained in DB
+                // Update status in DB so triggers fire (emails, etc.)
+                const result = await handleUpdateApplicationStatus(id, status);
+                // Also track locally for UI optimistic updates
                 if (status === AppStatus.PAYMENT_UNDER_REVIEW || status === 'PAYMENT_UNDER_REVIEW') {
                   handleLocalConfirmPayment(id);
-                  return Promise.resolve();
                 }
-                return handleUpdateApplicationStatus(id, status);
+                return result;
               }}
             />
           )}

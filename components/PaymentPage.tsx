@@ -738,69 +738,10 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                               console.warn('[Invoice] PDF generation/upload failed (invoice DB record still saved):', pdfErr);
                             }
 
-                            // 3. Fire-and-forget: send invoice notification email (always, even without PDF)
-                            (async () => {
-                              try {
-                                let pdfBase64 = '';
-                                if (pdfBlob && pdfBlob.size > 0) {
-                                  const ab = await pdfBlob.arrayBuffer();
-                                  const bytes = new Uint8Array(ab);
-                                  const chunk = 0x8000;
-                                  for (let i = 0; i < bytes.length; i += chunk) {
-                                    pdfBase64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
-                                  }
-                                  pdfBase64 = btoa(pdfBase64);
-                                  console.log('[Order email] PDF attached, size:', pdfBase64.length);
-                                } else {
-                                  console.warn('[Order email] PDF not available, sending email without attachment');
-                                }
-
-                                const evDate = new Date(activeEvent.date);
-                                const dd = String(evDate.getDate()).padStart(2, '0');
-                                const mm = String(evDate.getMonth() + 1).padStart(2, '0');
-                                const yyyy = evDate.getFullYear();
-
-                                const { supabase } = await import('../lib/supabase');
-                                const invoiceBody = {
-                                    brandName: activeApp.brandName || '',
-                                    contactPerson: activeApp.contactPerson || '',
-                                    eventName: activeEvent.title || '',
-                                    eventDate: `${dd}.${mm}.${yyyy}`,
-                                    zoneCategory: activeApp.zoneCategory || '',
-                                    invoiceNumber: invoiceResult.invoiceNumber,
-                                    totalAmountCzk: (invoiceResult.totalAmountWithDph / 100).toLocaleString('cs-CZ'),
-                                    pdfBase64,
-                                    xmlString: invoiceResult.xmlString,
-                                };
-
-                                console.log('[Order email] Sending to admin (lavrs@lavrs.cz)...');
-                                const { error: fnError } = await supabase.functions.invoke('send-invoice-notification', {
-                                  body: { ...invoiceBody, recipientEmail: 'lavrs@lavrs.cz', recipientType: 'admin' },
-                                });
-                                if (fnError) console.error('[Order email] Admin notification error:', fnError);
-                                else console.log('[Order email] ✓ Admin notification sent to lavrs@lavrs.cz');
-
-                                const exhibitorEmail = billingEmail || activeApp?.billingEmail || activeApp?.email || '';
-                                console.log('[Order email] Exhibitor email resolution:', { billingEmail, appBillingEmail: activeApp?.billingEmail, appEmail: activeApp?.email, final: exhibitorEmail });
-                                if (exhibitorEmail) {
-                                  // Exhibitor gets only PDF (no ISDOC XML) — this is an order, not an invoice
-                                  const { xmlString: _omit, ...exhibitorBody } = invoiceBody;
-                                  console.log('[Order email] Sending to exhibitor (' + exhibitorEmail + ')...');
-                                  const { error: exError } = await supabase.functions.invoke('send-invoice-notification', {
-                                    body: { ...exhibitorBody, recipientEmail: exhibitorEmail, recipientType: 'exhibitor' },
-                                  });
-                                  if (exError) console.error('[Order email] Exhibitor notification error:', exError);
-                                  else console.log('[Order email] ✓ Exhibitor email sent to:', exhibitorEmail);
-                                } else {
-                                  console.warn('[Order email] ⚠️ No exhibitor email found! Cannot send order confirmation.');
-                                }
-                              } catch (emailErr) {
-                                console.error('[Invoice email] Failed (non-blocking):', emailErr);
-                              }
-                            })();
-
-                            // 4. Update status
+                            // 3. Update status — this triggers DB webhook which sends 'payment-submitted' email
+                            //    with PDF attachment automatically (no need for separate send-invoice-notification call)
                             await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
+                            console.log('[Order] Status updated to PAYMENT_UNDER_REVIEW → trigger will send email with PDF');
 
                             // 5. Generate invoice HTML preview
                             await generateInvoiceHtmlPreview();

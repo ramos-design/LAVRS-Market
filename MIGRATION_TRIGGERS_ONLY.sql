@@ -7,6 +7,10 @@
 -- 1. Aktivuj pg_net extension (pokud ještě není)
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
+-- 1b. Přidej is_paid sloupec do invoices tabulky, pokud ještě není
+ALTER TABLE public.invoices
+ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT false;
+
 -- 2. Vytvoř trigger funkci pro email webhooky
 CREATE OR REPLACE FUNCTION public.trigger_send_email_webhook()
 RETURNS TRIGGER AS $$
@@ -34,6 +38,25 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 2b. Trigger funkce pro označení faktury jako zaplacené
+CREATE OR REPLACE FUNCTION public.mark_invoice_as_paid()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Update invoice table to mark as paid when status becomes PAID
+  UPDATE public.invoices
+  SET is_paid = true,
+      updated_at = NOW()
+  WHERE application_id = NEW.id
+    AND is_paid IS NOT TRUE;
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Log error ale neprůstav exception
+  RAISE NOTICE 'Mark invoice as paid error: %', SQLERRM;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 3. Trigger na INSERT - když se vytvoří nová aplikace
 DROP TRIGGER IF EXISTS applications_send_email_insert ON public.applications;
 CREATE TRIGGER applications_send_email_insert
@@ -48,6 +71,15 @@ CREATE TRIGGER applications_send_email_update
   FOR EACH ROW
   WHEN (OLD.status IS DISTINCT FROM NEW.status)
   EXECUTE FUNCTION public.trigger_send_email_webhook();
+
+-- 5. Special handling for PAID status - mark invoice as paid
+-- When status changes to PAID, update the invoice record to mark it as paid
+DROP TRIGGER IF EXISTS applications_mark_invoice_paid ON public.applications;
+CREATE TRIGGER applications_mark_invoice_paid
+  AFTER UPDATE ON public.applications
+  FOR EACH ROW
+  WHEN (OLD.status IS DISTINCT FROM NEW.status AND NEW.status = 'PAID')
+  EXECUTE FUNCTION public.mark_invoice_as_paid();
 
 -- ═══════════════════════════════════════════════════════════════
 -- OVĚŘENÍ

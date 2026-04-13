@@ -71,6 +71,7 @@ export interface InvoicePdfProps {
     lineItems: InvoiceLineItem[];
     qrDataUrl?: string;
     invoiceNote?: string;
+    isPaid?: boolean; // When true, show as "DAŇOVÝ DOKLAD" (tax document) instead of "VÝZVA K PLATBĚ" (payment request)
 }
 
 /* ------------------------------------------------------------------ */
@@ -189,7 +190,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
         issuerPhone, issuerEmail, issuedBy,
         bankAccount, bankIban,
         customerName, customerAddress, customerIC, customerDIC,
-        lineItems, qrDataUrl, invoiceNote,
+        lineItems, qrDataUrl, invoiceNote, isPaid,
     } = props;
 
     // DPH calculation
@@ -223,7 +224,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
             <Page size="A4" style={s.page}>
 
                 {/* Header */}
-                <Text style={s.title}>OBJEDNÁVKA – VÝZVA K PLATBĚ</Text>
+                <Text style={s.title}>{isPaid ? 'DAŇOVÝ DOKLAD' : 'OBJEDNÁVKA – VÝZVA K PLATBĚ'}</Text>
                 <Text style={s.subtitle}>číslo: {safe(invoiceNumber)}</Text>
 
                 {/* Meta */}
@@ -350,9 +351,15 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
                     <Text style={s.grandTotalText}>Celkem k úhradě: {fmt(grandTotal)} CZK</Text>
                 </View>
 
-                {/* QR + Signature */}
+                {/* QR + Signature / Paid status */}
                 <View style={s.bottomRow}>
-                    {qrDataUrl ? (
+                    {isPaid ? (
+                        <View style={s.qrCol}>
+                            <Text style={[s.qrImage, { fontSize: 32, fontFamily: 'Roboto', fontWeight: 'bold', color: '#27ae60', textAlign: 'center', paddingTop: 40 }]}>
+                                ✓ ZAPLACENO
+                            </Text>
+                        </View>
+                    ) : qrDataUrl ? (
                         <View style={s.qrCol}>
                             <Image src={qrDataUrl} style={s.qrImage} />
                             <Text style={s.qrLabel}>QR platba</Text>

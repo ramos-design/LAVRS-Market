@@ -40,6 +40,7 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
         }
 
         // Create invoice record in DB (no files yet)
+        // Initially marked as NOT paid - will be updated when admin confirms payment
         const uniqueId = crypto.randomUUID();
         const invoice = await invoicesDb.create({
             id: uniqueId,
@@ -54,6 +55,7 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
             xml_storage_path: null,
             pdf_url: null,
             xml_url: null,
+            is_paid: false, // Initially unpaid - set to true when admin confirms payment
         });
 
         console.log('=== INVOICE DB RECORD CREATED ===', {
