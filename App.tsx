@@ -224,6 +224,64 @@ const App: React.FC = () => {
     role: userRole,
   });
 
+  // Auto-seed email templates on app startup (for ADMIN)
+  React.useEffect(() => {
+    if (userRole !== 'ADMIN' || !user?.id) return;
+    (async () => {
+      try {
+        const { emailTemplatesDb } = await import('./lib/database');
+        const templates = await emailTemplatesDb.getAll();
+        const existingIds = new Set(templates.map(t => t.id));
+
+        // Define required templates
+        const requiredTemplates: Record<string, { name: string; subject: string; description: string; category: string; body: string }> = {
+          'invoice-notification': {
+            name: 'Nová objednávka (vystavovatel)',
+            subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})',
+            description: 'Automatický email odeslaný vystavovateli po vygenerování objednávky s PDF přílohou.',
+            category: 'payment',
+            body: `Nová objednávka na LAVRS market!
+
+{{order_table}}
+
+V příloze najdete vygenerovanou objednávku (PDF).
+Pokud jste tuto objednávku již zaplatili, tento e-mail prosím ignorujte.
+Jakmile tým LAVRS market schválí Vaši platbu, obdržíte fakturu e-mailem a budete informováni o zařazení do eventu.`
+          },
+          'invoice-notification-admin': {
+            name: 'Nová objednávka (admin)',
+            subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})',
+            description: 'Automatický email odeslaný adminovi po vygenerování objednávky.',
+            category: 'payment',
+            body: `Nová objednávka na LAVRS market!
+
+{{order_table}}
+
+V příloze najdete vygenerovanou objednávku (PDF).`
+          }
+        };
+
+        for (const [id, template] of Object.entries(requiredTemplates)) {
+          if (!existingIds.has(id)) {
+            await emailTemplatesDb.create({
+              id,
+              name: template.name,
+              subject: template.subject,
+              description: template.description,
+              body: template.body,
+              category: template.category,
+              enabled: true,
+              last_edited: new Date().toISOString(),
+            } as any);
+            console.log(`[App] Seeded email template: ${id}`);
+          }
+        }
+      } catch (err) {
+        console.warn('[App] Failed to seed email templates:', err);
+      }
+    })();
+  }, [user?.id, userRole]);
+
   // DOČASNÝ ÚKLID DUPLICIT: Pokud najdeme více značek se stejným jménem, necháme jen tu první.
   useEffect(() => {
     if (userRole !== 'ADMIN') return;

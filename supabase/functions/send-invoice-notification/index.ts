@@ -165,11 +165,8 @@ Deno.serve(async (req) => {
                 }).join(tableMarker);
 
             } else if (!tmplError && template && !template.enabled) {
-                console.log(`Template '${templateId}' is disabled. Skipping email.`);
-                return new Response(
-                    JSON.stringify({ message: "Template disabled, email not sent", templateId }),
-                    { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz" } }
-                );
+                console.warn(`Template '${templateId}' is disabled, but will use it anyway with fallback.`);
+                // Even if disabled, we still use the template (don't skip)
             } else {
                 console.warn(`Template '${templateId}' not found (${tmplError?.message}). Using fallback.`);
             }
