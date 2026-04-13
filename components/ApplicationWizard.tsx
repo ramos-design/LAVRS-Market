@@ -557,38 +557,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   </div>
                 </section>
 
-                {selectedZoneCategory && eventPlan?.categorySizes?.[selectedZoneCategory] && (
-                  <div className="p-6 bg-lavrs-beige/50 border border-lavrs-pink/20 rounded-none">
-                    <div className="flex items-start gap-3">
-                      <Info size={18} className="text-lavrs-red mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Informace o spotu</p>
-                        <p className="text-sm text-gray-700 font-medium">
-                          {eventPlan.categorySizes[selectedZoneCategory]}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-lavrs-beige/50 p-5 md:p-8 rounded-none border border-lavrs-pink/20 space-y-4">
-                  <div className="flex gap-4">
-                    <Info size={24} className="text-lavrs-red shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-lavrs-dark text-sm mb-2">Extra vybavení a speciální požadavky</h4>
-                      <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                        Jakékoli další doplňky nebo speciální technické požadavky se budou řešit individuálně s možným doplatkem přímo na místě konání akce.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-lavrs-pink/20">
-                    <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                      Máte-li specifický požadavek již nyní, zašlete nám jej prosím e-mailem na <a href="mailto:lavrs@lavrs.cz" className="text-lavrs-red font-bold hover:underline">lavrs@lavrs.cz</a> s uvedením názvu vaší značky.
-                    </p>
-                  </div>
-                </div>
-
                 {selectedZoneCategory && eventPlan?.equipment?.[selectedZoneCategory]?.length > 0 ? (
                   <div className="p-6 bg-white border border-gray-100 rounded-none shadow-sm space-y-3">
                     <div className="flex items-center gap-3">
@@ -615,6 +583,38 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     </p>
                   </div>
                 )}
+
+                {selectedZoneCategory && eventPlan?.categorySizes?.[selectedZoneCategory] && (
+                  <div className="p-6 bg-lavrs-beige/50 border border-lavrs-pink/20 rounded-none">
+                    <div className="flex items-start gap-3">
+                      <Info size={18} className="text-lavrs-red mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Informace o spotu</p>
+                        <p className="text-sm text-gray-700 font-medium">
+                          {eventPlan.categorySizes[selectedZoneCategory]}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-lavrs-beige/50 p-5 md:p-8 rounded-none border border-lavrs-pink/20 space-y-4">
+                  <div className="flex gap-4">
+                    <Info size={24} className="text-lavrs-red shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-lavrs-dark text-sm mb-2">Extra vybavení a speciální požadavky</h4>
+                      <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                        Jakékoli další doplňky nebo speciální technické požadavky se budou řešit individuálně s možným doplatkem přímo na místě konání akce.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-lavrs-pink/20">
+                    <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                      Máte-li specifický požadavek již nyní, zašlete nám jej prosím e-mailem na <a href="mailto:lavrs@lavrs.cz" className="text-lavrs-red font-bold hover:underline">lavrs@lavrs.cz</a> s uvedením názvu vaší značky.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

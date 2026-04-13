@@ -16,6 +16,7 @@ const TEMPLATE_VARIABLES = [
     { key: '{{invoice_amount}}', label: 'Částka k úhradě', example: '3 500 Kč' },
     { key: '{{invoice_number}}', label: 'Číslo objednávky', example: 'FV-2026-0042' },
     { key: '{{zone_type}}', label: 'Kategorie spotu', example: 'Vintage & Second-hand' },
+    { key: '{{order_table}}', label: 'Tabulka objednávky (automatická)', example: '[Značka | Event | Kategorie | Číslo | Částka]' },
 ];
 
 /* ─── Default email bodies ───────────────────────────────────── */
@@ -155,6 +156,20 @@ Přejeme hodně úspěchů!
 
 S pozdravem,
 Tým LAVRS market`,
+
+    'invoice-notification': `Nová objednávka na LAVRS market!
+
+{{order_table}}
+
+V příloze najdete vygenerovanou objednávku (PDF).
+Pokud jste tuto objednávku již zaplatili, tento e-mail prosím ignorujte.
+Jakmile tým LAVRS market schválí Vaši platbu, obdržíte fakturu e-mailem a budete informováni o zařazení do eventu.`,
+
+    'invoice-notification-admin': `Nová objednávka na LAVRS market!
+
+{{order_table}}
+
+V příloze najdete vygenerovanou objednávku (PDF).`,
 
     'payment-submitted': `Dobrý den, {{contact_person}},
 

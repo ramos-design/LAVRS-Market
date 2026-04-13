@@ -121,8 +121,11 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
     const issuedDateOnly = now.toISOString().split('T')[0]; // YYYY-MM-DD for PDF/XML
     const issuedDateIso = now.toISOString(); // full timestamp for DB
     const taxPointDate = issuedDateOnly;
-    const dueDays = (companySettings.invoiceDueDays && companySettings.invoiceDueDays > 0)
-        ? companySettings.invoiceDueDays : 7;
+    const dueDays = Math.max(
+        (companySettings.invoiceDueDays && companySettings.invoiceDueDays > 0)
+            ? companySettings.invoiceDueDays : 7,
+        7
+    );
     const dueDateObj = new Date(now);
     dueDateObj.setDate(dueDateObj.getDate() + dueDays);
     const dueDateOnly = dueDateObj.toISOString().split('T')[0]; // YYYY-MM-DD for PDF/XML

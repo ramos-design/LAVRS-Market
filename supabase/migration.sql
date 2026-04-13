@@ -773,6 +773,24 @@ S pozdravem,
 Tým LAVRS market' WHERE id = 'post-event';
 
 -- ═══════════════════════════════════════════════════════════
+-- 17. Invoice notification email templates (editable by admin)
+-- ═══════════════════════════════════════════════════════════
+INSERT INTO email_templates (id, name, subject, description, body, category, enabled) VALUES
+  ('invoice-notification', 'Nová objednávka (vystavovatel)', 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', 'Automatický email odeslaný vystavovateli po vygenerování objednávky.', 'Nová objednávka na LAVRS market!
+
+{{order_table}}
+
+V příloze najdete vygenerovanou objednávku (PDF).
+Pokud jste tuto objednávku již zaplatili, tento e-mail prosím ignorujte.
+Jakmile tým LAVRS market schválí Vaši platbu, obdržíte fakturu e-mailem a budete informováni o zařazení do eventu.', 'payment', true),
+  ('invoice-notification-admin', 'Nová objednávka (admin)', 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', 'Automatický email odeslaný adminovi po vygenerování objednávky.', 'Nová objednávka na LAVRS market!
+
+{{order_table}}
+
+V příloze najdete vygenerovanou objednávku (PDF).', 'payment', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ═══════════════════════════════════════════════════════════
 -- Brand deletion request
 -- ═══════════════════════════════════════════════════════════
 ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ DEFAULT NULL;

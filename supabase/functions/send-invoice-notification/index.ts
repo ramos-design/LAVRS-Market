@@ -1,4 +1,8 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6";
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
@@ -21,28 +25,10 @@ function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
 }
 
-function buildEmailHtml(title: string, brandName: string, contactPerson: string, eventName: string, eventDate: string, zoneCategory: string, invoiceNumber: string, totalAmountCzk: string, recipientType: string): string {
+/** Build the order details table HTML */
+function buildOrderTable(brandName: string, contactPerson: string, eventName: string, eventDate: string, zoneCategory: string, invoiceNumber: string, totalAmountCzk: string): string {
     const e = escapeHtml;
-    const isAdmin = recipientType === 'admin';
-    const footerText = isAdmin
-        ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
-        : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
-        + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
-        + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
-    // Compact HTML — no indentation to avoid SMTP quoted-printable =20 artifacts
-    return '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>' + e(title) + '</title></head>'
-    + '<body style="margin:0;padding:0;background-color:#e8b8b8;font-family:Arial,Helvetica,sans-serif;">'
-    + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#e8b8b8;">'
-    + '<tr><td align="center" style="padding:30px 10px;">'
-    + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background-color:#f6d7d7;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.1);">'
-    + '<tr><td style="background-color:#e30613;padding:25px 30px;text-align:center;">'
-    + '<div style="color:#ffffff;font-size:28px;font-weight:900;letter-spacing:1px;">LAVRS market</div>'
-    + '</td></tr>'
-    + '<tr><td style="padding:35px 40px;text-align:left;">'
-    + '<h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">' + e(title) + '</h1>'
-    + '<div style="font-size:16px;line-height:1.6;color:#b10014;margin-bottom:25px;">'
-    + '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>'
-    + '<table style="width:100%;border-collapse:collapse;margin:15px 0;">'
+    return '<table style="width:100%;border-collapse:collapse;margin:15px 0;">'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;width:40%;">Zna\u010dka</td>'
     + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(brandName || '\u2014') + '</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Kontaktn\u00ed osoba</td>'
@@ -55,15 +41,37 @@ function buildEmailHtml(title: string, brandName: string, contactPerson: string,
     + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(invoiceNumber || '\u2014') + '</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">\u010c\u00e1stka</td>'
     + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(totalAmountCzk || '\u2014') + ' K\u010d</td></tr>'
-    + '</table>'
-    + footerText
-    + '</div>'
+    + '</table>';
+}
+
+/** Wrap email body in branded LAVRS HTML template */
+function buildEmailHtml(title: string, bodyHtml: string): string {
+    return '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>' + escapeHtml(title) + '</title></head>'
+    + '<body style="margin:0;padding:0;background-color:#e8b8b8;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#e8b8b8;">'
+    + '<tr><td align="center" style="padding:30px 10px;">'
+    + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background-color:#f6d7d7;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.1);">'
+    + '<tr><td style="background-color:#e30613;padding:25px 30px;text-align:center;">'
+    + '<div style="color:#ffffff;font-size:28px;font-weight:900;letter-spacing:1px;">LAVRS market</div>'
+    + '</td></tr>'
+    + '<tr><td style="padding:35px 40px;text-align:left;">'
+    + '<h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">' + escapeHtml(title) + '</h1>'
+    + '<div style="font-size:16px;line-height:1.6;color:#b10014;margin-bottom:25px;">' + bodyHtml + '</div>'
     + '<p style="margin:0;font-size:15px;line-height:1.5;color:#b10014;font-weight:bold;border-top:1px solid #efb2b7;padding-top:15px;">T\u00fdm LAVRS market</p>'
     + '</td></tr>'
     + '<tr><td style="padding:0 40px 25px 40px;text-align:center;">'
     + '<p style="margin:0;font-size:12px;line-height:1.4;color:#b96d76;">Toto je automaticky generovan\u00fd e-mail.</p>'
     + '</td></tr>'
     + '</table></td></tr></table></body></html>';
+}
+
+/** Substitute template variables in text */
+function substituteVars(text: string, vars: Record<string, string>): string {
+    let result = text;
+    for (const [key, value] of Object.entries(vars)) {
+        result = result.split(key).join(value);
+    }
+    return result;
 }
 
 Deno.serve(async (req) => {
@@ -94,6 +102,7 @@ Deno.serve(async (req) => {
         } = payload;
 
         const recipient = recipientEmail || TEST_RECIPIENT;
+        const isAdmin = recipientType === 'admin';
 
         console.log(`--- Invoice Notification ---`);
         console.log(`Brand: ${brandName}, Event: ${eventName}, Category: ${zoneCategory}`);
@@ -102,14 +111,89 @@ Deno.serve(async (req) => {
         console.log(`PDF base64 length: ${pdfBase64?.length || 0}`);
         console.log(`XML length: ${xmlString?.length || 0}`);
 
-        const subject = `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
-        const finalHtml = buildEmailHtml(
-            "Nov\u00e1 objedn\u00e1vka",
+        // --- Build order table HTML ---
+        const orderTableHtml = buildOrderTable(
             brandName, contactPerson, eventName, eventDate,
-            zoneCategory, invoiceNumber, totalAmountCzk,
-            recipientType || 'exhibitor'
+            zoneCategory, invoiceNumber, totalAmountCzk
         );
 
+        // --- Variable map for substitution ---
+        const vars: Record<string, string> = {
+            '{{brand_name}}': brandName || '',
+            '{{contact_person}}': contactPerson || '',
+            '{{event_name}}': eventName || '',
+            '{{event_date}}': eventDate || '',
+            '{{zone_type}}': zoneCategory || '',
+            '{{invoice_number}}': invoiceNumber || '',
+            '{{invoice_amount}}': totalAmountCzk ? `${totalAmountCzk} K\u010d` : '',
+            '{{order_table}}': orderTableHtml,
+        };
+
+        // --- Try to fetch template from DB ---
+        const templateId = isAdmin ? 'invoice-notification-admin' : 'invoice-notification';
+        let subject = '';
+        let bodyHtml = '';
+        let templateFound = false;
+
+        try {
+            const supabase = createClient(supabaseUrl, supabaseServiceKey);
+            const { data: template, error: tmplError } = await supabase
+                .from('email_templates')
+                .select('*')
+                .eq('id', templateId)
+                .single();
+
+            if (!tmplError && template && template.enabled) {
+                templateFound = true;
+                console.log(`Using DB template: ${templateId}`);
+
+                // Substitute variables in subject
+                subject = substituteVars(template.subject || '', vars);
+
+                // Substitute variables in body, then convert newlines to <br> for non-table parts
+                let bodyText = substituteVars(template.body || '', vars);
+
+                // The {{order_table}} was already replaced with HTML.
+                // Split around the table, escape & format the text parts, then rejoin.
+                const tableMarker = orderTableHtml;
+                const parts = bodyText.split(tableMarker);
+                bodyHtml = parts.map(part => {
+                    // Escape HTML in text parts and convert newlines to <br>
+                    return escapeHtml(part).replace(/\n/g, '<br>');
+                }).join(tableMarker);
+
+            } else if (!tmplError && template && !template.enabled) {
+                console.log(`Template '${templateId}' is disabled. Skipping email.`);
+                return new Response(
+                    JSON.stringify({ message: "Template disabled, email not sent", templateId }),
+                    { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz" } }
+                );
+            } else {
+                console.warn(`Template '${templateId}' not found (${tmplError?.message}). Using fallback.`);
+            }
+        } catch (dbErr: any) {
+            console.warn(`DB fetch failed: ${dbErr.message}. Using fallback template.`);
+        }
+
+        // --- Fallback: hardcoded template (backwards compatible) ---
+        if (!templateFound) {
+            console.log("Using hardcoded fallback template.");
+            subject = `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
+
+            const footerText = isAdmin
+                ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
+                : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
+                + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
+                + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
+
+            bodyHtml = '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>'
+                + orderTableHtml
+                + footerText;
+        }
+
+        const finalHtml = buildEmailHtml("Nov\u00e1 objedn\u00e1vka", bodyHtml);
+
+        // --- Build attachments ---
         const attachments: { filename: string; content: Uint8Array; contentType: string }[] = [];
 
         if (pdfBase64 && pdfBase64.length > 100) {
@@ -135,6 +219,7 @@ Deno.serve(async (req) => {
             console.warn("XML string missing or too short, skipping attachment");
         }
 
+        // --- Send email via SMTP ---
         const transporter = nodemailer.createTransport({
             host: smtpHost,
             port: smtpPort,
@@ -162,7 +247,7 @@ Deno.serve(async (req) => {
         console.log("Invoice notification email sent successfully!");
 
         return new Response(
-            JSON.stringify({ message: "Invoice notification sent", recipient, attachmentCount: attachments.length }),
+            JSON.stringify({ message: "Invoice notification sent", recipient, attachmentCount: attachments.length, templateUsed: templateFound ? templateId : 'fallback' }),
             { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz" } }
         );
     } catch (err: any) {
