@@ -339,9 +339,31 @@ const AutomatedEmails: React.FC = () => {
     const escapeHtml = (str: string) =>
         str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+    /** Build an example order table matching the actual email design */
+    const buildExampleOrderTable = () => {
+        return '<table style="width:100%;border-collapse:collapse;margin:15px 0;">'
+            + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;width:40%;">Značka</td>'
+            + '<td style="padding:8px 12px;border:1px solid #efb2b7;">Vintage Soul</td></tr>'
+            + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Kontaktní osoba</td>'
+            + '<td style="padding:8px 12px;border:1px solid #efb2b7;">Tereza Nováková</td></tr>'
+            + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Event</td>'
+            + '<td style="padding:8px 12px;border:1px solid #efb2b7;">LAVRS market (29.05.2026)</td></tr>'
+            + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Kategorie</td>'
+            + '<td style="padding:8px 12px;border:1px solid #efb2b7;">Designers</td></tr>'
+            + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Číslo objednávky</td>'
+            + '<td style="padding:8px 12px;border:1px solid #efb2b7;">12620003</td></tr>'
+            + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Částka</td>'
+            + '<td style="padding:8px 12px;border:1px solid #efb2b7;">8 349 Kč</td></tr>'
+            + '</table>';
+    };
+
     const renderPreviewBody = (body: string) => {
         let preview = escapeHtml(body);
+        // Replace {{order_table}} with actual table HTML before other escaping-based replacements
+        const orderTableEscaped = escapeHtml('{{order_table}}');
+        preview = preview.replaceAll(orderTableEscaped, buildExampleOrderTable());
         TEMPLATE_VARIABLES.forEach(v => {
+            if (v.key === '{{order_table}}') return; // Already handled above
             preview = preview.replaceAll(escapeHtml(v.key), `<span style="background:#FEF3C7;padding:1px 6px;border-radius:2px;font-weight:600;color:#92400E;">${escapeHtml(v.example)}</span>`);
         });
         return preview.replace(/\n/g, '<br/>');
@@ -365,6 +387,33 @@ const AutomatedEmails: React.FC = () => {
     ═══════════════════════════════════════════════════════════ */
     if (mode === 'preview' && editingTemplate) {
         const categoryInfo = getCategoryLabel(editingTemplate.category);
+
+        /** Build the branded LAVRS market email HTML matching the actual sent email */
+        const buildBrandedPreviewHtml = () => {
+            const bodyHtml = renderPreviewBody(editingTemplate.body);
+            const titleHtml = escapeHtml(editingTemplate.name || 'Sdělení');
+            return `
+              <div style="margin:0;padding:0;background-color:#e8b8b8;font-family:Arial,Helvetica,sans-serif;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#e8b8b8;margin:0;padding:0;">
+                  <tr><td align="center" style="padding:30px 10px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background-color:#f6d7d7;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+                      <tr><td style="background-color:#e30613;padding:25px 30px;text-align:center;">
+                        <div style="color:#ffffff;font-size:28px;font-weight:900;letter-spacing:1px;">LAVRS market</div>
+                      </td></tr>
+                      <tr><td style="padding:35px 40px;text-align:left;">
+                        <h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">${titleHtml}</h1>
+                        <div style="font-size:16px;line-height:1.6;color:#b10014;margin-bottom:25px;">${bodyHtml}</div>
+                        <p style="margin:0;font-size:15px;line-height:1.5;color:#b10014;font-weight:bold;border-top:1px solid #efb2b7;padding-top:15px;">Tým LAVRS market</p>
+                      </td></tr>
+                      <tr><td style="padding:0 40px 25px 40px;text-align:center;">
+                        <p style="margin:0;font-size:12px;line-height:1.4;color:#b96d76;">Toto je automaticky generovaný e-mail.</p>
+                      </td></tr>
+                    </table>
+                  </td></tr>
+                </table>
+              </div>`;
+        };
+
         return (
             <div className="space-y-6 animate-fadeIn">
                 <button
@@ -374,74 +423,64 @@ const AutomatedEmails: React.FC = () => {
                     <ArrowLeft size={18} /> Zpět na šablony
                 </button>
 
-                {/* Email preview container */}
+                {/* Email metadata header */}
                 <div className="max-w-2xl mx-auto">
                     <div className="bg-gray-100 rounded-none p-3 text-center mb-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                            <Eye size={12} /> Náhled emailu
+                            <Eye size={12} /> Náhled emailu — tak jak ho příjemce uvidí
                         </p>
                     </div>
-                    <div className="bg-white border border-gray-200 shadow-xl">
-                        {/* Email header */}
-                        <div className="border-b border-gray-100 p-6 space-y-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-lavrs-dark rounded-full flex items-center justify-center">
-                                    <span className="text-white text-sm font-bold">LM</span>
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm text-lavrs-dark">LAVRS market</p>
-                                    <p className="text-xs text-gray-400">lavrs@lavrs.cz</p>
-                                </div>
-                                <span className={`ml-auto px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${categoryInfo.color}`}>
-                                    {categoryInfo.label}
-                                </span>
+
+                    {/* Email client header simulation */}
+                    <div className="bg-white border border-gray-200 border-b-0 p-4 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-lavrs-dark rounded-full flex items-center justify-center">
+                                <span className="text-white text-sm font-bold">LM</span>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-400 mb-1">Předmět:</p>
-                                <p className="font-bold text-lavrs-dark"
-                                    dangerouslySetInnerHTML={{
-                                        __html: renderPreviewBody(editingTemplate.subject)
-                                    }}
-                                />
+                                <p className="font-bold text-sm text-lavrs-dark">LAVRS market</p>
+                                <p className="text-xs text-gray-400">lavrs@lavrs.cz</p>
                             </div>
+                            <span className={`ml-auto px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${categoryInfo.color}`}>
+                                {categoryInfo.label}
+                            </span>
                         </div>
-
-                        {/* Email body */}
-                        <div className="p-6">
-                            <div
-                                className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"
-                                dangerouslySetInnerHTML={{ __html: renderPreviewBody(editingTemplate.body) }}
+                        <div>
+                            <p className="text-xs text-gray-400 mb-1">Předmět:</p>
+                            <p className="font-bold text-lavrs-dark"
+                                dangerouslySetInnerHTML={{
+                                    __html: renderPreviewBody(editingTemplate.subject)
+                                }}
                             />
                         </div>
-
-                        {/* Attachments preview */}
-                        {attachments.length > 0 && (
-                            <div className="border-t border-gray-100 p-6">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <Paperclip size={12} /> Přílohy ({attachments.length})
-                                </p>
-                                <div className="space-y-2">
-                                    {attachments.map(att => (
-                                        <div key={att.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-none">
-                                            <span className="text-lg">{getFileIcon(att.file_type || '')}</span>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-lavrs-dark truncate">{att.file_name}</p>
-                                                <p className="text-xs text-gray-400">{formatFileSize(att.file_size || 0)}</p>
-                                            </div>
-                                            <Download size={14} className="text-gray-400" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Footer */}
-                        <div className="border-t border-gray-100 p-6 bg-gray-50">
-                            <p className="text-xs text-gray-400 text-center">
-                                Tento email byl automaticky odeslán systémem LAVRS market.
-                            </p>
-                        </div>
                     </div>
+
+                    {/* Branded email body - matching actual LAVRS email template */}
+                    <div
+                        className="border border-gray-200 shadow-xl"
+                        dangerouslySetInnerHTML={{ __html: buildBrandedPreviewHtml() }}
+                    />
+
+                    {/* Attachments preview */}
+                    {attachments.length > 0 && (
+                        <div className="bg-white border border-gray-200 border-t-0 p-6">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Paperclip size={12} /> Přílohy ({attachments.length})
+                            </p>
+                            <div className="space-y-2">
+                                {attachments.map(att => (
+                                    <div key={att.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-none">
+                                        <span className="text-lg">{getFileIcon(att.file_type || '')}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-lavrs-dark truncate">{att.file_name}</p>
+                                            <p className="text-xs text-gray-400">{formatFileSize(att.file_size || 0)}</p>
+                                        </div>
+                                        <Download size={14} className="text-gray-400" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions */}

@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
         let subject = '';
         let bodyHtml = '';
         let templateFound = false;
+        let emailTitle = 'Nov\u00e1 objedn\u00e1vka'; // Default title, overridden by DB template name
 
         try {
             const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -145,7 +146,8 @@ Deno.serve(async (req) => {
 
             if (!tmplError && template && template.enabled) {
                 templateFound = true;
-                console.log(`Using DB template: ${templateId}`);
+                emailTitle = template.name || emailTitle;
+                console.log(`Using DB template: ${templateId} (title: "${emailTitle}")`);
 
                 // Substitute variables in subject
                 subject = substituteVars(template.subject || '', vars);
@@ -191,7 +193,7 @@ Deno.serve(async (req) => {
                 + footerText;
         }
 
-        const finalHtml = buildEmailHtml("Nov\u00e1 objedn\u00e1vka", bodyHtml);
+        const finalHtml = buildEmailHtml(emailTitle, bodyHtml);
 
         // --- Build attachments ---
         const attachments: { filename: string; content: Uint8Array; contentType: string }[] = [];
