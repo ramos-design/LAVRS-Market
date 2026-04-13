@@ -112,50 +112,6 @@ Splatnost: {{payment_deadline}}
 S pozdravem,
 Tým LAVRS market`,
 
-    'event-instructions': `Dobrý den, {{contact_person}},
-
-{{event_name}} se blíží! Zde jsou důležité organizační informace:
-
-📍 Místo: {{event_location}}
-📅 Datum: {{event_date}}
-🕐 Příjezd a setup: 7:00 – 9:00
-🚪 Start pro návštěvníky: 10:00
-🔚 Konec: 18:00, úklid do 19:30
-
-Podrobné informace a mapku naleznete v příloze.
-
-Těšíme se na Vás!
-
-S pozdravem,
-Tým LAVRS market`,
-
-    'event-reminder': `Dobrý den, {{contact_person}},
-
-připomínáme, že zítra se koná {{event_name}}! 🎪
-
-📍 {{event_location}}
-📅 {{event_date}}
-🕐 Příjezd: od 7:00
-
-Nezapomeňte si vzít vše potřebné pro svůj stánek. V příloze najdete aktuální layout s umístěním Vašeho spotu.
-
-Těšíme se na Vás!
-
-S pozdravem,
-Tým LAVRS market`,
-
-    'post-event': `Dobrý den, {{contact_person}},
-
-děkujeme za Vaši účast na {{event_name}} ({{event_date}})! 🙏
-
-Doufáme, že se Vám event líbil a byl pro Vás přínosný. Budeme rádi za Vaši zpětnou vazbu — pomůže nám vylepšit další akce.
-
-Sledujte nás na sociálních sítích pro informace o nadcházejících eventech.
-
-Přejeme hodně úspěchů!
-
-S pozdravem,
-Tým LAVRS market`,
 
     'invoice-notification': `Nová objednávka na LAVRS market!
 
@@ -201,9 +157,7 @@ const REQUIRED_TEMPLATES: Record<string, { name: string; subject: string; descri
     'payment-submitted': { name: 'Potvrzení odeslání platby', subject: 'Vaše platba byla odeslána - {{event_name}}', description: 'Automatický email odeslaný vystavovateli ihned po potvrzení platby. V příloze je automaticky přiložena faktura.', category: 'payment' },
     'invoice-notification': { name: 'Nová objednávka (vystavovatel)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný vystavovateli po vygenerování objednávky s PDF přílohou.', category: 'payment' },
     'invoice-notification-admin': { name: 'Nová objednávka (admin)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný adminovi po vygenerování objednávky.', category: 'payment' },
-    'event-instructions': { name: 'Organizační instrukce před akcí', subject: 'Důležité informace k {{event_name}}', description: 'Praktické informace o průběhu eventu, příjezdu, setup času atd.', category: 'event' },
-    'event-reminder': { name: 'Reminder těsně před akcí', subject: 'Už zítra! {{event_name}}', description: 'Připomínka den před konáním eventu.', category: 'event' },
-    'post-event': { name: 'Post-event email', subject: 'Děkujeme za účast na {{event_name}}', description: 'Poděkování po skončení eventu, možnost zpětné vazby a pozvánka na další akce.', category: 'event' },
+
 };
 
 /* ─── Main Component ────────────────────────────────────────── */
@@ -243,12 +197,26 @@ const AutomatedEmails: React.FC = () => {
         const existingIds = new Set(templates.map(t => t.id));
         const missingIds = Object.keys(REQUIRED_TEMPLATES).filter(id => !existingIds.has(id));
 
-        if (missingIds.length === 0) return;
+        // Auto-delete event templates that are no longer wanted
+        const EVENT_TEMPLATE_IDS = ['event-instructions', 'event-reminder', 'post-event'];
+        const eventToDelete = templates.filter(t => EVENT_TEMPLATE_IDS.includes(t.id));
+
+        if (missingIds.length === 0 && eventToDelete.length === 0) return;
 
         seedingRef.current = true;
-        console.log(`[AutomatedEmails] Seeding ${missingIds.length} missing templates:`, missingIds);
 
         (async () => {
+            // Delete unwanted event templates
+            for (const t of eventToDelete) {
+                try {
+                    await deleteTemplate(t.id);
+                    console.log(`[AutomatedEmails] Deleted event template: ${t.id}`);
+                } catch (err) {
+                    console.warn(`[AutomatedEmails] Failed to delete ${t.id}:`, err);
+                }
+            }
+
+            // Seed missing templates
             for (const id of missingIds) {
                 const meta = REQUIRED_TEMPLATES[id];
                 const body = DEFAULT_BODIES[id] || '';
@@ -427,7 +395,6 @@ const AutomatedEmails: React.FC = () => {
         switch (category) {
             case 'application': return { label: 'Přihlášky', color: 'bg-blue-100 text-blue-700' };
             case 'payment': return { label: 'Platby', color: 'bg-green-100 text-green-700' };
-            case 'event': return { label: 'Event', color: 'bg-purple-100 text-purple-700' };
             default: return { label: 'Ostatní', color: 'bg-gray-100 text-gray-700' };
         }
     };
@@ -830,7 +797,7 @@ const AutomatedEmails: React.FC = () => {
                             subject: 'Předmět emailu',
                             description: 'Popis nové šablony',
                             body: `Dobrý den, {{contact_person}},\n\n\n\nS pozdravem,\nTým LAVRS market`,
-                            category: 'event',
+                            category: 'payment',
                             enabled: false,
                             last_edited: new Date().toISOString(),
                         };
@@ -878,7 +845,6 @@ const AutomatedEmails: React.FC = () => {
                     { key: 'all', label: 'Všechny' },
                     { key: 'application', label: 'Přihlášky' },
                     { key: 'payment', label: 'Platby' },
-                    { key: 'event', label: 'Event' },
                 ].map(cat => (
                     <button
                         key={cat.key}
