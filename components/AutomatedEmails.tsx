@@ -143,6 +143,20 @@ Jakmile bude Vaše platba připsána na náš účet a schválena týmem LAVRS m
 
 S pozdravem,
 Tým LAVRS market`,
+
+    'payment-approved-admin': `Ověřená platba - nová objednávka!
+
+{{order_table}}
+
+Status: ✅ Platba ověřena a schválena
+
+Značka: {{brand_name}}
+Event: {{event_name}} ({{event_date}})
+Kategorie spotu: {{zone_type}}
+Částka k úhradě: {{invoice_amount}}
+Číslo objednávky: {{invoice_number}}
+
+V příloze je finální faktura (PDF).`,
 };
 
 /* ─── Required template definitions for auto-seeding ─────────── */
@@ -157,6 +171,7 @@ const REQUIRED_TEMPLATES: Record<string, { name: string; subject: string; descri
     'payment-submitted': { name: 'Potvrzení odeslání platby', subject: 'Vaše platba byla odeslána - {{event_name}}', description: 'Automatický email odeslaný vystavovateli ihned po potvrzení platby. V příloze je automaticky přiložena faktura.', category: 'payment' },
     'invoice-notification': { name: 'Nová objednávka (vystavovatel)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný vystavovateli po vygenerování objednávky s PDF přílohou.', category: 'payment' },
     'invoice-notification-admin': { name: 'Nová objednávka (admin)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný adminovi po vygenerování objednávky.', category: 'payment' },
+    'payment-approved-admin': { name: 'Ověřená platba (admin)', subject: 'Ověřená platba - {{brand_name}} — {{event_name}}', description: 'Email poslán adminovi když je platba ověřena a schválena. Obsahuje fakturu v příloze a všechny detaily objednávky. Celé tělo je editovatelné.', category: 'payment' },
 
 };
 

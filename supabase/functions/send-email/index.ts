@@ -10,6 +10,7 @@ const smtpUsername = Deno.env.get("SMTP_USERNAME")!;
 const smtpPassword = Deno.env.get("SMTP_PASSWORD")!;
 const senderEmail = Deno.env.get("SENDER_EMAIL") || "lavrs@lavrs.cz";
 const senderName = Deno.env.get("SENDER_NAME") || "LAVRS market";
+const adminEmail = Deno.env.get("ADMIN_EMAIL") || "lavrs@lavrs.cz";
 
 const escapeHtml = (str: string) =>
     str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -273,6 +274,44 @@ Deno.serve(async (req) => {
         });
 
         console.log("Email sent successfully!");
+
+        // 6. Send admin notification if payment is confirmed
+        if (templateId === 'payment-confirmed') {
+            console.log(`Sending 'payment-approved-admin' to admin (${adminEmail})...`);
+            try {
+                const { data: adminTemplate, error: adminTmplError } = await supabase
+                    .from('email_templates')
+                    .select('*')
+                    .eq('id', 'payment-approved-admin')
+                    .single();
+
+                if (!adminTmplError && adminTemplate && adminTemplate.enabled) {
+                    let adminBody = adminTemplate.body || "";
+                    let adminSubject = adminTemplate.subject || "";
+
+                    Object.entries(vars).forEach(([k, v]) => {
+                        adminBody = adminBody.split(k).join(v);
+                        adminSubject = adminSubject.split(k).join(v);
+                    });
+
+                    const adminHtml = getHtmlTemplate(adminTemplate.name || "Ověřená platba", adminBody);
+
+                    await transporter.sendMail({
+                        from: `"${senderName}" <${senderEmail}>`,
+                        to: adminEmail,
+                        subject: adminSubject,
+                        html: adminHtml,
+                        attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
+                    });
+
+                    console.log("Admin notification sent successfully!");
+                } else {
+                    console.log("Admin template 'payment-approved-admin' not found or disabled. Skipping admin notification.");
+                }
+            } catch (adminErr: any) {
+                console.warn(`Failed to send admin notification: ${adminErr.message}`);
+            }
+        }
 
         return new Response(JSON.stringify({ message: "Done" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
