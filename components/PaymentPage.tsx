@@ -775,7 +775,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                                   if (fnError) console.error('[Order email] Admin notification error:', fnError);
                                   else console.log('[Order email] Notification sent to lavrs@lavrs.cz');
 
-                                  const exhibitorEmail = billingEmail || activeApp.billingEmail || '';
+                                  const exhibitorEmail = billingEmail || activeApp?.billingEmail || activeApp?.email || '';
                                   if (exhibitorEmail) {
                                     // Exhibitor gets only PDF (no ISDOC XML) — this is an order, not an invoice
                                     const { xmlString: _omit, ...exhibitorBody } = invoiceBody;
