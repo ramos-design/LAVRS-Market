@@ -25,7 +25,7 @@ function buildEmailHtml(title: string, brandName: string, contactPerson: string,
     const e = escapeHtml;
     const isAdmin = recipientType === 'admin';
     const footerText = isAdmin
-        ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF) a ISDOC XML soubor.</p>'
+        ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
         : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
         + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
         + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';

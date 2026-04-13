@@ -529,20 +529,6 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   ))}
                 </div>
 
-                {selectedZoneCategory && eventPlan?.categorySizes?.[selectedZoneCategory] && (
-                  <div className="mt-6 p-6 bg-lavrs-beige/50 border border-lavrs-pink/20 rounded-none">
-                    <div className="flex items-start gap-3">
-                      <Info size={18} className="text-lavrs-red mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Informace o spotu</p>
-                        <p className="text-sm text-gray-700 font-medium">
-                          {eventPlan.categorySizes[selectedZoneCategory]}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {showCatError && !selectedZoneCategory && (
                   <p className="text-center text-sm text-lavrs-red font-bold animate-bounce pt-12">
                     Vyberte prosím kategorii zóny pro pokračování.
@@ -570,6 +556,20 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                     <p className="text-xs text-gray-500 font-medium italic">Cena bez DPH · včetně základního vybavení dle kategorie</p>
                   </div>
                 </section>
+
+                {selectedZoneCategory && eventPlan?.categorySizes?.[selectedZoneCategory] && (
+                  <div className="p-6 bg-lavrs-beige/50 border border-lavrs-pink/20 rounded-none">
+                    <div className="flex items-start gap-3">
+                      <Info size={18} className="text-lavrs-red mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Informace o spotu</p>
+                        <p className="text-sm text-gray-700 font-medium">
+                          {eventPlan.categorySizes[selectedZoneCategory]}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-lavrs-beige/50 p-5 md:p-8 rounded-none border border-lavrs-pink/20 space-y-4">
                   <div className="flex gap-4">
