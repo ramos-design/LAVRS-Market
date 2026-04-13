@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart, Camera } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory, MarketEvent, BrandProfile } from '../types';
 import { DbApplication } from '../lib/database';
@@ -113,6 +113,15 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
       setPriceSaving(false);
     }
   }, [selectedApp, priceInput, onUpdateApplication]);
+
+  // Check if approval is blocked because category price is non-numeric and no custom price is set
+  const isMissingRequiredPrice = useMemo(() => {
+    if (!selectedApp) return false;
+    const catPrice = getCategoryPrice(selectedApp);
+    const numPrice = parseCategoryPrice(catPrice);
+    // If category price exists but is non-numeric (e.g. "domluvou"), and no custom price was saved
+    return catPrice != null && numPrice === null && (selectedApp.customPrice == null || selectedApp.customPrice === 0);
+  }, [selectedApp, getCategoryPrice, parseCategoryPrice]);
 
   const handleAction = useCallback(async (id: string, newStatus: AppStatus) => {
     setIsProcessing(true);
@@ -697,11 +706,22 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <button
-                      onClick={() => handleAction(selectedApp.id, AppStatus.APPROVED)}
+                      onClick={() => {
+                        if (isMissingRequiredPrice) {
+                          alert('Nelze schválit přihlášku bez vyplněné částky k fakturaci.\n\nCeník kategorie je „dohodou" — nejprve doplňte konkrétní částku v sekci „Částka k fakturaci" a uložte ji.');
+                          return;
+                        }
+                        handleAction(selectedApp.id, AppStatus.APPROVED);
+                      }}
                       disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status) === AppStatus.PAID || normalizeStatus(selectedApp.status) === AppStatus.PAYMENT_UNDER_REVIEW}
-                      className="bg-green-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isMissingRequiredPrice
+                          ? 'bg-green-300 text-white cursor-not-allowed'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
                     >
                       <Check size={18} /> SCHVÁLIT
+                      {isMissingRequiredPrice && <span className="text-[9px] font-normal opacity-80">⚠ Doplňte částku</span>}
                     </button>
 
                     <button
