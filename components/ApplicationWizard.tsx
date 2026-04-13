@@ -11,6 +11,7 @@ interface ApplicationWizardProps {
   onApply: (app: Application) => void;
   eventPlan?: EventPlan;
   userId?: string;
+  userEmail?: string;
 }
 
 const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
@@ -19,6 +20,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   onApply,
   eventPlan,
   userId,
+  userEmail,
 }) => {
   const { profiles: dbProfiles, createProfile } = useBrandProfiles();
   const savedBrands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
@@ -38,7 +40,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   const [website, setWebsite] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(userEmail || '');
 
   const [selectedZoneCategory, setSelectedZoneCategory] = useState<ZoneCategory | null>(null); // Brand category
 
@@ -62,7 +64,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
   const [consentGDPR, setConsentGDPR] = useState(false);
   const [consentOrg, setConsentOrg] = useState(false);
   const [consentStorno, setConsentStorno] = useState(false);
-  const [consentNewsletter, setConsentNewsletter] = useState(false);
+  const [declineNewsletter, setDeclineNewsletter] = useState(false);
   const [showCatError, setShowCatError] = useState(false);
   const [showBrandError, setShowBrandError] = useState(false);
 
@@ -126,7 +128,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
       setWebsite('');
       setContactPerson('');
       setPhone('');
-      setEmail('');
+      setEmail(userEmail || '');
       setBillingName('');
       setIc('');
       setDic('');
@@ -150,7 +152,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
         setBillingEmail(brand.billingEmail || '');
       }
     }
-  }, [savedBrands]);
+  }, [savedBrands, userEmail]);
 
   const handleFinalSubmit = useCallback(async () => {
     if (isSubmitting) return;
@@ -204,7 +206,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
         consentGDPR,
         consentOrg,
         consentStorno,
-        consentNewsletter,
+        consentNewsletter: !declineNewsletter,
         extraNote
       };
 
@@ -215,7 +217,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, currentBrandId, userId, brandName, brandDescription, instagram, website, contactPerson, phone, email, billingName, ic, dic, billingAddress, billingEmail, saveToProfile, createProfile, selectedZoneCategory, isWaitlist, isSoldout, eventId, consentGDPR, consentOrg, consentStorno, consentNewsletter, extraNote, onApply]);
+  }, [isSubmitting, currentBrandId, userId, brandName, brandDescription, instagram, website, contactPerson, phone, email, billingName, ic, dic, billingAddress, billingEmail, saveToProfile, createProfile, selectedZoneCategory, isWaitlist, isSoldout, eventId, consentGDPR, consentOrg, consentStorno, declineNewsletter, extraNote, onApply]);
 
   const checkIsFull = (category: ZoneCategory | null) => {
     const plan = eventPlan;
@@ -582,19 +584,37 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                   
                   <div className="pt-4 border-t border-lavrs-pink/20">
                     <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                      Máte-li specifický požadavek již nyní, zašlete nám jej prosím e-mailem na <a href="mailto:info@lavrs.cz" className="text-lavrs-red font-bold hover:underline">info@lavrs.cz</a> s uvedením názvu vaší značky.
+                      Máte-li specifický požadavek již nyní, zašlete nám jej prosím e-mailem na <a href="mailto:lavrs@lavrs.cz" className="text-lavrs-red font-bold hover:underline">lavrs@lavrs.cz</a> s uvedením názvu vaší značky.
                     </p>
                   </div>
                 </div>
 
-                <div className="p-6 bg-white border border-gray-100 rounded-none shadow-sm flex gap-4 items-center">
-                  <div className="w-10 h-10 bg-green-50 text-green-600 flex items-center justify-center shrink-0">
-                    <Check size={20} strokeWidth={3} />
+                {selectedZoneCategory && eventPlan?.equipment?.[selectedZoneCategory]?.length > 0 ? (
+                  <div className="p-6 bg-white border border-gray-100 rounded-none shadow-sm space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                        <Check size={16} strokeWidth={3} />
+                      </div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Vybavení v ceně</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pl-11">
+                      {eventPlan.equipment[selectedZoneCategory].map((item, idx) => (
+                        <span key={idx} className="bg-lavrs-beige/60 border border-lavrs-pink/20 text-lavrs-dark px-3 py-1.5 text-[10px] font-black uppercase tracking-wider">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-[11px] text-gray-500 font-medium">
-                    Základní balíček (stůl/židle) je automaticky zahrnut v ceně vaší vybrané kategorie.
-                  </p>
-                </div>
+                ) : (
+                  <div className="p-6 bg-white border border-gray-100 rounded-none shadow-sm flex gap-4 items-center">
+                    <div className="w-10 h-10 bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                      <Check size={20} strokeWidth={3} />
+                    </div>
+                    <p className="text-[11px] text-gray-500 font-medium">
+                      Základní balíček je automaticky zahrnut v ceně vaší vybrané kategorie.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -784,7 +804,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                       { id: 'gdpr', label: 'Souhlasím se zpracováním osobních údajů (GDPR)', required: true, state: consentGDPR, setState: setConsentGDPR },
                       { id: 'org', label: 'Souhlasím se zasíláním organizačních informací k akci', required: true, state: consentOrg, setState: setConsentOrg },
                       { id: 'storno', label: 'Souhlasím se STORNO podmínkami LAVRS market', required: true, state: consentStorno, setState: setConsentStorno },
-                      { id: 'newsletter', label: 'Chci odebírat newsletter LAVRS market (novinky, termíny)', required: false, state: consentNewsletter, setState: setConsentNewsletter }
+                      { id: 'newsletter', label: 'Nepřeji si dostávat newsletter LAVRS market (novinky, termíny)', required: false, state: declineNewsletter, setState: setDeclineNewsletter }
                     ].map(consent => (
                       <label key={consent.id} className="flex items-center gap-4 cursor-pointer group">
                         <div className="relative w-6 h-6 shrink-0">

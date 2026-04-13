@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Clock, AlertCircle } from 'lucide-react';
+import { FileText, Clock, AlertCircle, Mail } from 'lucide-react';
 import { AppStatus, Application, MarketEvent } from '../types';
 import { useInvoices, useAllEventPlanPrices } from '../hooks/useSupabase';
 
@@ -105,6 +105,12 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                                                             app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
                                                                 app.status === AppStatus.EXPIRED ? 'Exspirováno' : 'Neznámý stav'}
                                     </span>
+                                    {app.invoiceId && (
+                                        <span className="inline-flex items-center gap-1 mt-1 ml-1 text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border bg-purple-50 text-purple-700 border-purple-100">
+                                            <Mail size={10} />
+                                            Faktura zaslána na e-mail
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -159,6 +165,7 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                                     </div>
                                 )}
                             </div>
+
                         </div>
                     );
                 })}
@@ -168,7 +175,7 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                 <AlertCircle className="text-blue-500 shrink-0" size={24} />
                 <div className="text-sm">
                     <p className="text-blue-900 font-bold mb-1">Potřebujete změnit údaje v přihlášce?</p>
-                    <p className="text-blue-700 font-medium">Změny v již odeslaných přihláškách řešíme individuálně. Napište nám na <span className="underline cursor-pointer">info@lavrs.cz</span>.</p>
+                    <p className="text-blue-700 font-medium">Změny v již odeslaných přihláškách řešíme individuálně. Napište nám na <span className="underline cursor-pointer">lavrs@lavrs.cz</span>.</p>
                 </div>
             </div>
         </div>

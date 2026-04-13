@@ -159,6 +159,8 @@ export interface BrandProfile {
   billingAddress?: string;
   billingEmail?: string;
   deletionRequestedAt?: string;
+  logoUrl?: string;
+  galleryUrls?: string[];
 }
 
 export interface Banner {

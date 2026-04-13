@@ -28,7 +28,6 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
     const menuItems = role === 'EXHIBITOR' ? [
         { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },
         { id: 'APPLICATIONS', label: 'Moje Přihlášky', icon: FileText },
-        { id: 'BILLING', label: 'Fakturace', icon: CreditCard },
         { id: 'PROFILE', label: 'Můj profil', icon: User },
     ] : [
         { id: 'DASHBOARD', label: 'Přehled', icon: LayoutDashboard },

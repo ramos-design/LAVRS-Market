@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles, MapPin } from 'lucide-react';
+import { ArrowRight, Clock, CheckCircle2, AlertCircle, XCircle, Facebook, Instagram, ChevronRight, Sparkles, MapPin, Camera } from 'lucide-react';
 import { MarketEvent, User, AppStatus, Application, BrandProfile, Banner } from '../types';
 import { formatEventDateRange } from '../lib/mappers';
 import CountdownDisplay from './CountdownDisplay';
@@ -170,6 +170,35 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
           </div>
         </div>
       )}
+
+      {/* Photo Gallery Reminder — slim bar right under the slideshow banner */}
+      {(() => {
+        const brandsNeedingPhotos = brands.filter(brand => {
+          const hasApprovedApp = applications.some(app =>
+            app.brandName.toLowerCase() === brand.brandName.toLowerCase() &&
+            [AppStatus.APPROVED, AppStatus.PAID, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(app.status)
+          );
+          const hasGallery = (brand.galleryUrls && brand.galleryUrls.length > 0) || !!brand.logoUrl;
+          return hasApprovedApp && !hasGallery;
+        });
+        if (brandsNeedingPhotos.length === 0) return null;
+        return (
+          <div className="bg-lavrs-beige/50 border border-lavrs-pink/30 rounded-none px-4 py-3 md:px-6 md:py-3 flex items-center justify-between gap-3 -mt-8 animate-fadeIn">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Camera size={16} className="text-lavrs-red shrink-0" />
+              <p className="text-xs md:text-sm text-lavrs-dark font-semibold truncate">
+                Doplňte logo a fotky vaší značky do <span className="font-bold">Můj profil</span>
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('PROFILE')}
+              className="bg-lavrs-dark text-white px-4 py-1.5 rounded-none font-bold uppercase tracking-widest text-[9px] md:text-[10px] hover:bg-lavrs-red transition-all flex items-center gap-1.5 group shadow-sm whitespace-nowrap shrink-0"
+            >
+              Přejít <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        );
+      })()}
 
       {showGreeting && (
         <header className="text-center md:text-left">

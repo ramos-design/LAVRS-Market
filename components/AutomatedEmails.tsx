@@ -12,9 +12,9 @@ const TEMPLATE_VARIABLES = [
     { key: '{{event_date}}', label: 'Datum eventu', example: '15. března 2026' },
     { key: '{{event_location}}', label: 'Místo konání', example: 'Vnitroblock, Praha 7' },
     { key: '{{contact_person}}', label: 'Kontaktní osoba', example: 'Tereza Nováková' },
-    { key: '{{payment_deadline}}', label: 'Splatnost faktury', example: '20. března 2026' },
+    { key: '{{payment_deadline}}', label: 'Splatnost objednávky', example: '20. března 2026' },
     { key: '{{invoice_amount}}', label: 'Částka k úhradě', example: '3 500 Kč' },
-    { key: '{{invoice_number}}', label: 'Číslo faktury', example: 'FV-2026-0042' },
+    { key: '{{invoice_number}}', label: 'Číslo objednávky', example: 'FV-2026-0042' },
     { key: '{{zone_type}}', label: 'Kategorie spotu', example: 'Vintage & Second-hand' },
 ];
 
@@ -35,10 +35,10 @@ Tým LAVRS market`,
 
 s radostí Vám oznamujeme, že Vaše přihláška za značku {{brand_name}} na {{event_name}} ({{event_date}}) byla schválena! 🎉
 
-Pro potvrzení Vaší účasti prosím uhraďte fakturu v příloze do {{payment_deadline}}.
+Pro potvrzení Vaší účasti prosím uhraďte objednávku do {{payment_deadline}}.
 
 Částka k úhradě: {{invoice_amount}}
-Číslo faktury: {{invoice_number}}
+Číslo objednávky: {{invoice_number}}
 
 V případě neuhrazení do uvedeného termínu bude Vaše místo automaticky uvolněno.
 
@@ -87,22 +87,22 @@ Tým LAVRS market`,
 
     'payment-reminder': `Dobrý den, {{contact_person}},
 
-rádi bychom Vám připomněli blížící se termín splatnosti faktury za {{event_name}} ({{event_date}}).
+rádi bychom Vám připomněli blížící se termín splatnosti objednávky za {{event_name}} ({{event_date}}).
 
-Číslo faktury: {{invoice_number}}
+Číslo objednávky: {{invoice_number}}
 Částka: {{invoice_amount}}
 Splatnost: {{payment_deadline}}
 
-Prosím uhraďte fakturu včas, aby Vaše místo zůstalo rezervováno.
+Prosím uhraďte objednávku včas, aby Vaše místo zůstalo rezervováno.
 
 S pozdravem,
 Tým LAVRS market`,
 
     'payment-last-call': `Dobrý den, {{contact_person}},
 
-toto je poslední upomínka k úhradě faktury za {{event_name}} ({{event_date}}).
+toto je poslední upomínka k úhradě objednávky za {{event_name}} ({{event_date}}).
 
-Číslo faktury: {{invoice_number}}
+Číslo objednávky: {{invoice_number}}
 Částka: {{invoice_amount}}
 Splatnost: {{payment_deadline}}
 
@@ -158,15 +158,17 @@ Tým LAVRS market`,
 
     'payment-submitted': `Dobrý den, {{contact_person}},
 
-děkujeme za potvrzení platby za účast na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
+děkujeme za potvrzení objednávky za účast na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
 
-Vaše faktura je přiložena v příloze tohoto emailu.
+Vaše objednávka – výzva k platbě je přiložena v příloze tohoto emailu.
 
-Číslo faktury: {{invoice_number}}
+Číslo objednávky: {{invoice_number}}
 Částka k úhradě: {{invoice_amount}}
 Splatnost: {{payment_deadline}}
 
-Jakmile bude platba připsána na náš účet, obdržíte potvrzení o přijetí platby a závazné rezervaci Vašeho místa.
+Prosím, zkontrolujte údaje objednávky. Pokud jste platbu již provedli, tento e-mail ignorujte a vyčkejte na její schválení.
+
+Jakmile bude Vaše platba připsána na náš účet a schválena týmem LAVRS market, budete informováni a zařazeni do eventu.
 
 S pozdravem,
 Tým LAVRS market`,
@@ -370,7 +372,7 @@ const AutomatedEmails: React.FC = () => {
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm text-lavrs-dark">LAVRS market</p>
-                                    <p className="text-xs text-gray-400">info@lavrsmarket.cz</p>
+                                    <p className="text-xs text-gray-400">lavrs@lavrs.cz</p>
                                 </div>
                                 <span className={`ml-auto px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${categoryInfo.color}`}>
                                     {categoryInfo.label}

@@ -36,19 +36,7 @@ export interface GeneratedInvoice {
     dueDate: string;
 }
 
-function getVariableSymbol(application: Application, event: MarketEvent, allApplications: Application[]): string {
-    const date = new Date(event.date);
-    const dd = String(date.getDate()).padStart(2, '0');
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const cleanIc = (application.ic || '').replace(/\D/g, '');
-    if (cleanIc.length > 0) {
-        const icoFirst6 = cleanIc.substring(0, 6).padEnd(6, '0');
-        return `${dd}${mm}${icoFirst6}`;
-    }
-    // No IČO — use DDMM + 6-digit sequential number
-    const seq = getApplicationSequenceForEvent(application, allApplications);
-    return `${dd}${mm}${String(seq).padStart(6, '0')}`;
-}
+// Variable symbol = Invoice number (unified numbering 12620001–12629999)
 
 /**
  * Parse price string like "6.900 Kč", "6 900 Kč" or "4900" to whole CZK number.
@@ -124,8 +112,8 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
         allApplications,
     } = params;
 
-    // 1. Invoice number & sequence
-    const invoiceNumber = calculateInvoiceNumber(application, allApplications, event);
+    // 1. Invoice number (sequential from DB) & sequence
+    const invoiceNumber = await calculateInvoiceNumber();
     const sequenceNumber = getApplicationSequenceForEvent(application, allApplications);
 
     // 2. Dates — full ISO timestamps for DB, date-only for PDF/XML
@@ -142,7 +130,8 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
 
     // 3. Line items with DPH
     const lineItems = buildLineItems(application, event, eventPlan, selectedExtraIds);
-    const variableSymbol = getVariableSymbol(application, event, allApplications);
+    // Variable symbol = invoice number (unified numbering)
+    const variableSymbol = invoiceNumber;
 
     // 4. Calculate totals
     let totalBaseCzk = 0;

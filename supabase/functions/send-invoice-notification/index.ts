@@ -4,10 +4,10 @@ const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
 const smtpUsername = Deno.env.get("SMTP_USERNAME")!;
 const smtpPassword = Deno.env.get("SMTP_PASSWORD")!;
-const senderEmail = Deno.env.get("SENDER_EMAIL") || "info@lavrs.cz";
+const senderEmail = Deno.env.get("SENDER_EMAIL") || "lavrs@lavrs.cz";
 const senderName = Deno.env.get("SENDER_NAME") || "LAVRS market";
 
-const TEST_RECIPIENT = "info@lavrs.cz";
+const TEST_RECIPIENT = "lavrs@lavrs.cz";
 
 function base64ToUint8Array(base64: string): Uint8Array {
     const binary = atob(base64);
@@ -18,7 +18,13 @@ function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
 }
 
-function buildEmailHtml(title: string, brandName: string, contactPerson: string, eventName: string, eventDate: string, zoneCategory: string, invoiceNumber: string, totalAmountCzk: string): string {
+function buildEmailHtml(title: string, brandName: string, contactPerson: string, eventName: string, eventDate: string, zoneCategory: string, invoiceNumber: string, totalAmountCzk: string, recipientType: string): string {
+    const isAdmin = recipientType === 'admin';
+    const footerText = isAdmin
+        ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF) a ISDOC XML soubor.</p>'
+        : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
+        + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
+        + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
     // Compact HTML — no indentation to avoid SMTP quoted-printable =20 artifacts
     return '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>' + title + '</title></head>'
     + '<body style="margin:0;padding:0;background-color:#e8b8b8;font-family:Arial,Helvetica,sans-serif;">'
@@ -41,12 +47,12 @@ function buildEmailHtml(title: string, brandName: string, contactPerson: string,
     + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (eventName || '\u2014') + ' (' + (eventDate || '\u2014') + ')</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Kategorie</td>'
     + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (zoneCategory || '\u2014') + '</td></tr>'
-    + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">\u010c\u00edslo faktury</td>'
+    + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">\u010c\u00edslo objedn\u00e1vky</td>'
     + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (invoiceNumber || '\u2014') + '</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">\u010c\u00e1stka</td>'
     + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (totalAmountCzk || '\u2014') + ' K\u010d</td></tr>'
     + '</table>'
-    + '<p>V p\u0159\u00edloze najdete vygenerovanou fakturu (PDF) a ISDOC XML soubor.</p>'
+    + footerText
     + '</div>'
     + '<p style="margin:0;font-size:15px;line-height:1.5;color:#b10014;font-weight:bold;border-top:1px solid #efb2b7;padding-top:15px;">T\u00fdm LAVRS market</p>'
     + '</td></tr>'
@@ -80,6 +86,7 @@ Deno.serve(async (req) => {
             pdfBase64,
             xmlString,
             recipientEmail,
+            recipientType,
         } = payload;
 
         const recipient = recipientEmail || TEST_RECIPIENT;
@@ -87,7 +94,7 @@ Deno.serve(async (req) => {
         console.log(`--- Invoice Notification ---`);
         console.log(`Brand: ${brandName}, Event: ${eventName}, Category: ${zoneCategory}`);
         console.log(`Invoice: ${invoiceNumber}, Amount: ${totalAmountCzk}`);
-        console.log(`Recipient: ${recipient}`);
+        console.log(`Recipient: ${recipient}, Type: ${recipientType || 'unknown'}`);
         console.log(`PDF base64 length: ${pdfBase64?.length || 0}`);
         console.log(`XML length: ${xmlString?.length || 0}`);
 
@@ -95,14 +102,15 @@ Deno.serve(async (req) => {
         const finalHtml = buildEmailHtml(
             "Nov\u00e1 objedn\u00e1vka",
             brandName, contactPerson, eventName, eventDate,
-            zoneCategory, invoiceNumber, totalAmountCzk
+            zoneCategory, invoiceNumber, totalAmountCzk,
+            recipientType || 'exhibitor'
         );
 
         const attachments: { filename: string; content: Uint8Array; contentType: string }[] = [];
 
         if (pdfBase64 && pdfBase64.length > 100) {
             attachments.push({
-                filename: `${invoiceNumber || "faktura"}.pdf`,
+                filename: `${invoiceNumber || "objednavka"}.pdf`,
                 content: base64ToUint8Array(pdfBase64),
                 contentType: "application/pdf",
             });
@@ -114,7 +122,7 @@ Deno.serve(async (req) => {
         if (xmlString && xmlString.length > 10) {
             const encoder = new TextEncoder();
             attachments.push({
-                filename: `${invoiceNumber || "faktura"}.isdoc`,
+                filename: `${invoiceNumber || "objednavka"}.isdoc`,
                 content: encoder.encode(xmlString),
                 contentType: "application/xml",
             });

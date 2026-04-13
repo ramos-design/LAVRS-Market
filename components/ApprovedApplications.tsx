@@ -1,14 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import { Instagram, Globe, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, ChevronDown, ChevronUp, Search, Heart } from 'lucide-react';
-import { Application, AppStatus, ZoneCategory, MarketEvent } from '../types';
+import { Instagram, Globe, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, ChevronDown, ChevronUp, Search, Heart, Camera, Image } from 'lucide-react';
+import { Application, AppStatus, ZoneCategory, MarketEvent, BrandProfile } from '../types';
+import ImageLightbox from './ImageLightbox';
 
 interface ApprovedApplicationsProps {
   onBack: () => void;
   events: MarketEvent[];
   applications: Application[];
+  brandProfiles?: BrandProfile[];
 }
 
-const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack, events, applications }) => {
+const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack, events, applications, brandProfiles }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
 
   // Create a map for O(1) event lookups
@@ -18,6 +20,13 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
     return map;
   }, [events]);
 
+  // Map brand name (lowercase) to brand profile for gallery lookup
+  const brandProfileMap = React.useMemo(() => {
+    const map = new Map<string, BrandProfile>();
+    (brandProfiles || []).forEach(bp => map.set(bp.brandName.toLowerCase(), bp));
+    return map;
+  }, [brandProfiles]);
+
   // Filter only approved and paid applications
   const approvedApplications = applications.filter(a => {
     const s = normalizeStatus(a.status);
@@ -26,6 +35,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | string>('ALL');
   const [selectedEventId, setSelectedEventId] = useState<'ALL' | string>('ALL');
 
@@ -214,15 +224,20 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                   <div className="p-4 pt-0 space-y-4 border-t border-gray-100 mt-0">
                     {/* Brand header */}
                     <div className="flex items-center gap-3 pt-4">
-                      <div className="w-12 h-12 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-xl shadow-lg shrink-0">
-                        {app.brandName[0]}
-                      </div>
+                      {(() => {
+                        const bp = brandProfileMap.get(app.brandName.toLowerCase());
+                        return bp?.logoUrl ? (
+                          <div className="w-12 h-12 rounded-none overflow-hidden border border-gray-200 shrink-0">
+                            <img src={bp.logoUrl} alt={app.brandName} className="w-full h-full object-contain" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-xl shadow-lg shrink-0">
+                            {app.brandName[0]}
+                          </div>
+                        );
+                      })()}
                       <div className="min-w-0">
                         <h3 className="text-lg font-extrabold text-lavrs-dark truncate">{app.brandName}</h3>
-                        <div className="flex gap-3 flex-wrap text-xs text-gray-500">
-                          {app.instagram && <span className="flex items-center gap-1"><Instagram size={12} /> {app.instagram}</span>}
-                          {app.website && <span className="flex items-center gap-1 truncate"><Globe size={12} /> {app.website}</span>}
-                        </div>
                       </div>
                     </div>
 
@@ -245,6 +260,31 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                         <p className="font-semibold text-lavrs-dark text-xs">{formatDate(app.submittedAt)}</p>
                       </div>
                     </div>
+
+                    {/* Web & Social */}
+                    {(app.instagram || app.website) && (
+                      <div className="space-y-2">
+                        <p className="text-[9px] text-gray-400 uppercase font-bold">Web a sociální sítě</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {app.instagram && (
+                            <div className="bg-gray-50 p-3 border border-gray-100 flex items-center gap-2">
+                              <Instagram size={14} className="text-gray-400 shrink-0" />
+                              <a href={`https://www.instagram.com/${app.instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-700 hover:text-lavrs-red transition-colors truncate">
+                                {app.instagram}
+                              </a>
+                            </div>
+                          )}
+                          {app.website && (
+                            <div className="bg-gray-50 p-3 border border-gray-100 flex items-center gap-2">
+                              <Globe size={14} className="text-gray-400 shrink-0" />
+                              <a href={app.website.startsWith('http') ? app.website : `https://${app.website}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-700 hover:text-lavrs-red transition-colors truncate">
+                                {app.website}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Contact */}
                     <div className="space-y-2">
@@ -279,6 +319,25 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                         </div>
                       </div>
                     </div>
+
+                    {/* Brand Gallery */}
+                    {(() => {
+                      const bp = brandProfileMap.get(app.brandName.toLowerCase());
+                      const gallery = bp?.galleryUrls || [];
+                      if (gallery.length === 0) return null;
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-[9px] text-gray-400 uppercase font-bold flex items-center gap-1.5"><Camera size={12} /> Fotogalerie značky</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {gallery.map((url, i) => (
+                              <div key={url} className="aspect-square bg-gray-50 border border-gray-100 overflow-hidden cursor-pointer" onClick={() => setLightbox({ images: gallery, index: i })}>
+                                <img src={url} alt={`${app.brandName} ${i + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -353,23 +412,20 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                           <div className="max-w-5xl mx-auto space-y-6">
                             {/* Brand Header */}
                             <div className="flex items-start gap-6">
-                              <div className="w-20 h-20 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-3xl shadow-lg shrink-0">
-                                {app.brandName[0]}
-                              </div>
+                              {(() => {
+                                const bp = brandProfileMap.get(app.brandName.toLowerCase());
+                                return bp?.logoUrl ? (
+                                  <div className="w-20 h-20 rounded-none overflow-hidden border border-gray-200 shrink-0">
+                                    <img src={bp.logoUrl} alt={app.brandName} className="w-full h-full object-contain" />
+                                  </div>
+                                ) : (
+                                  <div className="w-20 h-20 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-3xl shadow-lg shrink-0">
+                                    {app.brandName[0]}
+                                  </div>
+                                );
+                              })()}
                               <div className="flex-1 min-w-0">
-                                <h3 className="text-2xl font-extrabold text-lavrs-dark mb-2">{app.brandName}</h3>
-                                <div className="flex gap-4 flex-wrap">
-                                  {app.instagram && (
-                                    <a href="#" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-lavrs-red transition-colors">
-                                      <Instagram size={16} /> {app.instagram}
-                                    </a>
-                                  )}
-                                  {app.website && (
-                                    <a href="#" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-lavrs-red transition-colors">
-                                      <Globe size={16} /> {app.website}
-                                    </a>
-                                  )}
-                                </div>
+                                <h3 className="text-2xl font-extrabold text-lavrs-dark mb-0">{app.brandName}</h3>
                               </div>
                             </div>
 
@@ -402,6 +458,31 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                                 <p className="font-semibold text-lavrs-dark">{formatDate(app.submittedAt)}</p>
                               </div>
                             </div>
+
+                            {/* Web & Social */}
+                            {(app.instagram || app.website) && (
+                              <div>
+                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-3">Web a sociální sítě</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  {app.instagram && (
+                                    <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
+                                      <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Instagram</p>
+                                      <a href={`https://www.instagram.com/${app.instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-lavrs-dark hover:text-lavrs-red transition-colors flex items-center gap-1.5">
+                                        <Instagram size={16} /> {app.instagram}
+                                      </a>
+                                    </div>
+                                  )}
+                                  {app.website && (
+                                    <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
+                                      <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Web</p>
+                                      <a href={app.website.startsWith('http') ? app.website : `https://${app.website}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-lavrs-dark hover:text-lavrs-red transition-colors flex items-center gap-1.5 truncate">
+                                        <Globe size={16} className="shrink-0" /> {app.website}
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
 
                             {app.brandDescription && (
                               <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
@@ -453,6 +534,25 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                                 </div>
                               </div>
                             </div>
+
+                            {/* Brand Gallery */}
+                            {(() => {
+                              const bp = brandProfileMap.get(app.brandName.toLowerCase());
+                              const gallery = bp?.galleryUrls || [];
+                              if (gallery.length === 0) return null;
+                              return (
+                                <div>
+                                  <p className="text-[10px] text-gray-400 uppercase font-bold mb-3 flex items-center gap-1.5"><Camera size={14} /> Fotogalerie značky</p>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                                    {gallery.map((url, i) => (
+                                      <div key={url} className="aspect-square bg-white border border-gray-100 shadow-sm overflow-hidden rounded-none cursor-pointer" onClick={() => setLightbox({ images: gallery, index: i })}>
+                                        <img src={url} alt={`${app.brandName} ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </td>
                       </tr>
@@ -474,6 +574,15 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
           animation: fadeIn 0.4s ease-out forwards;
         }
       `}</style>
+
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          currentIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onNavigate={(i) => setLightbox({ ...lightbox, index: i })}
+        />
+      )}
     </div>
   );
 };

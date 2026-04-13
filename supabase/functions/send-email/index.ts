@@ -8,7 +8,7 @@ const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
 const smtpUsername = Deno.env.get("SMTP_USERNAME")!;
 const smtpPassword = Deno.env.get("SMTP_PASSWORD")!;
-const senderEmail = Deno.env.get("SENDER_EMAIL") || "info@lavrs.cz";
+const senderEmail = Deno.env.get("SENDER_EMAIL") || "lavrs@lavrs.cz";
 const senderName = Deno.env.get("SENDER_NAME") || "LAVRS market";
 
 // Compact HTML — no indentation to avoid SMTP quoted-printable =3d / =20 artifacts
@@ -142,14 +142,32 @@ Deno.serve(async (req) => {
             }
         }
 
-        // 3b. Auto-attach invoice PDF for payment-submitted template
+        // 3b. Auto-attach invoice PDF for payment-submitted / payment-confirmed templates
         let invoiceData: { amount_czk?: number; invoice_number?: string; due_date?: string } | null = null;
-        if (templateId === 'payment-submitted' && app.invoice_id) {
-            const { data: invoice } = await supabase
-                .from('invoices')
-                .select('*')
-                .eq('id', app.invoice_id)
-                .single();
+        if (templateId === 'payment-submitted' || templateId === 'payment-confirmed') {
+            // Try by invoice_id first, then fall back to application_id lookup
+            let invoice = null;
+            if (app.invoice_id) {
+                const { data } = await supabase
+                    .from('invoices')
+                    .select('*')
+                    .eq('id', app.invoice_id)
+                    .single();
+                invoice = data;
+            }
+            if (!invoice) {
+                const { data } = await supabase
+                    .from('invoices')
+                    .select('*')
+                    .eq('application_id', app.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                invoice = data;
+                if (invoice) {
+                    console.log(`Invoice found by application_id fallback: ${invoice.invoice_number}`);
+                }
+            }
 
             if (invoice) {
                 invoiceData = invoice;
@@ -170,6 +188,26 @@ Deno.serve(async (req) => {
                         console.log(`- Auto-attached invoice PDF: ${invoice.invoice_number}.pdf (${pdfData.size} bytes)`);
                     } else {
                         console.warn(`- Could not attach invoice PDF: ${pdfError?.message || 'Unknown error'}`);
+                    }
+                }
+
+                // For payment-confirmed, also attach ISDOC XML (e-doklad)
+                if (templateId === 'payment-confirmed' && invoice.xml_storage_path) {
+                    const { data: xmlData, error: xmlError } = await supabase
+                        .storage
+                        .from('attachments')
+                        .download(invoice.xml_storage_path);
+
+                    if (!xmlError && xmlData && xmlData.size > 0) {
+                        const arrayBuffer = await xmlData.arrayBuffer();
+                        attachments.push({
+                            filename: `${invoice.invoice_number}.isdoc`,
+                            content: new Uint8Array(arrayBuffer),
+                            contentType: "application/xml",
+                        });
+                        console.log(`- Auto-attached ISDOC XML: ${invoice.invoice_number}.isdoc (${xmlData.size} bytes)`);
+                    } else {
+                        console.warn(`- Could not attach ISDOC XML: ${xmlError?.message || 'Unknown error'}`);
                     }
                 }
             }
@@ -193,7 +231,7 @@ Deno.serve(async (req) => {
             '{{invoice_amount}}': invoiceData?.amount_czk
                 ? (invoiceData.amount_czk / 100).toLocaleString('cs-CZ') + ' K\u010d'
                 : "Dle faktury",
-            '{{invoice_number}}': invoiceData?.invoice_number || app.id.split('-').pop()?.toUpperCase() || "",
+            '{{invoice_number}}': invoiceData?.invoice_number || "",
             '{{zone_type}}': app.zone_category || "",
         };
 

@@ -30,35 +30,6 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
         return map;
     }, [invoices]);
 
-    const toEventDayMonth = React.useCallback((eventDate?: string) => {
-        if (!eventDate) return '0000';
-        const trimmed = eventDate.trim();
-
-        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-            const parsed = new Date(trimmed);
-            if (!isNaN(parsed.getTime())) {
-                return `${String(parsed.getDate()).padStart(2, '0')}${String(parsed.getMonth() + 1).padStart(2, '0')}`;
-            }
-        }
-
-        const numeric = trimmed.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
-        if (numeric) {
-            return `${String(parseInt(numeric[1], 10)).padStart(2, '0')}${String(parseInt(numeric[2], 10)).padStart(2, '0')}`;
-        }
-
-        const range = trimmed.match(/(\d{1,2})\.\s*[–-]\s*(\d{1,2})\.\s*(\d{1,2})\.?\s*(\d{4})/);
-        if (range) {
-            return `${String(parseInt(range[1], 10)).padStart(2, '0')}${String(parseInt(range[3], 10)).padStart(2, '0')}`;
-        }
-
-        const parsed = new Date(trimmed);
-        if (!isNaN(parsed.getTime())) {
-            return `${String(parsed.getDate()).padStart(2, '0')}${String(parsed.getMonth() + 1).padStart(2, '0')}`;
-        }
-
-        return '0000';
-    }, []);
-
     const formatEventDate = React.useCallback((dateStr?: string) => {
         if (!dateStr) return '';
         const trimmed = dateStr.trim();
@@ -99,30 +70,6 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
             ].includes(normalized as AppStatus);
         });
 
-        const sequenceByAppId = new Map<string, number>();
-        const groupedByEvent = new Map<string, Application[]>();
-
-        eligibleApps.forEach((app) => {
-            const eventKey = normalizeId(app.eventId) || 'unknown';
-            const list = groupedByEvent.get(eventKey) || [];
-            list.push(app);
-            groupedByEvent.set(eventKey, list);
-        });
-
-        groupedByEvent.forEach((list) => {
-            list
-                .slice()
-                .sort((a, b) => {
-                    const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-                    const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-                    if (aTime !== bTime) return aTime - bTime;
-                    return a.id.localeCompare(b.id);
-                })
-                .forEach((app, idx) => {
-                    sequenceByAppId.set(app.id, idx + 1);
-                });
-        });
-
         return eligibleApps.map((app) => {
             const normalized = (app.status || '').toString().toUpperCase();
             const isPaid = normalized === AppStatus.PAID;
@@ -131,13 +78,11 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
             const event = eventById.get(normalizeId(app.eventId));
             const eventTitle = event?.title || '-';
             const eventDate = formatEventDate(event?.date);
-            const dayMonth = toEventDayMonth(event?.date);
-            const sequence = sequenceByAppId.get(app.id) || 1;
             const amount = getAmountForApp(app);
             const invoice = invoiceByAppId.get(app.id);
 
             return {
-                id: `LVRSM${dayMonth}-${sequence}`,
+                id: invoice?.invoiceNumber || '—',
                 appId: app.id,
                 brand: app.brandName,
                 event: eventTitle,
@@ -151,7 +96,7 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                 pdfStoragePath: invoice?.pdfStoragePath || null,
             };
         });
-    }, [applications, eventById, normalizeId, toEventDayMonth, formatEventDate, getAmountForApp, invoiceByAppId, parseAmountNumber]);
+    }, [applications, eventById, normalizeId, formatEventDate, getAmountForApp, invoiceByAppId, parseAmountNumber]);
 
     const stats = React.useMemo(() => {
         let total = 0, paid = 0, pending = 0, overdue = 0;

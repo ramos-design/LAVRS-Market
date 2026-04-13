@@ -82,6 +82,8 @@ export interface DbBrandProfile {
     billing_address: string | null;
     billing_email: string | null;
     deletion_requested_at: string | null;
+    logo_url: string | null;
+    gallery_urls: string[];
     created_at?: string;
 }
 
@@ -918,6 +920,42 @@ export const invoicesDb = {
             .single();
         if (error) throw error;
         return data;
+    },
+
+    /**
+     * Returns the next sequential invoice number in range 12620001–12629999.
+     * Queries all existing invoices with numbers in this range and returns max + 1.
+     * The UNIQUE constraint on invoice_number prevents duplicates at DB level.
+     */
+    async getNextInvoiceNumber(): Promise<string> {
+        const RANGE_START = 12620001;
+        const RANGE_END = 12629999;
+
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('invoice_number')
+            .gte('invoice_number', String(RANGE_START))
+            .lte('invoice_number', String(RANGE_END))
+            .order('invoice_number', { ascending: false })
+            .limit(1);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            return String(RANGE_START);
+        }
+
+        const maxNum = parseInt(data[0].invoice_number, 10);
+        if (isNaN(maxNum) || maxNum < RANGE_START) {
+            return String(RANGE_START);
+        }
+
+        const next = maxNum + 1;
+        if (next > RANGE_END) {
+            throw new Error(`Rozsah čísel faktur vyčerpán (max ${RANGE_END})`);
+        }
+
+        return String(next);
     },
 };
 

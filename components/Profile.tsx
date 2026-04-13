@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock, Pencil, Clock } from 'lucide-react';
-import { BrandProfile } from '../types';
-import { useBrandProfiles } from '../hooks/useSupabase';
+import React, { useState, useRef, useCallback } from 'react';
+import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock, Pencil, Clock, Camera, Image, X, Upload, Loader } from 'lucide-react';
+import { BrandProfile, AppStatus } from '../types';
+import { useBrandProfiles, useApplications } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
 import { translateAuthError } from '../lib/authErrors';
-import { dbBrandProfileToApp, appBrandProfileToDb } from '../lib/mappers';
+import { dbBrandProfileToApp, dbApplicationToApp, appBrandProfileToDb } from '../lib/mappers';
 import { supabase } from '../lib/supabase';
+import { uploadBrandLogo, uploadBrandGalleryImage, deleteBrandImage, MIN_GALLERY_IMAGES, MAX_GALLERY_IMAGES } from '../lib/brand-gallery-storage';
 
 interface ProfileProps {
     initialBrands: BrandProfile[];
@@ -14,12 +15,8 @@ interface ProfileProps {
 const BrandEditForm: React.FC<{
     editForm: BrandProfile;
     updateFormField: (field: keyof BrandProfile, value: any) => void;
-    cancelEditing: () => void;
-    handleSave: () => void;
-    setBrandToDeleteId: (id: string) => void;
-    deletionRequested?: boolean;
-}> = ({ editForm, updateFormField, cancelEditing, handleSave, setBrandToDeleteId, deletionRequested }) => (
-    <div className="p-5 md:p-8 space-y-8 md:space-y-10 animate-fadeIn">
+}> = ({ editForm, updateFormField }) => (
+    <div className="space-y-8 md:space-y-10">
         {/* Part 1: BRAND INFO */}
         <div className="space-y-6">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
@@ -162,45 +159,272 @@ const BrandEditForm: React.FC<{
             </div>
         </div>
 
-        {/* FORM ACTIONS */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 md:gap-4 pt-6 mt-6 border-t border-gray-100">
-            <button
-                onClick={cancelEditing}
-                className="px-6 md:px-8 py-3 md:py-4 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-all order-2 sm:order-1"
-            >
-                Zrušit změny
-            </button>
-            <button
-                onClick={handleSave}
-                disabled={!editForm.brandName.trim()}
-                className={`px-8 md:px-10 py-3 md:py-4 rounded-none font-bold transition-all shadow-xl flex items-center justify-center gap-2 order-1 sm:order-2 ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
-            >
-                <Check size={18} /> Uložit úpravy
-            </button>
-            {deletionRequested ? (
-                <div className="sm:ml-auto flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-600 text-xs font-semibold order-3 self-end">
-                    <Clock size={16} />
-                    Čeká na smazání
-                </div>
-            ) : (
-                <button
-                    onClick={() => setBrandToDeleteId(editForm.id)}
-                    className="sm:ml-auto p-3 md:p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-none transition-all order-3 self-end"
-                    title="Požádat o smazání značky"
-                >
-                    <Trash2 size={20} />
-                </button>
-            )}
-        </div>
     </div>
 );
+
+/* ─── Brand Gallery Section (Logo + Photo Gallery) ───────── */
+const BrandGallerySection: React.FC<{
+    brand: BrandProfile;
+    userId: string;
+    onUpdate: (id: string, updates: { logo_url?: string | null; gallery_urls?: string[] }) => Promise<void>;
+}> = ({ brand, userId, onUpdate }) => {
+    const [uploading, setUploading] = useState<'logo' | 'gallery' | null>(null);
+    const [deleting, setDeleting] = useState<string | null>(null);
+    const logoInputRef = useRef<HTMLInputElement>(null);
+    const galleryInputRef = useRef<HTMLInputElement>(null);
+    const galleryUrls = brand.galleryUrls || [];
+
+    const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading('logo');
+        try {
+            // Delete old logo if exists
+            if (brand.logoUrl) {
+                await deleteBrandImage(brand.logoUrl);
+            }
+            const url = await uploadBrandLogo(file, userId, brand.id);
+            await onUpdate(brand.id, { logo_url: url });
+        } catch (err: any) {
+            alert(err.message || 'Chyba při nahrávání loga.');
+        } finally {
+            setUploading(null);
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        }
+    }, [brand.id, brand.logoUrl, userId, onUpdate]);
+
+    const handleDeleteLogo = useCallback(async () => {
+        if (!brand.logoUrl) return;
+        setDeleting('logo');
+        try {
+            await deleteBrandImage(brand.logoUrl);
+            await onUpdate(brand.id, { logo_url: null });
+        } catch (err: any) {
+            alert(err.message || 'Chyba při mazání loga.');
+        } finally {
+            setDeleting(null);
+        }
+    }, [brand.id, brand.logoUrl, onUpdate]);
+
+    const handleGalleryUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        setUploading('gallery');
+        try {
+            let currentUrls = [...galleryUrls];
+            for (let i = 0; i < files.length; i++) {
+                if (currentUrls.length >= MAX_GALLERY_IMAGES) break;
+                const url = await uploadBrandGalleryImage(files[i], userId, brand.id, currentUrls.length);
+                currentUrls.push(url);
+            }
+            await onUpdate(brand.id, { gallery_urls: currentUrls });
+        } catch (err: any) {
+            alert(err.message || 'Chyba při nahrávání fotky.');
+        } finally {
+            setUploading(null);
+            if (galleryInputRef.current) galleryInputRef.current.value = '';
+        }
+    }, [brand.id, galleryUrls, userId, onUpdate]);
+
+    const handleDeleteGalleryImage = useCallback(async (url: string) => {
+        setDeleting(url);
+        try {
+            await deleteBrandImage(url);
+            const newUrls = galleryUrls.filter(u => u !== url);
+            await onUpdate(brand.id, { gallery_urls: newUrls });
+        } catch (err: any) {
+            alert(err.message || 'Chyba při mazání fotky.');
+        } finally {
+            setDeleting(null);
+        }
+    }, [brand.id, galleryUrls, onUpdate]);
+
+    const isBelowMinimum = galleryUrls.length > 0 && galleryUrls.length < MIN_GALLERY_IMAGES;
+
+    return (
+        <div className="space-y-6 pt-6 border-t border-gray-100">
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                <Camera size={18} className="text-lavrs-red" />
+                <h4 className="text-sm font-bold text-lavrs-dark uppercase tracking-tight">Galerie a logo značky</h4>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+                Nahrajte logo a fotografie vašich produktů. Tyto materiály uvidí kurátor při hodnocení vaší přihlášky.
+                <span className="font-semibold text-gray-500"> Minimálně {MIN_GALLERY_IMAGES}, maximálně {MAX_GALLERY_IMAGES} fotek.</span>
+            </p>
+
+            {/* Logo Upload */}
+            <div className="space-y-3">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Logo značky <span className="text-gray-300">(max 500×500 px)</span></label>
+                <div className="flex items-center gap-4">
+                    <div className="relative w-20 h-20 bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden group shrink-0">
+                        {brand.logoUrl ? (
+                            <>
+                                <img src={brand.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                <button
+                                    onClick={handleDeleteLogo}
+                                    disabled={deleting === 'logo'}
+                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                >
+                                    {deleting === 'logo' ? (
+                                        <Loader size={18} className="text-white animate-spin" />
+                                    ) : (
+                                        <Trash2 size={18} className="text-white" />
+                                    )}
+                                </button>
+                            </>
+                        ) : (
+                            <Camera size={24} className="text-gray-300" />
+                        )}
+                    </div>
+                    <div>
+                        <input
+                            ref={logoInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                        />
+                        <button
+                            onClick={() => logoInputRef.current?.click()}
+                            disabled={uploading === 'logo'}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 text-xs font-bold text-gray-600 hover:border-lavrs-red hover:text-lavrs-red transition-all disabled:opacity-50"
+                        >
+                            {uploading === 'logo' ? (
+                                <><Loader size={14} className="animate-spin" /> Nahrávám...</>
+                            ) : (
+                                <><Upload size={14} /> {brand.logoUrl ? 'Změnit logo' : 'Nahrát logo'}</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Gallery */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">
+                        Fotogalerie <span className={galleryUrls.length < MIN_GALLERY_IMAGES ? 'text-lavrs-red' : 'text-gray-300'}>({galleryUrls.length}/{MAX_GALLERY_IMAGES})</span>
+                    </label>
+                    {galleryUrls.length < MAX_GALLERY_IMAGES && (
+                        <>
+                            <input
+                                ref={galleryInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                multiple
+                                onChange={handleGalleryUpload}
+                                className="hidden"
+                            />
+                            <button
+                                onClick={() => galleryInputRef.current?.click()}
+                                disabled={uploading === 'gallery'}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border-2 border-gray-200 text-[10px] font-bold text-gray-500 hover:border-lavrs-red hover:text-lavrs-red transition-all disabled:opacity-50"
+                            >
+                                {uploading === 'gallery' ? (
+                                    <><Loader size={12} className="animate-spin" /> Nahrávám...</>
+                                ) : (
+                                    <><Plus size={12} /> Přidat fotky</>
+                                )}
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                {/* Minimum warning */}
+                {isBelowMinimum && (
+                    <div className="bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-center gap-2">
+                        <Info size={14} className="text-amber-500 shrink-0" />
+                        <p className="text-xs text-amber-700 font-medium">
+                            Nahrajte ještě {MIN_GALLERY_IMAGES - galleryUrls.length} {MIN_GALLERY_IMAGES - galleryUrls.length === 1 ? 'fotku' : MIN_GALLERY_IMAGES - galleryUrls.length < 5 ? 'fotky' : 'fotek'}. Minimum je {MIN_GALLERY_IMAGES} fotek.
+                        </p>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {galleryUrls.map((url, i) => (
+                        <div key={url} className="relative aspect-square bg-gray-50 border border-gray-200 overflow-hidden group">
+                            <img src={url} alt={`Galerie ${i + 1}`} className="w-full h-full object-cover" />
+                            <button
+                                onClick={() => handleDeleteGalleryImage(url)}
+                                disabled={deleting === url}
+                                className="absolute top-1.5 right-1.5 w-7 h-7 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            >
+                                {deleting === url ? (
+                                    <Loader size={14} className="animate-spin" />
+                                ) : (
+                                    <X size={14} />
+                                )}
+                            </button>
+                        </div>
+                    ))}
+
+                    {/* Empty slots */}
+                    {galleryUrls.length < MAX_GALLERY_IMAGES && (
+                        <button
+                            onClick={() => galleryInputRef.current?.click()}
+                            disabled={uploading === 'gallery'}
+                            className="aspect-square bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1.5 text-gray-300 hover:border-lavrs-red hover:text-lavrs-red transition-all disabled:opacity-50"
+                        >
+                            {uploading === 'gallery' ? (
+                                <Loader size={20} className="animate-spin" />
+                            ) : (
+                                <>
+                                    <Image size={20} />
+                                    <span className="text-[9px] font-bold uppercase tracking-wider">Přidat</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
+
+                {/* Empty state — no photos yet */}
+                {galleryUrls.length === 0 && (
+                    <p className="text-xs text-gray-400 italic ml-1">Zatím žádné fotky. Nahrajte minimálně {MIN_GALLERY_IMAGES}.</p>
+                )}
+            </div>
+        </div>
+    );
+};
 
 const ProfileInner: React.FC<ProfileProps> = () => {
     const { profiles: dbProfiles, createProfile, updateProfile, requestDeletion, loading } = useBrandProfiles();
     const brands = React.useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
 
+    const { user: authUser } = useAuth();
+
+    // Fetch user's applications to determine which brands have been approved
+    const { applications: dbApps } = useApplications({
+        enabled: !!authUser?.id,
+        userId: authUser?.id,
+        role: authUser?.role,
+    });
+    const approvedBrandNames = React.useMemo(() => {
+        const set = new Set<string>();
+        for (const a of dbApps) {
+            const app = dbApplicationToApp(a);
+            const s = app.status.toUpperCase();
+            if (s === AppStatus.APPROVED || s === AppStatus.PAID || s === AppStatus.PAYMENT_REMINDER || s === AppStatus.PAYMENT_LAST_CALL || s === AppStatus.PAYMENT_UNDER_REVIEW) {
+                set.add(app.brandName.toLowerCase());
+            }
+        }
+        return set;
+    }, [dbApps]);
+
+    const isBrandApproved = useCallback((brandName: string) => approvedBrandNames.has(brandName.toLowerCase()), [approvedBrandNames]);
+
+    const handleGalleryUpdate = useCallback(async (brandId: string, updates: { logo_url?: string | null; gallery_urls?: string[] }) => {
+        try {
+            await updateProfile(brandId, updates);
+        } catch (err: any) {
+            console.error('Gallery update failed:', err);
+            throw err;
+        }
+    }, [updateProfile]);
+
     const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
     const [brandToDeleteId, setBrandToDeleteId] = useState<string | null>(null);
+    const [scrollToGalleryOnOpen, setScrollToGalleryOnOpen] = useState(false);
+    const galleryRef = useRef<HTMLDivElement>(null);
 
     // Temporary state for the brand being edited
     const [editForm, setEditForm] = useState<BrandProfile | null>(null);
@@ -210,9 +434,26 @@ const ProfileInner: React.FC<ProfileProps> = () => {
         setEditForm({ ...brand });
     };
 
+    const startEditingWithGalleryScroll = (brand: BrandProfile) => {
+        setEditingBrandId(brand.id);
+        setEditForm({ ...brand });
+        setScrollToGalleryOnOpen(true);
+    };
+
+    // Scroll to gallery after it renders
+    React.useEffect(() => {
+        if (scrollToGalleryOnOpen && editingBrandId && galleryRef.current) {
+            setTimeout(() => {
+                galleryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setScrollToGalleryOnOpen(false);
+            }, 100);
+        }
+    }, [scrollToGalleryOnOpen, editingBrandId]);
+
     const cancelEditing = () => {
         setEditingBrandId(null);
         setEditForm(null);
+        setScrollToGalleryOnOpen(false);
     };
 
     const handleAddNewBrand = () => {
@@ -243,8 +484,11 @@ const ProfileInner: React.FC<ProfileProps> = () => {
             const dbBrand = appBrandProfileToDb(editForm, authUser?.id);
             const exists = brands.find(b => b.id === editForm.id);
             if (exists) {
-                // Strip user_id from updates — it must never be overwritten
-                const { user_id, ...safeUpdates } = dbBrand;
+                // Strip user_id, logo_url, gallery_urls from updates —
+                // user_id must never be overwritten, and gallery/logo are
+                // managed independently by BrandGallerySection to avoid
+                // the stale editForm snapshot overwriting fresh gallery data.
+                const { user_id, logo_url, gallery_urls, ...safeUpdates } = dbBrand as any;
                 await updateProfile(editForm.id, safeUpdates);
             } else {
                 await createProfile(dbBrand);
@@ -285,8 +529,6 @@ const ProfileInner: React.FC<ProfileProps> = () => {
             setEditForm({ ...editForm, [field]: value });
         }
     };
-
-    const { user: authUser } = useAuth();
 
     // Password change state
     const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -366,13 +608,28 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                     <p className="text-xs text-gray-400 mt-1">Vyplňte údaje pro vaši novou vizitku</p>
                                 </div>
                             </div>
-                            <BrandEditForm
-                                editForm={editForm}
-                                updateFormField={updateFormField}
-                                cancelEditing={cancelEditing}
-                                handleSave={handleSave}
-                                setBrandToDeleteId={setBrandToDeleteId}
-                            />
+                            <div className="p-5 md:p-8 space-y-8 md:space-y-10 animate-fadeIn">
+                                <BrandEditForm
+                                    editForm={editForm}
+                                    updateFormField={updateFormField}
+                                />
+                                {/* FORM ACTIONS for new brand */}
+                                <div className="flex flex-col sm:flex-row justify-end gap-3 md:gap-4 pt-6 mt-6 border-t border-gray-100">
+                                    <button
+                                        onClick={cancelEditing}
+                                        className="px-6 md:px-8 py-3 md:py-4 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-all order-2 sm:order-1"
+                                    >
+                                        Zrušit změny
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={!editForm.brandName.trim()}
+                                        className={`px-8 md:px-10 py-3 md:py-4 rounded-none font-bold transition-all shadow-xl flex items-center justify-center gap-2 order-1 sm:order-2 ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
+                                    >
+                                        <Check size={18} /> Uložit úpravy
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -398,9 +655,15 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                             {/* BRAND HEADER (Read Mode) */}
                             <div className={`p-5 md:p-8 flex items-center justify-between ${editingBrandId === brand.id ? 'bg-lavrs-beige/30 border-b border-lavrs-red/10' : ''}`}>
                                 <div className="flex items-center gap-4 md:gap-6 min-w-0">
-                                    <div className={`w-10 h-10 md:w-14 md:h-14 rounded-none flex items-center justify-center transition-transform shrink-0 ${editingBrandId === brand.id ? 'bg-lavrs-red text-white' : 'bg-lavrs-beige text-lavrs-red'}`}>
-                                        <Sparkles size={24} />
-                                    </div>
+                                    {brand.logoUrl ? (
+                                        <div className="w-10 h-10 md:w-14 md:h-14 rounded-none overflow-hidden border border-gray-100 shrink-0">
+                                            <img src={brand.logoUrl} alt={brand.brandName} className="w-full h-full object-contain" />
+                                        </div>
+                                    ) : (
+                                        <div className={`w-10 h-10 md:w-14 md:h-14 rounded-none flex items-center justify-center transition-transform shrink-0 ${editingBrandId === brand.id ? 'bg-lavrs-red text-white' : 'bg-lavrs-beige text-lavrs-red'}`}>
+                                            <Sparkles size={24} />
+                                        </div>
+                                    )}
                                     <div className="min-w-0">
                                         <h3 className="text-lg md:text-2xl font-bold text-lavrs-dark truncate">{brand.brandName}</h3>
                                         {brand.deletionRequestedAt ? (
@@ -418,26 +681,112 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                 </div>
 
                                 {editingBrandId !== brand.id && (
-                                    <button
-                                        onClick={() => startEditing(brand)}
-                                        className="bg-white border-2 border-gray-100 text-gray-600 rounded-none hover:border-lavrs-red hover:text-lavrs-red transition-all px-3 py-3 md:px-6 md:py-3"
-                                    >
-                                        <Pencil size={18} className="md:hidden" />
-                                        <span className="hidden md:inline text-xs font-bold">Upravit vše</span>
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        {isBrandApproved(brand.brandName) && (
+                                            <button
+                                                onClick={() => startEditingWithGalleryScroll(brand)}
+                                                className="bg-white border-2 border-gray-100 text-gray-600 rounded-none hover:border-lavrs-red hover:text-lavrs-red transition-all px-3 py-3 md:px-5 md:py-3 flex items-center gap-2"
+                                            >
+                                                <Camera size={16} />
+                                                <span className="hidden md:inline text-xs font-bold">Vložit fotky</span>
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => startEditing(brand)}
+                                            className="bg-white border-2 border-gray-100 text-gray-600 rounded-none hover:border-lavrs-red hover:text-lavrs-red transition-all px-3 py-3 md:px-6 md:py-3"
+                                        >
+                                            <Pencil size={18} className="md:hidden" />
+                                            <span className="hidden md:inline text-xs font-bold">Upravit vše</span>
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
-                            {/* EDIT FORM (Conditionally Rendered) */}
+                            {/* EDIT FORM + GALLERY + ACTIONS (Conditionally Rendered) */}
                             {editingBrandId === brand.id && editForm && (
-                                <BrandEditForm
-                                    editForm={editForm}
-                                    updateFormField={updateFormField}
-                                    cancelEditing={cancelEditing}
-                                    handleSave={handleSave}
-                                    setBrandToDeleteId={setBrandToDeleteId}
-                                    deletionRequested={!!brand.deletionRequestedAt}
-                                />
+                                <div className="p-5 md:p-8 space-y-8 md:space-y-10 animate-fadeIn">
+                                    {/* TOP ACTION BAR — desktop only */}
+                                    <div className="hidden md:flex items-center justify-end gap-4 pb-4 border-b border-gray-100">
+                                        <button
+                                            onClick={cancelEditing}
+                                            className="px-6 py-2.5 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-all text-xs"
+                                        >
+                                            Zrušit změny
+                                        </button>
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={!editForm.brandName.trim()}
+                                            className={`px-8 py-2.5 rounded-none font-bold transition-all shadow-lg flex items-center gap-2 text-xs ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
+                                        >
+                                            <Check size={16} /> Uložit úpravy
+                                        </button>
+                                    </div>
+
+                                    <BrandEditForm
+                                        editForm={editForm}
+                                        updateFormField={updateFormField}
+                                    />
+                                    {/* GALLERY SECTION — inside edit mode, only for approved brands */}
+                                    {isBrandApproved(brand.brandName) && authUser?.id && (
+                                        <div ref={galleryRef}>
+                                            <BrandGallerySection
+                                                brand={brand}
+                                                userId={authUser.id}
+                                                onUpdate={handleGalleryUpdate}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* BOTTOM ACTION BAR — desktop only */}
+                                    <div className="hidden md:flex items-center justify-end gap-3 md:gap-4 pt-6 mt-6 border-t border-gray-100">
+                                        <button
+                                            onClick={cancelEditing}
+                                            className="px-8 py-4 rounded-none font-bold text-gray-400 hover:text-lavrs-dark transition-all"
+                                        >
+                                            Zrušit změny
+                                        </button>
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={!editForm.brandName.trim()}
+                                            className={`px-10 py-4 rounded-none font-bold transition-all shadow-xl flex items-center gap-2 ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
+                                        >
+                                            <Check size={18} /> Uložit úpravy
+                                        </button>
+                                        {brand.deletionRequestedAt ? (
+                                            <div className="ml-auto flex items-center gap-2 px-3 py-2 bg-amber-50 text-amber-600 text-xs font-semibold">
+                                                <Clock size={16} />
+                                                Čeká na smazání
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setBrandToDeleteId(editForm.id)}
+                                                className="ml-auto p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-none transition-all"
+                                                title="Požádat o smazání značky"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* MOBILE FLOATING BAR */}
+                                    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] px-4 py-3 flex items-center gap-3 animate-fadeIn">
+                                        <button
+                                            onClick={cancelEditing}
+                                            className="flex-1 py-3 rounded-none font-bold text-gray-500 bg-gray-100 text-xs"
+                                        >
+                                            Zrušit
+                                        </button>
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={!editForm.brandName.trim()}
+                                            className={`flex-[2] py-3 rounded-none font-bold transition-all flex items-center justify-center gap-2 text-xs ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400' : 'bg-lavrs-red text-white shadow-lg'}`}
+                                        >
+                                            <Check size={16} /> Uložit úpravy
+                                        </button>
+                                    </div>
+                                    {/* Spacer for mobile floating bar */}
+                                    <div className="md:hidden h-16" />
+                                </div>
                             )}
                         </div>
                     ))}

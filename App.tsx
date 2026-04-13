@@ -711,6 +711,7 @@ const App: React.FC = () => {
             <ApplicationWizard
               eventId={selectedEventId}
               userId={user?.id}
+              userEmail={user?.email}
               onCancel={() => setCurrentScreen('DASHBOARD')}
               onApply={handleAddApplication}
               eventPlan={currentEventPlan}
@@ -721,9 +722,7 @@ const App: React.FC = () => {
             <MyApplications applications={applications} events={events} />
           )}
 
-          {currentScreen === 'BILLING' && userRole === 'EXHIBITOR' && (
-            <Billing applications={applications} brands={brandProfiles} onNavigate={setCurrentScreen} />
-          )}
+          {/* BILLING tab disabled for exhibitors — invoices are sent via email */}
 
           {currentScreen === 'CONTACT' && (
             <Contact />
@@ -761,6 +760,7 @@ const App: React.FC = () => {
               onBack={() => setCurrentScreen('DASHBOARD')}
               events={events}
               applications={applications}
+              brandProfiles={brandProfiles}
             />
           )}
 
@@ -801,6 +801,7 @@ const App: React.FC = () => {
               brands={brandProfiles}
               events={events}
               onDeleteBrand={handleDeleteBrandProfile}
+              onUpdateBrand={handleSaveBrand}
             />
           )}
 

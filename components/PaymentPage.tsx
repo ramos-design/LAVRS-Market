@@ -22,8 +22,6 @@ import { useEventPlan } from '../hooks/useSupabase';
 import { formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
 import { fetchFromARES, isValidIcoFormat } from '../lib/aresAPI';
-import { getApplicationSequenceForEvent } from '../lib/invoice-number';
-
 interface PaymentPageProps {
   onBack: () => void;
   initialBillingDetails?: Partial<BrandProfile>;
@@ -105,6 +103,46 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
   const [billingEmail, setBillingEmail] = useState(initialBillingDetails?.billingEmail || '');
   const [specialNote, setSpecialNote] = useState('');
 
+  // DIČ validation error
+  const [dicError, setDicError] = useState('');
+
+  // IČO: allow only digits, max 8 characters
+  const handleIcChange = (value: string) => {
+    const cleaned = value.replace(/[^\d]/g, '').slice(0, 8);
+    setIc(cleaned);
+  };
+
+  // DIČ: allow only letters and digits (no special chars)
+  // Valid format: 2 uppercase letters (country code) + 8-10 digits
+  const handleDicChange = (value: string) => {
+    // Strip any character that isn't a letter or digit
+    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    setDic(cleaned);
+
+    // Validate format when user has typed something
+    if (!cleaned) {
+      setDicError('');
+      return;
+    }
+
+    const letterPrefix = cleaned.match(/^[A-Z]*/)?.[0] || '';
+    const rest = cleaned.slice(letterPrefix.length);
+
+    if (letterPrefix.length > 2) {
+      setDicError('DIČ začíná 2písmenným kódem země (např. CZ), následovaným číslicemi');
+    } else if (letterPrefix.length === 2 && rest.length > 0 && !/^\d+$/.test(rest)) {
+      setDicError('Po kódu země mohou následovat pouze číslice');
+    } else if (letterPrefix.length === 1 && cleaned.length >= 3) {
+      setDicError('Kód země musí být 2 písmena (např. CZ)');
+    } else if (letterPrefix.length === 2 && rest.length > 0 && rest.length < 8) {
+      setDicError('DIČ musí obsahovat 8–10 číslic za kódem země');
+    } else if (rest.length > 10) {
+      setDicError('DIČ může obsahovat maximálně 10 číslic za kódem země');
+    } else {
+      setDicError('');
+    }
+  };
+
   // ARES Lookup State
   const [aresLoading, setAresLoading] = useState(false);
   const [aresError, setAresError] = useState('');
@@ -158,23 +196,6 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     return () => clearTimeout(timeout);
   }, [ic]);
 
-  const getVariableSymbol = () => {
-    if (!activeEvent) return '';
-    const date = new Date(activeEvent.date);
-    const dd = date.getDate().toString().padStart(2, '0');
-    const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-    const cleanIc = (ic || '').replace(/\D/g, '');
-    if (cleanIc.length > 0) {
-      const icoFirst6 = cleanIc.substring(0, 6).padEnd(6, '0');
-      return `${dd}${mm}${icoFirst6}`;
-    }
-    // No IČO — use DDMM + 6-digit sequential number
-    const seq = (activeApp && allApplications)
-      ? getApplicationSequenceForEvent(activeApp, allApplications)
-      : 1;
-    return `${dd}${mm}${String(seq).padStart(6, '0')}`;
-  };
-
   const toggleExtra = (id: string) => {
     const newSet = new Set(selectedExtras);
     if (newSet.has(id)) newSet.delete(id);
@@ -199,7 +220,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
     }
   };
 
-  const variableSymbol = getVariableSymbol();
+  // Variable symbol = invoice number (from generated invoice data)
+  const variableSymbol = generatedInvoiceNumber || '...';
 
   // Auto-generate invoice + QR when entering step 3
   // Use ref to prevent deadlock: state-based guards cause issues when useEffect cleanup
@@ -255,7 +277,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
       } catch (err: any) {
         if (cancelled) return;
         console.error('Invoice preparation failed:', err);
-        setInvoiceError(err.message || 'Chyba při generování faktury');
+        setInvoiceError(err.message || 'Chyba při generování objednávky');
         setInvoiceGenerating(false);
       }
     };
@@ -426,7 +448,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
             <div className="space-y-8 animate-fadeIn">
               <div className="bg-lavrs-beige/30 p-6 border-l-4 border-lavrs-dark">
                 <p className="text-sm font-medium leading-relaxed">
-                  Vyberte si doplňkové vybavení pro váš stánek. Tyto položky budou připočteny k vaší finální faktuře.
+                  Vyberte si doplňkové vybavení pro váš stánek. Tyto položky budou připočteny k vaší finální objednávce.
                 </p>
               </div>
               
@@ -486,8 +508,10 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                     <div className="relative">
                       <input
                         value={ic}
-                        onChange={(e) => setIc(e.target.value)}
+                        onChange={(e) => handleIcChange(e.target.value)}
                         type="text"
+                        inputMode="numeric"
+                        maxLength={8}
                         placeholder="12345678"
                         className={`w-full bg-white px-6 py-5 rounded-none border-2 focus:outline-none font-semibold transition-all ${
                           aresError ? 'border-red-400 focus:border-red-400' :
@@ -514,7 +538,29 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">DIČ</label>
-                    <input value={dic} onChange={(e) => setDic(e.target.value)} type="text" placeholder="CZ12345678" className="w-full bg-white px-6 py-5 rounded-none border-2 border-gray-100 focus:outline-none focus:border-lavrs-red font-semibold transition-all" />
+                    <div className="relative">
+                      <input
+                        value={dic}
+                        onChange={(e) => handleDicChange(e.target.value)}
+                        type="text"
+                        maxLength={12}
+                        placeholder="CZ12345678"
+                        className={`w-full bg-white px-6 py-5 rounded-none border-2 focus:outline-none font-semibold transition-all ${
+                          dicError ? 'border-red-400 focus:border-red-400' :
+                          dic && !dicError ? 'border-gray-100 focus:border-lavrs-red' :
+                          'border-gray-100 focus:border-lavrs-red'
+                        }`}
+                      />
+                      {dic && !dicError && dic.length >= 10 && (
+                        <CheckCircle size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-green-500" />
+                      )}
+                      {dicError && (
+                        <AlertCircle size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-red-500" />
+                      )}
+                    </div>
+                    {dicError && (
+                      <p className="text-xs text-red-500 ml-4 font-medium">{dicError}</p>
+                    )}
                   </div>
                 </div>
 
@@ -556,7 +602,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                     <div className="bg-white border-2 border-gray-100 p-12 text-center space-y-4">
                       <HeartLoader size={40} className="text-lavrs-red mx-auto" />
                       <p className="font-bold text-lavrs-dark">Načítám data...</p>
-                      <p className="text-xs text-gray-400">Připravuji podklady pro generování faktury.</p>
+                      <p className="text-xs text-gray-400">Připravuji podklady pro generování objednávky.</p>
                     </div>
                   )}
 
@@ -564,8 +610,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                   {invoiceGenerating && (
                     <div className="bg-white border-2 border-gray-100 p-12 text-center space-y-4">
                       <HeartLoader size={40} className="text-lavrs-red mx-auto" />
-                      <p className="font-bold text-lavrs-dark">Generuji fakturu a QR platbu...</p>
-                      <p className="text-xs text-gray-400">Počkejte prosím, připravujeme váš daňový doklad.</p>
+                      <p className="font-bold text-lavrs-dark">Generuji objednávku a QR platbu...</p>
+                      <p className="text-xs text-gray-400">Počkejte prosím, připravujeme vaši objednávku.</p>
                     </div>
                   )}
 
@@ -574,7 +620,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                     <div className="bg-red-50 border-2 border-red-200 p-6 flex items-start gap-4">
                       <AlertCircle size={24} className="text-red-500 shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <p className="font-bold text-red-700 mb-1">Chyba při generování faktury</p>
+                        <p className="font-bold text-red-700 mb-1">Chyba při generování objednávky</p>
                         <p className="text-sm text-red-600 mb-3">{invoiceError}</p>
                         <button
                           onClick={() => { setInvoiceError(''); setInvoiceGenerated(false); }}
@@ -639,7 +685,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       <div className="flex gap-4 p-6 bg-lavrs-beige/20 border border-lavrs-pink/50">
                         <CheckCircle2 size={24} className="text-green-500 shrink-0" />
                         <p className="text-xs text-gray-600 leading-relaxed font-medium">
-                          Po potvrzení se vám automaticky stáhne faktura. Proveďte platbu převodem dle údajů na faktuře.
+                          Po potvrzení obdržíte objednávku – výzvu k platbě. Proveďte platbu převodem dle uvedených údajů.
                         </p>
                       </div>
 
@@ -648,7 +694,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                         onClick={async () => {
                           if (!activeApp || !onUpdateStatus || !activeEvent) return;
                           if (!generatedInvoiceRef.current) {
-                            alert('❌ Faktura nebyla vygenerována. Zkuste obnovit stránku.');
+                            alert('❌ Objednávka nebyla vygenerována. Zkuste obnovit stránku.');
                             return;
                           }
 
@@ -661,84 +707,94 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
 
                             const invoiceResult = generatedInvoiceRef.current;
 
-                            // Generate real PDF via @react-pdf/renderer for storage & email
-                            const { generateInvoicePdf } = await import('../lib/invoice-generator');
-                            const pdfBlob = await generateInvoicePdf(invoiceResult);
-                            console.log('[Invoice] Real PDF generated:', pdfBlob.size, 'bytes');
-                            invoiceResult.pdfBlob = pdfBlob;
-
-                            // Save invoice to Supabase (now with real PDF)
-                            const { saveInvoice } = await import('../lib/invoice-storage');
-                            await saveInvoice({
+                            // 1. SAVE INVOICE TO DB FIRST (even without PDF)
+                            //    This ensures the invoice record exists regardless of PDF success.
+                            const { saveInvoice, updateInvoiceFiles } = await import('../lib/invoice-storage');
+                            const savedInvoice = await saveInvoice({
                               result: invoiceResult,
                               applicationId: activeApp.id,
                               eventId: activeEvent.id,
                             });
+                            console.log('[Invoice] DB record saved:', savedInvoice.invoice_number);
 
-                            // Fire-and-forget: send invoice notification email
-                            (async () => {
-                              try {
+                            // 2. Generate PDF (non-blocking for DB — if it fails, invoice record still exists)
+                            let pdfBlob: Blob | null = null;
+                            try {
+                              const { generateInvoicePdf } = await import('../lib/invoice-generator');
+                              pdfBlob = await generateInvoicePdf(invoiceResult);
+                              console.log('[Invoice] Real PDF generated:', pdfBlob.size, 'bytes');
+                              invoiceResult.pdfBlob = pdfBlob;
 
-                                // Convert PDF blob to base64
-                                const ab = await pdfBlob.arrayBuffer();
-                                const bytes = new Uint8Array(ab);
-                                let pdfBase64 = '';
-                                const chunk = 0x8000;
-                                for (let i = 0; i < bytes.length; i += chunk) {
-                                  pdfBase64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
-                                }
-                                pdfBase64 = btoa(pdfBase64);
+                              // Upload PDF + XML and update invoice record with file URLs
+                              await updateInvoiceFiles({
+                                invoiceId: savedInvoice.id,
+                                invoiceNumber: invoiceResult.invoiceNumber,
+                                applicationId: activeApp.id,
+                                pdfBlob,
+                                xmlString: invoiceResult.xmlString,
+                              });
+                              console.log('[Invoice] Files uploaded and DB updated');
+                            } catch (pdfErr) {
+                              console.warn('[Invoice] PDF generation/upload failed (invoice DB record still saved):', pdfErr);
+                            }
 
-                                // Format event date
-                                const evDate = new Date(activeEvent.date);
-                                const dd = String(evDate.getDate()).padStart(2, '0');
-                                const mm = String(evDate.getMonth() + 1).padStart(2, '0');
-                                const yyyy = evDate.getFullYear();
-
-                                const { supabase } = await import('../lib/supabase');
-                                const invoiceBody = {
-                                    brandName: activeApp.brandName || '',
-                                    contactPerson: activeApp.contactPerson || '',
-                                    eventName: activeEvent.title || '',
-                                    eventDate: `${dd}.${mm}.${yyyy}`,
-                                    zoneCategory: activeApp.zoneCategory || '',
-                                    invoiceNumber: invoiceResult.invoiceNumber,
-                                    totalAmountCzk: (invoiceResult.totalAmountWithDph / 100).toLocaleString('cs-CZ'),
-                                    pdfBase64,
-                                    xmlString: invoiceResult.xmlString,
-                                };
-
-                                // 1. Send to admin (info@lavrs.cz)
-                                const { error: fnError } = await supabase.functions.invoke('send-invoice-notification', {
-                                  body: { ...invoiceBody, recipientEmail: 'info@lavrs.cz', recipientType: 'admin' },
-                                });
-                                if (fnError) {
-                                  console.error('[Invoice email] Admin notification error:', fnError);
-                                } else {
-                                  console.log('[Invoice email] Notification sent to info@lavrs.cz');
-                                }
-
-                                // 2. Send invoice to exhibitor
-                                const exhibitorEmail = billingEmail || activeApp.email || '';
-                                if (exhibitorEmail) {
-                                  const { error: exError } = await supabase.functions.invoke('send-invoice-notification', {
-                                    body: { ...invoiceBody, recipientEmail: exhibitorEmail, recipientType: 'exhibitor' },
-                                  });
-                                  if (exError) {
-                                    console.error('[Invoice email] Exhibitor notification error:', exError);
-                                  } else {
-                                    console.log('[Invoice email] Invoice sent to exhibitor:', exhibitorEmail);
+                            // 3. Fire-and-forget: send invoice notification email
+                            if (pdfBlob && pdfBlob.size > 0) {
+                              (async () => {
+                                try {
+                                  const ab = await pdfBlob!.arrayBuffer();
+                                  const bytes = new Uint8Array(ab);
+                                  let pdfBase64 = '';
+                                  const chunk = 0x8000;
+                                  for (let i = 0; i < bytes.length; i += chunk) {
+                                    pdfBase64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
                                   }
-                                }
-                              } catch (emailErr) {
-                                console.error('[Invoice email] Failed (non-blocking):', emailErr);
-                              }
-                            })();
+                                  pdfBase64 = btoa(pdfBase64);
 
-                            // Update status
+                                  const evDate = new Date(activeEvent.date);
+                                  const dd = String(evDate.getDate()).padStart(2, '0');
+                                  const mm = String(evDate.getMonth() + 1).padStart(2, '0');
+                                  const yyyy = evDate.getFullYear();
+
+                                  const { supabase } = await import('../lib/supabase');
+                                  const invoiceBody = {
+                                      brandName: activeApp.brandName || '',
+                                      contactPerson: activeApp.contactPerson || '',
+                                      eventName: activeEvent.title || '',
+                                      eventDate: `${dd}.${mm}.${yyyy}`,
+                                      zoneCategory: activeApp.zoneCategory || '',
+                                      invoiceNumber: invoiceResult.invoiceNumber,
+                                      totalAmountCzk: (invoiceResult.totalAmountWithDph / 100).toLocaleString('cs-CZ'),
+                                      pdfBase64,
+                                      xmlString: invoiceResult.xmlString,
+                                  };
+
+                                  const { error: fnError } = await supabase.functions.invoke('send-invoice-notification', {
+                                    body: { ...invoiceBody, recipientEmail: 'lavrs@lavrs.cz', recipientType: 'admin' },
+                                  });
+                                  if (fnError) console.error('[Order email] Admin notification error:', fnError);
+                                  else console.log('[Order email] Notification sent to lavrs@lavrs.cz');
+
+                                  const exhibitorEmail = billingEmail || activeApp.billingEmail || '';
+                                  if (exhibitorEmail) {
+                                    // Exhibitor gets only PDF (no ISDOC XML) — this is an order, not an invoice
+                                    const { xmlString: _omit, ...exhibitorBody } = invoiceBody;
+                                    const { error: exError } = await supabase.functions.invoke('send-invoice-notification', {
+                                      body: { ...exhibitorBody, recipientEmail: exhibitorEmail, recipientType: 'exhibitor' },
+                                    });
+                                    if (exError) console.error('[Order email] Exhibitor notification error:', exError);
+                                    else console.log('[Order email] Order sent to exhibitor:', exhibitorEmail);
+                                  }
+                                } catch (emailErr) {
+                                  console.error('[Invoice email] Failed (non-blocking):', emailErr);
+                                }
+                              })();
+                            }
+
+                            // 4. Update status
                             await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
 
-                            // Generate invoice HTML preview (shown inline instead of auto-download)
+                            // 5. Generate invoice HTML preview
                             await generateInvoiceHtmlPreview();
 
                             setConfirmedPayment(true);
@@ -760,7 +816,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                           <>
                             <span className="font-black uppercase tracking-[0.2em] text-base">Potvrdit</span>
                             <span className="flex items-center gap-2 text-white/80 text-xs font-medium">
-                              <Download size={14} /> Stáhnout fakturu
+                              <Download size={14} /> Stáhnout objednávku
                             </span>
                           </>
                         )}
@@ -778,7 +834,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                       <div className="text-center sm:text-left">
                         <h3 className="text-lg md:text-xl font-black uppercase tracking-tight">Děkujeme za vaši objednávku!</h3>
                         <p className="text-xs text-gray-500 leading-relaxed">
-                          Proveďte platbu dle údajů na faktuře. Po připsání platby vám potvrdíme rezervaci místa na e-mail.
+                          Proveďte platbu dle údajů na objednávce. Po připsání platby vám potvrdíme rezervaci místa na e-mail.
                         </p>
                       </div>
                     </div>
@@ -789,14 +845,14 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                     <div className="border-2 border-gray-200 bg-white shadow-sm">
                       <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex items-center gap-2">
                         <FileText size={16} className="text-gray-500" />
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Náhled faktury</span>
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Náhled objednávky</span>
                       </div>
                       <iframe
                         ref={invoiceIframeRef}
                         srcDoc={invoiceHtmlContent}
                         className="w-full border-0"
                         style={{ height: '800px' }}
-                        title="Faktura"
+                        title="Objednávka"
                       />
                     </div>
                   )}

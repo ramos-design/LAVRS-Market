@@ -4,7 +4,7 @@
  */
 
 import { supabase } from './supabase';
-import { invoicesDb, applicationsDb } from './database';
+import { invoicesDb } from './database';
 import { GeneratedInvoice } from './invoice-generator';
 import { DbInvoice } from './database';
 
@@ -15,13 +15,13 @@ export interface SaveInvoiceParams {
 }
 
 /**
- * Uploads invoice HTML and ISDOC XML to Storage, creates invoice record in DB,
- * and links it to the application.
+ * Phase 1: Creates invoice record in DB (without files).
+ * This ensures the invoice exists even if PDF generation fails later.
  */
 export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice> {
     const { result, applicationId, eventId } = params;
 
-    console.log('=== SAVING INVOICE ===', {
+    console.log('=== SAVING INVOICE TO DB ===', {
         invoiceNumber: result.invoiceNumber,
         applicationId,
         eventId,
@@ -39,55 +39,7 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
             return existingInvoice;
         }
 
-        // 1. Upload PDF invoice to Storage
-        const pdfPath = `invoices/${applicationId}/${result.invoiceNumber}.pdf`;
-        let pdfUrl: string | null = null;
-
-        if (result.pdfBlob && result.pdfBlob.size > 0) {
-            const { error: pdfError } = await supabase.storage
-                .from('attachments')
-                .upload(pdfPath, result.pdfBlob, {
-                    contentType: 'application/pdf',
-                    upsert: true,
-                });
-
-            if (pdfError) {
-                console.warn(`PDF invoice upload failed (non-blocking): ${pdfError.message}`);
-            } else {
-                const { data: pdfUrlData } = supabase.storage
-                    .from('attachments')
-                    .getPublicUrl(pdfPath);
-                pdfUrl = pdfUrlData?.publicUrl || null;
-            }
-        } else {
-            console.warn('Invoice PDF blob is empty, skipping upload');
-        }
-
-        // 2. Upload ISDOC XML to Storage
-        const xmlPath = `invoices/${applicationId}/${result.invoiceNumber}.isdoc`;
-        let xmlUrl: string | null = null;
-
-        if (result.xmlString) {
-            const xmlBlob = new Blob([result.xmlString], { type: 'application/xml' });
-            const { error: xmlError } = await supabase.storage
-                .from('attachments')
-                .upload(xmlPath, xmlBlob, {
-                    contentType: 'application/xml',
-                    upsert: true,
-                });
-
-            if (xmlError) {
-                console.warn(`ISDOC XML upload failed (non-blocking): ${xmlError.message}`);
-            } else {
-                const { data: xmlUrlData } = supabase.storage
-                    .from('attachments')
-                    .getPublicUrl(xmlPath);
-                xmlUrl = xmlUrlData?.publicUrl || null;
-            }
-        }
-
-        // 3. Create invoice record in DB
-        // amount_czk = total WITH DPH in halers (what customer pays)
+        // Create invoice record in DB (no files yet)
         const uniqueId = crypto.randomUUID();
         const invoice = await invoicesDb.create({
             id: uniqueId,
@@ -98,33 +50,100 @@ export async function saveInvoice(params: SaveInvoiceParams): Promise<DbInvoice>
             issued_at: result.issuedDate,
             due_date: result.dueDate,
             variable_symbol: result.variableSymbol,
+            pdf_storage_path: null,
+            xml_storage_path: null,
+            pdf_url: null,
+            xml_url: null,
+        });
+
+        console.log('=== INVOICE DB RECORD CREATED ===', {
+            id: invoice.id,
+            invoiceNumber: invoice.invoice_number,
+            amountCzk: invoice.amount_czk,
+        });
+
+        // invoice_id is auto-linked to application via DB trigger (trg_link_invoice)
+
+        return invoice;
+    } catch (error) {
+        console.error('Failed to save invoice:', error);
+        throw error;
+    }
+}
+
+export interface UpdateInvoiceFilesParams {
+    invoiceId: string;
+    invoiceNumber: string;
+    applicationId: string;
+    pdfBlob: Blob;
+    xmlString?: string;
+}
+
+/**
+ * Phase 2: Uploads PDF + XML to Storage and updates the invoice record with file URLs.
+ * Called after saveInvoice() succeeds and PDF has been generated.
+ */
+export async function updateInvoiceFiles(params: UpdateInvoiceFilesParams): Promise<void> {
+    const { invoiceId, invoiceNumber, applicationId, pdfBlob, xmlString } = params;
+
+    try {
+        let pdfUrl: string | null = null;
+        let pdfPath: string | null = null;
+        let xmlUrl: string | null = null;
+        let xmlPath: string | null = null;
+
+        // 1. Upload PDF
+        if (pdfBlob && pdfBlob.size > 0) {
+            pdfPath = `invoices/${applicationId}/${invoiceNumber}.pdf`;
+            const { error: pdfError } = await supabase.storage
+                .from('attachments')
+                .upload(pdfPath, pdfBlob, {
+                    contentType: 'application/pdf',
+                    upsert: true,
+                });
+
+            if (pdfError) {
+                console.warn(`PDF upload failed: ${pdfError.message}`);
+            } else {
+                const { data: pdfUrlData } = supabase.storage
+                    .from('attachments')
+                    .getPublicUrl(pdfPath);
+                pdfUrl = pdfUrlData?.publicUrl || null;
+            }
+        }
+
+        // 2. Upload ISDOC XML
+        if (xmlString) {
+            xmlPath = `invoices/${applicationId}/${invoiceNumber}.isdoc`;
+            const xmlBlob = new Blob([xmlString], { type: 'application/xml' });
+            const { error: xmlError } = await supabase.storage
+                .from('attachments')
+                .upload(xmlPath, xmlBlob, {
+                    contentType: 'application/xml',
+                    upsert: true,
+                });
+
+            if (xmlError) {
+                console.warn(`ISDOC XML upload failed: ${xmlError.message}`);
+            } else {
+                const { data: xmlUrlData } = supabase.storage
+                    .from('attachments')
+                    .getPublicUrl(xmlPath);
+                xmlUrl = xmlUrlData?.publicUrl || null;
+            }
+        }
+
+        // 3. Update invoice record with file paths/URLs
+        await invoicesDb.update(invoiceId, {
             pdf_storage_path: pdfPath,
             xml_storage_path: xmlPath,
             pdf_url: pdfUrl,
             xml_url: xmlUrl,
         });
 
-        console.log('=== INVOICE SAVED ===', {
-            id: invoice.id,
-            invoiceNumber: invoice.invoice_number,
-            amountCzk: invoice.amount_czk,
-            pdfUrl,
-            xmlUrl,
-        });
-
-        // 4. Link invoice to application (non-blocking)
-        try {
-            await applicationsDb.update(applicationId, {
-                invoice_id: invoice.id,
-            });
-        } catch (linkErr) {
-            console.warn('Failed to link invoice to application:', linkErr);
-        }
-
-        return invoice;
+        console.log('=== INVOICE FILES UPLOADED ===', { invoiceNumber, pdfUrl, xmlUrl });
     } catch (error) {
-        console.error('Failed to save invoice:', error);
-        throw error;
+        console.warn('Failed to upload invoice files (DB record still exists):', error);
     }
 }
 

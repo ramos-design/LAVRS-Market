@@ -112,7 +112,7 @@ export function buildIsdocXml(data: IsdocInvoiceData): string {
   <IssueDate>${data.issuedDate}</IssueDate>
   <TaxPointDate>${data.taxPointDate}</TaxPointDate>
   <VATApplicable>true</VATApplicable>
-  <Note>FAKTURA - DAŇOVÝ DOKLAD</Note>
+  <Note>OBJEDNÁVKA – VÝZVA K PLATBĚ</Note>
   <LocalCurrencyCode>CZK</LocalCurrencyCode>
   <CurrRate>1</CurrRate>
   <RefCurrRate>1</RefCurrRate>

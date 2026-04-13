@@ -1,5 +1,5 @@
 /**
- * Invoice PDF — "FAKTURA - DAŇOVÝ DOKLAD"
+ * Invoice PDF — "OBJEDNÁVKA – VÝZVA K PLATBĚ"
  * Uses Roboto font (supports full Czech diacritics)
  * Compliant with Czech tax law (zákon č. 235/2004 Sb.) and ISDOC 6.0.1
  */
@@ -211,7 +211,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
 
     const grandTotal = Math.round((totalBase + totalTax) * 100) / 100;
 
-    const defaultNote = 'Rezervace vašeho prodejního místa se stává závaznou až po uhrazení této faktury. V případě, že nebude faktura uhrazena do data splatnosti, rezervace automaticky zaniká a místo bude nabídnuto dalšímu vystavovateli.\nPři zrušení účasti méně než 14 dní před termínem akce činí storno poplatek 100 % z celkové částky.';
+    const defaultNote = 'Rezervace vašeho prodejního místa se stává závaznou až po uhrazení této objednávky. V případě, že nebude objednávka uhrazena do data splatnosti, rezervace automaticky zaniká a místo bude nabídnuto dalšímu vystavovateli.\nPři zrušení účasti méně než 14 dní před termínem akce činí storno poplatek 100 % z celkové částky.';
 
     const note = invoiceNote || defaultNote;
 
@@ -223,7 +223,7 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
             <Page size="A4" style={s.page}>
 
                 {/* Header */}
-                <Text style={s.title}>FAKTURA - DAŇOVÝ DOKLAD</Text>
+                <Text style={s.title}>OBJEDNÁVKA – VÝZVA K PLATBĚ</Text>
                 <Text style={s.subtitle}>číslo: {safe(invoiceNumber)}</Text>
 
                 {/* Meta */}

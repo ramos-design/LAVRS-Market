@@ -1,6 +1,6 @@
 /**
  * Invoice HTML Generator — LAVRS Market branded
- * Generates a complete HTML document for Czech ISDOC-compliant invoices.
+ * Generates a complete HTML document for order/payment request (Objednávka – Výzva k platbě).
  * Uses browser print (Save as PDF).
  */
 
@@ -63,7 +63,7 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
 
     const grandTotal = Math.round((totalBase + totalTax) * 100) / 100;
 
-    const defaultNote = 'Rezervace vašeho prodejního místa se stává závaznou až po uhrazení této faktury. V případě, že nebude faktura uhrazena do data splatnosti, rezervace automaticky zaniká a místo bude nabídnuto dalšímu vystavovateli.\nPři zrušení účasti méně než 14 dní před termínem akce činí storno poplatek 100 % z celkové částky.';
+    const defaultNote = 'Rezervace vašeho prodejního místa se stává závaznou až po uhrazení této objednávky. V případě, že nebude objednávka uhrazena do data splatnosti, rezervace automaticky zaniká a místo bude nabídnuto dalšímu vystavovateli.\nPři zrušení účasti méně než 14 dní před termínem akce činí storno poplatek 100 % z celkové částky.';
     const note = invoiceNote || defaultNote;
     const noteHtml = esc(note).replace(/\n/g, '<br>');
 
@@ -101,7 +101,7 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<title>Faktura ${esc(invoiceNumber)}</title>
+<title>Objednávka ${esc(invoiceNumber)}</title>
 <style>
 @page { size: A4; margin: 12mm 16mm 14mm 16mm; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -193,7 +193,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 
     <!-- Header -->
     <div class="header">
-        <h1>FAKTURA - DAŇOVÝ DOKLAD</h1>
+        <h1>OBJEDNÁVKA – VÝZVA K PLATBĚ</h1>
         <div class="inv-num">číslo: ${esc(invoiceNumber)}</div>
     </div>
 

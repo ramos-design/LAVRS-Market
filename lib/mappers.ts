@@ -173,6 +173,8 @@ export function dbBrandProfileToApp(p: DbBrandProfile): BrandProfile {
         billingAddress: p.billing_address || undefined,
         billingEmail: p.billing_email || undefined,
         deletionRequestedAt: p.deletion_requested_at || undefined,
+        logoUrl: p.logo_url || undefined,
+        galleryUrls: Array.isArray(p.gallery_urls) ? p.gallery_urls : [],
     };
 }
 
@@ -194,6 +196,8 @@ export function appBrandProfileToDb(p: BrandProfile, userId?: string | null): Om
         billing_address: p.billingAddress || null,
         billing_email: p.billingEmail || null,
         deletion_requested_at: p.deletionRequestedAt || null,
+        logo_url: p.logoUrl || null,
+        gallery_urls: p.galleryUrls || [],
     };
 }
 

@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart } from 'lucide-react';
+import { Instagram, Globe, Check, X, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, XCircle, Clock, CreditCard, Trash2, AlertCircle, Heart, Camera } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory, MarketEvent, BrandProfile } from '../types';
 import { DbApplication } from '../lib/database';
+import ImageLightbox from './ImageLightbox';
 
 interface CuratorModuleProps {
   onBack: () => void;
@@ -37,6 +38,13 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
   const isBrandDeletionRequested = (brandName: string) => deletionRequestedBrands.has(brandName.toLowerCase());
 
+  // Map brand name (lowercase) to brand profile for gallery lookup
+  const brandProfileMap = React.useMemo(() => {
+    const map = new Map<string, BrandProfile>();
+    brandProfiles.forEach(bp => map.set(bp.brandName.toLowerCase(), bp));
+    return map;
+  }, [brandProfiles]);
+
   const deletedApplications = applications.filter(a => normalizeStatus(a.status) === AppStatus.DELETED);
   // Filter out applications that are already paid (those move to the event manager)
   const activeApplications = applications.filter(a => {
@@ -53,6 +61,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
   const [priceInput, setPriceInput] = useState<string>('');
   const [priceSaving, setPriceSaving] = useState(false);
   const [priceSaved, setPriceSaved] = useState(false);
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
   React.useEffect(() => {
     if (selectedAppId && displayedApplications.find(a => a.id === selectedAppId)) return;
@@ -350,23 +359,20 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
               <div className="p-8 border-b border-gray-100 bg-lavrs-beige/20">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-3xl shadow-lg">
-                      {selectedApp.brandName[0]}
-                    </div>
+                    {(() => {
+                      const bp = brandProfileMap.get(selectedApp.brandName.toLowerCase());
+                      return bp?.logoUrl ? (
+                        <div className="w-20 h-20 rounded-none overflow-hidden border border-gray-200 shrink-0">
+                          <img src={bp.logoUrl} alt={selectedApp.brandName} className="w-full h-full object-contain" />
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-3xl shadow-lg">
+                          {selectedApp.brandName[0]}
+                        </div>
+                      );
+                    })()}
                     <div>
-                      <h3 className="text-3xl font-extrabold tracking-tight text-lavrs-dark mb-2">{selectedApp.brandName}</h3>
-                      <div className="flex gap-4">
-                        {selectedApp.instagram && (
-                          <a href="#" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-lavrs-red transition-colors">
-                            <Instagram size={14} /> {selectedApp.instagram}
-                          </a>
-                        )}
-                        {selectedApp.website && (
-                          <a href="#" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-lavrs-red transition-colors">
-                            <Globe size={14} /> {selectedApp.website}
-                          </a>
-                        )}
-                      </div>
+                      <h3 className="text-3xl font-extrabold tracking-tight text-lavrs-dark mb-0">{selectedApp.brandName}</h3>
                     </div>
                   </div>
                   {(() => {
@@ -420,6 +426,40 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                   </div>
                 </section>
 
+                {/* Web & Social */}
+                {(selectedApp.instagram || selectedApp.website) && (
+                  <section>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Globe size={14} className="text-lavrs-red" />
+                      Web a sociální sítě
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {selectedApp.instagram && (
+                        <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Instagram size={16} className="text-lavrs-red" />
+                            <p className="text-[10px] text-gray-400 uppercase font-bold">Instagram</p>
+                          </div>
+                          <a href={`https://www.instagram.com/${selectedApp.instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-lavrs-dark hover:text-lavrs-red transition-colors">
+                            {selectedApp.instagram}
+                          </a>
+                        </div>
+                      )}
+                      {selectedApp.website && (
+                        <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Globe size={16} className="text-lavrs-red" />
+                            <p className="text-[10px] text-gray-400 uppercase font-bold">Web</p>
+                          </div>
+                          <a href={selectedApp.website.startsWith('http') ? selectedApp.website : `https://${selectedApp.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-lavrs-dark hover:text-lavrs-red transition-colors truncate block">
+                            {selectedApp.website}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
+
                 {/* Brand Description */}
                 <section>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Popis značky</h4>
@@ -427,6 +467,28 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <p className="text-base leading-relaxed text-gray-700">{selectedApp.brandDescription}</p>
                   </div>
                 </section>
+
+                {/* Brand Gallery */}
+                {(() => {
+                  const bp = brandProfileMap.get(selectedApp.brandName.toLowerCase());
+                  const gallery = bp?.galleryUrls || [];
+                  if (gallery.length === 0) return null;
+                  return (
+                    <section>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Camera size={14} className="text-lavrs-red" />
+                        Fotogalerie značky ({gallery.length})
+                      </h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        {gallery.map((url, i) => (
+                          <div key={url} className="aspect-square bg-white border border-gray-100 shadow-sm overflow-hidden rounded-none cursor-pointer" onClick={() => setLightbox({ images: gallery, index: i })}>
+                            <img src={url} alt={`${selectedApp.brandName} ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })()}
 
                 {/* Contact Information */}
                 <section>
@@ -636,7 +698,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.APPROVED)}
-                      disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status) === AppStatus.PAID}
+                      disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status) === AppStatus.PAID || normalizeStatus(selectedApp.status) === AppStatus.PAYMENT_UNDER_REVIEW}
                       className="bg-green-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check size={18} /> SCHVÁLIT
@@ -644,7 +706,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAID)}
-                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus))}
                       className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status).includes('PAYMENT_')
                         ? 'bg-lavrs-dark text-white hover:bg-black'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
@@ -721,6 +783,15 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
           )}
         </div>
       </div>
+
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          currentIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onNavigate={(i) => setLightbox({ ...lightbox, index: i })}
+        />
+      )}
     </div>
   );
 };

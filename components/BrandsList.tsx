@@ -1,12 +1,14 @@
 import React from 'react';
-import { Heart, Search, AlertTriangle } from 'lucide-react';
+import { Heart, Search, AlertTriangle, Camera, ChevronDown, ChevronUp, Sparkles, CreditCard, Instagram, Globe, Mail, Phone, Building2, MapPin, Check, X, Save, Loader } from 'lucide-react';
 import { AppStatus, ZoneCategory, Application, BrandProfile, MarketEvent } from '../types';
+import ImageLightbox from './ImageLightbox';
 
 interface BrandsListProps {
   applications: Application[];
   brands: BrandProfile[];
   events: MarketEvent[];
   onDeleteBrand: (brandProfileId: string) => Promise<void>;
+  onUpdateBrand: (brand: BrandProfile) => Promise<void>;
 }
 
 const zoneCategoryTabs: { id: 'ALL' | string; label: string }[] = [
@@ -39,11 +41,23 @@ const getZoneCategoryLabel = (category?: ZoneCategory) => {
   }
 };
 
-const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, onDeleteBrand }) => {
+const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, onDeleteBrand, onUpdateBrand }) => {
 
   const [tab, setTab] = React.useState<'ALL' | string>('ALL');
   const [query, setQuery] = React.useState('');
   const [deletingBrandId, setDeletingBrandId] = React.useState<string | null>(null);
+  const [expandedBrand, setExpandedBrand] = React.useState<string | null>(null);
+  const [lightbox, setLightbox] = React.useState<{ images: string[]; index: number } | null>(null);
+  const [editingBrandId, setEditingBrandId] = React.useState<string | null>(null);
+  const [editForm, setEditForm] = React.useState<BrandProfile | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  // Map brand name (lowercase) to brand profile for gallery/logo lookup
+  const brandProfileMap = React.useMemo(() => {
+    const map = new Map<string, BrandProfile>();
+    brands.forEach(bp => map.set(bp.brandName.toLowerCase(), bp));
+    return map;
+  }, [brands]);
 
   const rows = React.useMemo(() => {
     const profileIdByBrandName = new Map<string, string>();
@@ -186,6 +200,56 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
     }
   };
 
+  const startEditing = (row: (typeof rows)[number]) => {
+    const bp = brandProfileMap.get(row.brandName.toLowerCase());
+    const profile: BrandProfile = bp
+      ? { ...bp }
+      : {
+          id: row.profileId || row.id,
+          brandName: row.brandName,
+          brandDescription: '',
+          instagram: row.instagram || '',
+          website: row.website || '',
+          contactPerson: row.contactPerson || '',
+          phone: '',
+          email: row.email || '',
+          billingName: row.billingName || '',
+          ic: row.ic || '',
+          dic: row.dic || '',
+          billingAddress: row.billingAddress || '',
+          billingEmail: row.billingEmail || '',
+          logoUrl: '',
+          galleryUrls: [],
+        };
+    setEditForm(profile);
+    setEditingBrandId(row.id);
+    setExpandedBrand(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingBrandId(null);
+    setEditForm(null);
+  };
+
+  const updateFormField = (field: keyof BrandProfile, value: any) => {
+    if (!editForm) return;
+    setEditForm({ ...editForm, [field]: value });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm || !editForm.brandName.trim()) return;
+    setSaving(true);
+    try {
+      await onUpdateBrand(editForm);
+      setEditingBrandId(null);
+      setEditForm(null);
+    } catch (error: any) {
+      alert(error?.message || 'Uložení se nezdařilo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -239,66 +303,325 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                 </td>
               </tr>
             ) : (
-              filtered.map((row) => (
-                <tr key={`${row.source}-${row.id}`} className="border-t border-gray-50 hover:bg-lavrs-beige/20 transition-colors">
-                  <td className="px-6 py-4 max-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="font-bold text-lavrs-dark truncate">{row.brandName}</div>
-                      {row.isApproved && (
-                        <Heart size={14} className="text-lavrs-red fill-lavrs-red flex-shrink-0" />
-                      )}
-                    </div>
-                    {row.deletionRequestedAt ? (
-                      <div className="flex items-center gap-1.5 mt-1 px-2 py-1 bg-amber-50 border border-amber-200 w-fit">
-                        <AlertTriangle size={12} className="text-amber-500 flex-shrink-0" />
-                        <span className="text-[11px] font-semibold text-amber-600">Vystavovatel žádá o smazání</span>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-gray-400 truncate">{row.instagram || row.website || '—'}</div>
+              filtered.map((row) => {
+                const bp = brandProfileMap.get(row.brandName.toLowerCase());
+                const gallery = bp?.galleryUrls || [];
+                const hasMedia = gallery.length > 0 || !!bp?.logoUrl;
+                const isExpanded = expandedBrand === row.id;
+                const rowKey = `${row.source}-${row.id}`;
+                return (
+                  <React.Fragment key={rowKey}>
+                    <tr
+                      className={`border-t border-gray-50 hover:bg-lavrs-beige/20 transition-colors ${hasMedia ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-lavrs-beige/20' : ''}`}
+                      onClick={() => hasMedia && setExpandedBrand(isExpanded ? null : row.id)}
+                    >
+                      <td className="px-6 py-4 max-w-0">
+                        <div className="flex items-center gap-2">
+                          {bp?.logoUrl ? (
+                            <div className="w-7 h-7 rounded-none overflow-hidden border border-gray-200 shrink-0">
+                              <img src={bp.logoUrl} alt="" className="w-full h-full object-contain" />
+                            </div>
+                          ) : null}
+                          <div className="font-bold text-lavrs-dark truncate">{row.brandName}</div>
+                          {row.isApproved && (
+                            <Heart size={14} className="text-lavrs-red fill-lavrs-red flex-shrink-0" />
+                          )}
+                          {hasMedia && (
+                            <Camera size={12} className="text-gray-300 flex-shrink-0" />
+                          )}
+                        </div>
+                        {row.deletionRequestedAt ? (
+                          <div className="flex items-center gap-1.5 mt-1 px-2 py-1 bg-amber-50 border border-amber-200 w-fit">
+                            <AlertTriangle size={12} className="text-amber-500 flex-shrink-0" />
+                            <span className="text-[11px] font-semibold text-amber-600">Vystavovatel žádá o smazání</span>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-gray-400 truncate">{row.instagram || row.website || '—'}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 max-w-0">
+                        <div className="font-semibold text-gray-700 truncate">{row.contactPerson || '—'}</div>
+                        <div className="text-[11px] text-gray-400 truncate">{row.email || '—'}</div>
+                      </td>
+                      <td className="px-6 py-4 max-w-0">
+                        <div className="font-semibold text-gray-700 text-xs truncate">{row.billingName || '—'}</div>
+                        {(row.ic || row.dic) && (
+                          <div className="text-[11px] text-gray-400">
+                            {row.ic && <span>IČ: {row.ic}</span>}
+                            {row.ic && row.dic && <span> · </span>}
+                            {row.dic && <span>DIČ: {row.dic}</span>}
+                          </div>
+                        )}
+                        {row.billingAddress && (
+                          <div className="text-[11px] text-gray-400 truncate max-w-[180px]" title={row.billingAddress}>{row.billingAddress}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-gray-700">{getZoneCategoryLabel(row.zoneCategory)}</td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-gray-700">{row.lastEventTitle || '—'}</div>
+                        <div className="text-[11px] text-gray-400">{row.statusLabel || '—'}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); editingBrandId === row.id ? cancelEditing() : startEditing(row); }}
+                            className={`px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border transition-colors ${editingBrandId === row.id ? 'border-lavrs-red text-lavrs-red bg-red-50' : 'border-gray-200 text-gray-600 hover:border-lavrs-red hover:text-lavrs-red'}`}
+                          >
+                            {editingBrandId === row.id ? 'Zavřít' : 'Upravit'}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteBrand(row); }}
+                            disabled={deletingBrandId === row.profileId}
+                            className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingBrandId === row.profileId ? 'Mažu...' : 'Smazat'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Gallery Row */}
+                    {isExpanded && hasMedia && editingBrandId !== row.id && (
+                      <tr className="border-t border-lavrs-red/10">
+                        <td colSpan={6} className="px-6 py-5 bg-lavrs-beige/10">
+                          <div className="flex items-start gap-6">
+                            {bp?.logoUrl && (
+                              <div className="shrink-0">
+                                <p className="text-[9px] text-gray-400 uppercase font-bold mb-2">Logo</p>
+                                <div className="w-16 h-16 rounded-none overflow-hidden border border-gray-200 bg-white">
+                                  <img src={bp.logoUrl} alt={row.brandName} className="w-full h-full object-contain" />
+                                </div>
+                              </div>
+                            )}
+                            {gallery.length > 0 && (
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[9px] text-gray-400 uppercase font-bold mb-2 flex items-center gap-1.5">
+                                  <Camera size={11} /> Fotogalerie ({gallery.length})
+                                </p>
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                  {gallery.map((url, i) => (
+                                    <div key={url} className="w-20 h-20 shrink-0 bg-white border border-gray-100 overflow-hidden rounded-none cursor-pointer" onClick={(e) => { e.stopPropagation(); setLightbox({ images: gallery, index: i }); }}>
+                                      <img src={url} alt={`${row.brandName} ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="px-6 py-4 max-w-0">
-                    <div className="font-semibold text-gray-700 truncate">{row.contactPerson || '—'}</div>
-                    <div className="text-[11px] text-gray-400 truncate">{row.email || '—'}</div>
-                  </td>
-                  <td className="px-6 py-4 max-w-0">
-                    <div className="font-semibold text-gray-700 text-xs truncate">{row.billingName || '—'}</div>
-                    {(row.ic || row.dic) && (
-                      <div className="text-[11px] text-gray-400">
-                        {row.ic && <span>IČ: {row.ic}</span>}
-                        {row.ic && row.dic && <span> · </span>}
-                        {row.dic && <span>DIČ: {row.dic}</span>}
-                      </div>
+
+                    {/* Inline Edit Form Row */}
+                    {editingBrandId === row.id && editForm && (
+                      <tr className="border-t-2 border-lavrs-red/20">
+                        <td colSpan={6} className="p-0">
+                          <div className="bg-lavrs-beige/10 p-6 md:p-8 space-y-8 animate-fadeIn">
+                            {/* Gallery preview */}
+                            {hasMedia && (
+                              <div className="flex items-start gap-6 pb-6 border-b border-gray-100">
+                                {bp?.logoUrl && (
+                                  <div className="shrink-0">
+                                    <p className="text-[9px] text-gray-400 uppercase font-bold mb-2">Logo</p>
+                                    <div className="w-16 h-16 rounded-none overflow-hidden border border-gray-200 bg-white">
+                                      <img src={bp.logoUrl} alt={row.brandName} className="w-full h-full object-contain" />
+                                    </div>
+                                  </div>
+                                )}
+                                {gallery.length > 0 && (
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[9px] text-gray-400 uppercase font-bold mb-2 flex items-center gap-1.5">
+                                      <Camera size={11} /> Fotogalerie ({gallery.length})
+                                    </p>
+                                    <div className="flex gap-2 overflow-x-auto pb-1">
+                                      {gallery.map((url, i) => (
+                                        <div key={url} className="w-16 h-16 shrink-0 bg-white border border-gray-100 overflow-hidden rounded-none cursor-pointer" onClick={(e) => { e.stopPropagation(); setLightbox({ images: gallery, index: i }); }}>
+                                          <img src={url} alt={`${row.brandName} ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Brand Info Section */}
+                            <div className="space-y-5">
+                              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                <Sparkles size={16} className="text-lavrs-red" />
+                                <h4 className="text-xs font-bold text-lavrs-dark uppercase tracking-tight">Informace o značce</h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Název značky <span className="text-lavrs-red">*</span></label>
+                                  <input
+                                    value={editForm.brandName}
+                                    onChange={(e) => updateFormField('brandName', e.target.value)}
+                                    maxLength={40}
+                                    className={`w-full bg-white px-4 py-3 rounded-none border-2 focus:border-lavrs-red font-bold transition-all text-sm ${!editForm.brandName.trim() ? 'border-lavrs-red/40' : 'border-gray-100'}`}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Popis značky</label>
+                                  <input
+                                    value={editForm.brandDescription || ''}
+                                    onChange={(e) => updateFormField('brandDescription', e.target.value)}
+                                    className="w-full bg-white px-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Instagram</label>
+                                  <div className="relative">
+                                    <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={15} />
+                                    <input
+                                      value={editForm.instagram || ''}
+                                      onChange={(e) => updateFormField('instagram', e.target.value)}
+                                      className="w-full bg-white pl-10 pr-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Web</label>
+                                  <div className="relative">
+                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={15} />
+                                    <input
+                                      value={editForm.website || ''}
+                                      onChange={(e) => updateFormField('website', e.target.value)}
+                                      className="w-full bg-white pl-10 pr-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Kontaktní osoba</label>
+                                  <input
+                                    value={editForm.contactPerson || ''}
+                                    onChange={(e) => updateFormField('contactPerson', e.target.value)}
+                                    className="w-full bg-white px-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">E-mail</label>
+                                  <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={15} />
+                                    <input
+                                      value={editForm.email || ''}
+                                      onChange={(e) => updateFormField('email', e.target.value)}
+                                      className="w-full bg-white pl-10 pr-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Telefon</label>
+                                  <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={15} />
+                                    <input
+                                      value={editForm.phone || ''}
+                                      onChange={(e) => updateFormField('phone', e.target.value)}
+                                      className="w-full bg-white pl-10 pr-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Billing Info Section */}
+                            <div className="space-y-5 pt-4 border-t border-gray-100">
+                              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                <CreditCard size={16} className="text-lavrs-red" />
+                                <h4 className="text-xs font-bold text-lavrs-dark uppercase tracking-tight">Fakturační údaje</h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Firma / Jméno</label>
+                                  <input
+                                    value={editForm.billingName || ''}
+                                    onChange={(e) => updateFormField('billingName', e.target.value)}
+                                    className="w-full bg-white px-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm font-semibold"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">IČ</label>
+                                  <input
+                                    value={editForm.ic || ''}
+                                    onChange={(e) => updateFormField('ic', e.target.value)}
+                                    className="w-full bg-white px-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">DIČ</label>
+                                  <input
+                                    value={editForm.dic || ''}
+                                    onChange={(e) => updateFormField('dic', e.target.value)}
+                                    className="w-full bg-white px-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Fakturační adresa</label>
+                                  <input
+                                    value={editForm.billingAddress || ''}
+                                    onChange={(e) => updateFormField('billingAddress', e.target.value)}
+                                    className="w-full bg-white px-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3">Fakturační e-mail</label>
+                                  <input
+                                    value={editForm.billingEmail || ''}
+                                    onChange={(e) => updateFormField('billingEmail', e.target.value)}
+                                    className="w-full bg-white px-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); cancelEditing(); }}
+                                className="px-6 py-2.5 rounded-none text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-lavrs-dark transition-colors"
+                              >
+                                Zrušit
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleSaveEdit(); }}
+                                disabled={!editForm.brandName.trim() || saving}
+                                className={`px-8 py-2.5 rounded-none text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${!editForm.brandName.trim() || saving ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark shadow-lg'}`}
+                              >
+                                {saving ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
+                                {saving ? 'Ukládám...' : 'Uložit úpravy'}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                    {row.billingAddress && (
-                      <div className="text-[11px] text-gray-400 truncate max-w-[180px]" title={row.billingAddress}>{row.billingAddress}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-gray-700">{getZoneCategoryLabel(row.zoneCategory)}</td>
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-gray-700">{row.lastEventTitle || '—'}</div>
-                    <div className="text-[11px] text-gray-400">{row.statusLabel || '—'}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-gray-200 text-gray-600 hover:border-lavrs-red hover:text-lavrs-red transition-colors">
-                        Upravit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBrand(row)}
-                        disabled={deletingBrandId === row.profileId}
-                        className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {deletingBrandId === row.profileId ? 'Mažu...' : 'Smazat'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                  </React.Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          currentIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onNavigate={(i) => setLightbox({ ...lightbox, index: i })}
+        />
+      )}
     </div>
   );
 };
