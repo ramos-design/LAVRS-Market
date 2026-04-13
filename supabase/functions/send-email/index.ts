@@ -11,12 +11,16 @@ const smtpPassword = Deno.env.get("SMTP_PASSWORD")!;
 const senderEmail = Deno.env.get("SENDER_EMAIL") || "lavrs@lavrs.cz";
 const senderName = Deno.env.get("SENDER_NAME") || "LAVRS market";
 
+const escapeHtml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 // Compact HTML — no indentation to avoid SMTP quoted-printable =3d / =20 artifacts
 const getHtmlTemplate = (title: string, bodyText: string) => {
-    const formattedBody = bodyText.replace(/\n/g, '<br>');
+    const safeTitle = escapeHtml(title);
+    const formattedBody = escapeHtml(bodyText).replace(/\n/g, '<br>');
     return '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"/>'
     + '<meta name="viewport" content="width=device-width,initial-scale=1.0"/>'
-    + '<title>' + title + '</title></head>'
+    + '<title>' + safeTitle + '</title></head>'
     + '<body style="margin:0;padding:0;background-color:#e8b8b8;font-family:Arial,Helvetica,sans-serif;">'
     + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#e8b8b8;margin:0;padding:0;">'
     + '<tr><td align="center" style="padding:30px 10px;">'
@@ -25,7 +29,7 @@ const getHtmlTemplate = (title: string, bodyText: string) => {
     + '<div style="color:#ffffff;font-size:28px;font-weight:900;letter-spacing:1px;">LAVRS market</div>'
     + '</td></tr>'
     + '<tr><td style="padding:35px 40px;text-align:left;">'
-    + '<h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">' + title + '</h1>'
+    + '<h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">' + safeTitle + '</h1>'
     + '<div style="font-size:16px;line-height:1.6;color:#b10014;margin-bottom:25px;">' + formattedBody + '</div>'
     + '<p style="margin:0;font-size:15px;line-height:1.5;color:#b10014;font-weight:bold;border-top:1px solid #efb2b7;padding-top:15px;">T\u00fdm LAVRS market</p>'
     + '</td></tr>'
@@ -35,7 +39,7 @@ const getHtmlTemplate = (title: string, bodyText: string) => {
 };
 
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };

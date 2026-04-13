@@ -321,10 +321,13 @@ const AutomatedEmails: React.FC = () => {
         return '📎';
     };
 
+    const escapeHtml = (str: string) =>
+        str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
     const renderPreviewBody = (body: string) => {
-        let preview = body;
+        let preview = escapeHtml(body);
         TEMPLATE_VARIABLES.forEach(v => {
-            preview = preview.replaceAll(v.key, `<span style="background:#FEF3C7;padding:1px 6px;border-radius:2px;font-weight:600;color:#92400E;">${v.example}</span>`);
+            preview = preview.replaceAll(escapeHtml(v.key), `<span style="background:#FEF3C7;padding:1px 6px;border-radius:2px;font-weight:600;color:#92400E;">${escapeHtml(v.example)}</span>`);
         });
         return preview.replace(/\n/g, '<br/>');
     };

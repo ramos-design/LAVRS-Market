@@ -9,12 +9,26 @@ const BUCKET = 'brand-gallery';
 const MIN_GALLERY_IMAGES = 4;
 const MAX_GALLERY_IMAGES = 10;
 
-function validateImageFile(file: File, maxSizeMB = 5): void {
+const IMAGE_SIGNATURES: [number[], string][] = [
+    [[0xFF, 0xD8, 0xFF], 'JPEG'],
+    [[0x89, 0x50, 0x4E, 0x47], 'PNG'],
+    [[0x52, 0x49, 0x46, 0x46], 'WebP'], // RIFF header (WebP starts with RIFF....WEBP)
+    [[0x47, 0x49, 0x46, 0x38], 'GIF'],
+];
+
+async function validateImageFile(file: File, maxSizeMB = 5): Promise<void> {
     if (!file.type.startsWith('image/')) {
         throw new Error('Soubor musí být obrázek (JPG, PNG, WebP).');
     }
     if (file.size > maxSizeMB * 1024 * 1024) {
         throw new Error(`Obrázek je příliš velký (max ${maxSizeMB} MB).`);
+    }
+    const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const isValid = IMAGE_SIGNATURES.some(([sig]) =>
+        sig.every((byte, i) => header[i] === byte)
+    );
+    if (!isValid) {
+        throw new Error('Neplatný formát souboru. Povolené formáty: JPG, PNG, WebP, GIF.');
     }
 }
 
@@ -56,7 +70,7 @@ export async function uploadBrandLogo(
     userId: string,
     brandId: string
 ): Promise<string> {
-    validateImageFile(file);
+    await validateImageFile(file);
     const compressed = await compressLogoImage(file);
     const path = generatePath(userId, brandId, 'logo', compressed.name);
     return uploadFile(path, compressed);
@@ -71,7 +85,7 @@ export async function uploadBrandGalleryImage(
     if (currentCount >= MAX_GALLERY_IMAGES) {
         throw new Error(`Maximální počet fotek v galerii je ${MAX_GALLERY_IMAGES}.`);
     }
-    validateImageFile(file);
+    await validateImageFile(file);
     const compressed = await compressGalleryImage(file);
     const path = generatePath(userId, brandId, 'gallery', compressed.name);
     return uploadFile(path, compressed);

@@ -3,6 +3,7 @@ import React from 'react';
 import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
 import { ViewMode } from '../types';
 import { AdminPresenceState, getScreenLabel } from '../hooks/useAdminPresence';
+import { prefetchScreen } from '../App';
 
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
 
@@ -45,6 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignO
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
+              onMouseEnter={() => prefetchScreen(item.id)}
               className={`w-full flex items-center gap-4 px-6 py-4 rounded-none text-base font-bold transition-all group ${isActive
                 ? 'bg-white text-lavrs-red shadow-lg shadow-black/5'
                 : 'text-white hover:bg-white/10 transition-all'

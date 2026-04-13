@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
 import { ViewMode } from '../types';
+import { prefetchScreen } from '../App';
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
 
 interface MobileHeaderProps {
@@ -44,6 +45,13 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
         onNavigate(id);
         setIsMenuOpen(false);
     };
+
+    // When mobile menu opens, prefetch all visible screen chunks
+    useEffect(() => {
+        if (isMenuOpen) {
+            menuItems.forEach(item => prefetchScreen(item.id));
+        }
+    }, [isMenuOpen]);
 
     return (
         <div className="md:hidden">

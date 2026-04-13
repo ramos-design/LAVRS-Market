@@ -9,6 +9,9 @@ const senderName = Deno.env.get("SENDER_NAME") || "LAVRS market";
 
 const TEST_RECIPIENT = "lavrs@lavrs.cz";
 
+const escapeHtml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 function base64ToUint8Array(base64: string): Uint8Array {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
@@ -19,6 +22,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
 }
 
 function buildEmailHtml(title: string, brandName: string, contactPerson: string, eventName: string, eventDate: string, zoneCategory: string, invoiceNumber: string, totalAmountCzk: string, recipientType: string): string {
+    const e = escapeHtml;
     const isAdmin = recipientType === 'admin';
     const footerText = isAdmin
         ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF) a ISDOC XML soubor.</p>'
@@ -26,7 +30,7 @@ function buildEmailHtml(title: string, brandName: string, contactPerson: string,
         + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
         + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
     // Compact HTML — no indentation to avoid SMTP quoted-printable =20 artifacts
-    return '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>' + title + '</title></head>'
+    return '<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>' + e(title) + '</title></head>'
     + '<body style="margin:0;padding:0;background-color:#e8b8b8;font-family:Arial,Helvetica,sans-serif;">'
     + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#e8b8b8;">'
     + '<tr><td align="center" style="padding:30px 10px;">'
@@ -35,22 +39,22 @@ function buildEmailHtml(title: string, brandName: string, contactPerson: string,
     + '<div style="color:#ffffff;font-size:28px;font-weight:900;letter-spacing:1px;">LAVRS market</div>'
     + '</td></tr>'
     + '<tr><td style="padding:35px 40px;text-align:left;">'
-    + '<h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">' + title + '</h1>'
+    + '<h1 style="margin:0 0 20px 0;font-size:24px;line-height:1.2;color:#e30613;font-weight:bold;text-align:center;">' + e(title) + '</h1>'
     + '<div style="font-size:16px;line-height:1.6;color:#b10014;margin-bottom:25px;">'
     + '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>'
     + '<table style="width:100%;border-collapse:collapse;margin:15px 0;">'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;width:40%;">Zna\u010dka</td>'
-    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (brandName || '\u2014') + '</td></tr>'
+    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(brandName || '\u2014') + '</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Kontaktn\u00ed osoba</td>'
-    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (contactPerson || '\u2014') + '</td></tr>'
+    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(contactPerson || '\u2014') + '</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Event</td>'
-    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (eventName || '\u2014') + ' (' + (eventDate || '\u2014') + ')</td></tr>'
+    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(eventName || '\u2014') + ' (' + e(eventDate || '\u2014') + ')</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">Kategorie</td>'
-    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (zoneCategory || '\u2014') + '</td></tr>'
+    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(zoneCategory || '\u2014') + '</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">\u010c\u00edslo objedn\u00e1vky</td>'
-    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (invoiceNumber || '\u2014') + '</td></tr>'
+    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(invoiceNumber || '\u2014') + '</td></tr>'
     + '<tr><td style="padding:8px 12px;border:1px solid #efb2b7;font-weight:bold;">\u010c\u00e1stka</td>'
-    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + (totalAmountCzk || '\u2014') + ' K\u010d</td></tr>'
+    + '<td style="padding:8px 12px;border:1px solid #efb2b7;">' + e(totalAmountCzk || '\u2014') + ' K\u010d</td></tr>'
     + '</table>'
     + footerText
     + '</div>'
@@ -66,7 +70,7 @@ Deno.serve(async (req) => {
     if (req.method === "OPTIONS") {
         return new Response("ok", {
             headers: {
-                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz",
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
                 "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
             },
@@ -159,13 +163,13 @@ Deno.serve(async (req) => {
 
         return new Response(
             JSON.stringify({ message: "Invoice notification sent", recipient, attachmentCount: attachments.length }),
-            { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+            { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz" } }
         );
     } catch (err: any) {
         console.error("Error sending invoice notification:", err.message);
         return new Response(
             JSON.stringify({ error: err.message }),
-            { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+            { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz" } }
         );
     }
 });

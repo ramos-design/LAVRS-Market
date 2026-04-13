@@ -34,27 +34,68 @@ function lazyWithRetry(factory: () => Promise<{ default: React.ComponentType<any
   );
 }
 
-const ExhibitorDashboard = lazyWithRetry(() => import('./components/ExhibitorDashboard'));
-const AdminDashboard = lazyWithRetry(() => import('./components/AdminDashboard'));
-const ApplicationWizard = lazyWithRetry(() => import('./components/ApplicationWizard'));
-const PaymentPage = lazyWithRetry(() => import('./components/PaymentPage'));
-const CuratorModule = lazyWithRetry(() => import('./components/CuratorModule'));
-const ApprovedApplications = lazyWithRetry(() => import('./components/ApprovedApplications'));
-const MyApplications = lazyWithRetry(() => import('./components/MyApplications'));
-const Billing = lazyWithRetry(() => import('./components/Billing'));
-const Profile = lazyWithRetry(() => import('./components/Profile'));
-const Contact = lazyWithRetry(() => import('./components/Contact'));
-const PaymentsAndInvoicing = lazyWithRetry(() => import('./components/PaymentsAndInvoicing'));
-const EventsConfig = lazyWithRetry(() => import('./components/EventsConfig'));
-const AutomatedEmails = lazyWithRetry(() => import('./components/AutomatedEmails'));
-const BrandsList = lazyWithRetry(() => import('./components/BrandsList'));
-const EventLayoutManager = lazyWithRetry(() => import('./components/EventLayoutManager'));
-const BannerManager = lazyWithRetry(() => import('./components/BannerManager'));
-const CategoryManager = lazyWithRetry(() => import('./components/CategoryManager'));
-const ToastProvider = lazyWithRetry(() => import('./components/ToastProvider'));
-const ResetPassword = lazyWithRetry(() => import('./components/ResetPassword'));
-const PrivacyPolicy = lazyWithRetry(() => import('./components/PrivacyPolicy'));
-const TermsOfService = lazyWithRetry(() => import('./components/TermsOfService'));
+// Prefetch map — allows Sidebar hover to trigger chunk downloads before click
+const componentImports: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
+  DASHBOARD_EXHIBITOR: () => import('./components/ExhibitorDashboard'),
+  DASHBOARD_ADMIN: () => import('./components/AdminDashboard'),
+  APPLY: () => import('./components/ApplicationWizard'),
+  PAYMENT: () => import('./components/PaymentPage'),
+  CURATOR: () => import('./components/CuratorModule'),
+  APPROVED_APPS: () => import('./components/ApprovedApplications'),
+  APPLICATIONS: () => import('./components/MyApplications'),
+  BILLING: () => import('./components/Billing'),
+  PROFILE: () => import('./components/Profile'),
+  CONTACT: () => import('./components/Contact'),
+  PAYMENTS: () => import('./components/PaymentsAndInvoicing'),
+  EVENTS_CONFIG: () => import('./components/EventsConfig'),
+  EMAILS: () => import('./components/AutomatedEmails'),
+  BRANDS: () => import('./components/BrandsList'),
+  EVENT_PLAN: () => import('./components/EventLayoutManager'),
+  BANNERS: () => import('./components/BannerManager'),
+  CATEGORIES: () => import('./components/CategoryManager'),
+  TOAST: () => import('./components/ToastProvider'),
+  RESET_PASSWORD: () => import('./components/ResetPassword'),
+  PRIVACY: () => import('./components/PrivacyPolicy'),
+  TERMS: () => import('./components/TermsOfService'),
+};
+
+// Prefetch a screen's chunk (no-op if already cached by browser)
+const prefetchedScreens = new Set<string>();
+export function prefetchScreen(screenId: string) {
+  const keys = screenId === 'DASHBOARD'
+    ? ['DASHBOARD_EXHIBITOR', 'DASHBOARD_ADMIN']
+    : [screenId];
+  keys.forEach(key => {
+    if (prefetchedScreens.has(key)) return;
+    const importer = componentImports[key];
+    if (importer) {
+      prefetchedScreens.add(key);
+      importer().catch(() => { /* chunk prefetch failed — lazy load will retry */ });
+    }
+  });
+}
+
+const ExhibitorDashboard = lazyWithRetry(componentImports.DASHBOARD_EXHIBITOR);
+const AdminDashboard = lazyWithRetry(componentImports.DASHBOARD_ADMIN);
+const ApplicationWizard = lazyWithRetry(componentImports.APPLY);
+const PaymentPage = lazyWithRetry(componentImports.PAYMENT);
+const CuratorModule = lazyWithRetry(componentImports.CURATOR);
+const ApprovedApplications = lazyWithRetry(componentImports.APPROVED_APPS);
+const MyApplications = lazyWithRetry(componentImports.APPLICATIONS);
+const Billing = lazyWithRetry(componentImports.BILLING);
+const Profile = lazyWithRetry(componentImports.PROFILE);
+const Contact = lazyWithRetry(componentImports.CONTACT);
+const PaymentsAndInvoicing = lazyWithRetry(componentImports.PAYMENTS);
+const EventsConfig = lazyWithRetry(componentImports.EVENTS_CONFIG);
+const AutomatedEmails = lazyWithRetry(componentImports.EMAILS);
+const BrandsList = lazyWithRetry(componentImports.BRANDS);
+const EventLayoutManager = lazyWithRetry(componentImports.EVENT_PLAN);
+const BannerManager = lazyWithRetry(componentImports.BANNERS);
+const CategoryManager = lazyWithRetry(componentImports.CATEGORIES);
+const ToastProvider = lazyWithRetry(componentImports.TOAST);
+const ResetPassword = lazyWithRetry(componentImports.RESET_PASSWORD);
+const PrivacyPolicy = lazyWithRetry(componentImports.PRIVACY);
+const TermsOfService = lazyWithRetry(componentImports.TERMS);
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -119,6 +160,16 @@ const App: React.FC = () => {
       hasLeftDashboard.current = true;
     }
   }, [currentScreen]);
+
+  // Idle prefetch: after login, preload the most common screen chunks in background
+  React.useEffect(() => {
+    if (!user) return;
+    const screens = user.role === 'ADMIN'
+      ? ['DASHBOARD_ADMIN', 'CURATOR', 'APPROVED_APPS', 'EVENTS_CONFIG', 'BRANDS']
+      : ['DASHBOARD_EXHIBITOR', 'APPLICATIONS', 'PROFILE'];
+    const id = requestIdleCallback(() => screens.forEach(prefetchScreen), { timeout: 3000 });
+    return () => cancelIdleCallback(id);
+  }, [user]);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [creatingEvent, setCreatingEvent] = useState(false);
