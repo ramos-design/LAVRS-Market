@@ -1,8 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6";
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
@@ -65,14 +61,6 @@ function buildEmailHtml(title: string, bodyHtml: string): string {
     + '</table></td></tr></table></body></html>';
 }
 
-/** Substitute template variables in text */
-function substituteVars(text: string, vars: Record<string, string>): string {
-    let result = text;
-    for (const [key, value] of Object.entries(vars)) {
-        result = result.split(key).join(value);
-    }
-    return result;
-}
 
 Deno.serve(async (req) => {
     if (req.method === "OPTIONS") {
@@ -117,78 +105,20 @@ Deno.serve(async (req) => {
             zoneCategory, invoiceNumber, totalAmountCzk
         );
 
-        // --- Variable map for substitution ---
-        const vars: Record<string, string> = {
-            '{{brand_name}}': brandName || '',
-            '{{contact_person}}': contactPerson || '',
-            '{{event_name}}': eventName || '',
-            '{{event_date}}': eventDate || '',
-            '{{zone_type}}': zoneCategory || '',
-            '{{invoice_number}}': invoiceNumber || '',
-            '{{invoice_amount}}': totalAmountCzk ? `${totalAmountCzk} K\u010d` : '',
-            '{{order_table}}': orderTableHtml,
-        };
+        // --- Build hardcoded fallback template (always works, even without DB) ---
+        console.log("Using hardcoded fallback template (no DB fetch required).");
+        const subject = `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
+        const emailTitle = isAdmin ? 'Nov\u00e1 objedn\u00e1vka (admin)' : 'Nov\u00e1 objedn\u00e1vka';
 
-        // --- Try to fetch template from DB ---
-        const templateId = isAdmin ? 'invoice-notification-admin' : 'invoice-notification';
-        let subject = '';
-        let bodyHtml = '';
-        let templateFound = false;
-        let emailTitle = 'Nov\u00e1 objedn\u00e1vka'; // Default title, overridden by DB template name
+        const footerText = isAdmin
+            ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
+            : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
+            + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
+            + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
 
-        try {
-            const supabase = createClient(supabaseUrl, supabaseServiceKey);
-            const { data: template, error: tmplError } = await supabase
-                .from('email_templates')
-                .select('*')
-                .eq('id', templateId)
-                .single();
-
-            if (!tmplError && template && template.enabled) {
-                templateFound = true;
-                emailTitle = template.name || emailTitle;
-                console.log(`Using DB template: ${templateId} (title: "${emailTitle}")`);
-
-                // Substitute variables in subject
-                subject = substituteVars(template.subject || '', vars);
-
-                // Substitute variables in body, then convert newlines to <br> for non-table parts
-                let bodyText = substituteVars(template.body || '', vars);
-
-                // The {{order_table}} was already replaced with HTML.
-                // Split around the table, escape & format the text parts, then rejoin.
-                const tableMarker = orderTableHtml;
-                const parts = bodyText.split(tableMarker);
-                bodyHtml = parts.map(part => {
-                    // Escape HTML in text parts and convert newlines to <br>
-                    return escapeHtml(part).replace(/\n/g, '<br>');
-                }).join(tableMarker);
-
-            } else if (!tmplError && template && !template.enabled) {
-                console.warn(`Template '${templateId}' is disabled, but will use it anyway with fallback.`);
-                // Even if disabled, we still use the template (don't skip)
-            } else {
-                console.warn(`Template '${templateId}' not found (${tmplError?.message}). Using fallback.`);
-            }
-        } catch (dbErr: any) {
-            console.warn(`DB fetch failed: ${dbErr.message}. Using fallback template.`);
-        }
-
-        // --- Fallback: hardcoded template (backwards compatible) ---
-        if (!templateFound) {
-            console.log("Using hardcoded fallback template.");
-            subject = `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
-
-            const footerText = isAdmin
-                ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
-                : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
-                + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
-                + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
-
-            bodyHtml = '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>'
-                + orderTableHtml
-                + footerText;
-        }
+        const bodyHtml = '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>'
+            + orderTableHtml
+            + footerText;
 
         const finalHtml = buildEmailHtml(emailTitle, bodyHtml);
 
@@ -246,7 +176,7 @@ Deno.serve(async (req) => {
         console.log("Invoice notification email sent successfully!");
 
         return new Response(
-            JSON.stringify({ message: "Invoice notification sent", recipient, attachmentCount: attachments.length, templateUsed: templateFound ? templateId : 'fallback' }),
+            JSON.stringify({ message: "Invoice notification sent", recipient, attachmentCount: attachments.length, templateUsed: 'fallback' }),
             { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz" } }
         );
     } catch (err: any) {
