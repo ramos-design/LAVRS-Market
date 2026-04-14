@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
             if (oldStatus !== newStatus) {
                 if (newStatus === 'APPROVED') templateId = 'application-approved';
                 else if (newStatus === 'REJECTED') templateId = 'application-rejected';
-                else if (newStatus === 'PAID') templateId = 'payment-confirmed';
+                else if (newStatus === 'PAID') templateId = ''; // payment-confirmed is sent directly from client with PDF attached
                 else if (newStatus === 'PAYMENT_UNDER_REVIEW') templateId = 'payment-submitted';
                 else if (newStatus === 'PAYMENT_REMINDER') templateId = 'payment-reminder';
                 else if (newStatus === 'PAYMENT_LAST_CALL') templateId = 'payment-last-call';

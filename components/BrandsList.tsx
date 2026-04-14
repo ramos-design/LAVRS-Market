@@ -1,6 +1,6 @@
 import React from 'react';
 import { Heart, Search, AlertTriangle, Camera, ChevronDown, ChevronUp, Sparkles, CreditCard, Instagram, Globe, Mail, Phone, Building2, MapPin, Check, X, Save, Loader, Trash2 } from 'lucide-react';
-import { sanitizePhoneInput } from '../lib/phoneValidation';
+import { sanitizePhoneInput, validatePhone } from '../lib/phoneValidation';
 import { AppStatus, ZoneCategory, Application, BrandProfile, MarketEvent } from '../types';
 import ImageLightbox from './ImageLightbox';
 
@@ -540,9 +540,12 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                                       onChange={(e) => updateFormField('phone', sanitizePhoneInput(e.target.value))}
                                       type="tel"
                                       maxLength={16}
-                                      className="w-full bg-white pl-10 pr-4 py-3 rounded-none border-2 border-gray-100 focus:border-lavrs-red transition-all text-sm"
+                                      className={`w-full bg-white pl-10 pr-4 py-3 rounded-none border-2 transition-all text-sm ${editForm.phone && validatePhone(editForm.phone) ? 'border-red-300 focus:border-red-500' : 'border-gray-100 focus:border-lavrs-red'}`}
                                     />
                                   </div>
+                                  {editForm.phone && validatePhone(editForm.phone) && (
+                                    <p className="text-[10px] text-red-500 font-semibold ml-3 mt-1">{validatePhone(editForm.phone)}</p>
+                                  )}
                                 </div>
                               </div>
                             </div>

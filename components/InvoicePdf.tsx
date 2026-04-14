@@ -354,9 +354,9 @@ export const InvoicePdf: React.FC<InvoicePdfProps> = (props) => {
                 {/* QR + Signature / Paid status */}
                 <View style={s.bottomRow}>
                     {isPaid ? (
-                        <View style={s.qrCol}>
-                            <Text style={[s.qrImage, { fontSize: 32, fontFamily: 'Roboto', fontWeight: 'bold', color: '#27ae60', textAlign: 'center', paddingTop: 40 }]}>
-                                ✓ ZAPLACENO
+                        <View style={[s.qrCol, { justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ fontSize: 14, fontFamily: 'Roboto', fontWeight: 'bold', color: '#27ae60', textAlign: 'center' }}>
+                                Již uhrazeno
                             </Text>
                         </View>
                     ) : qrDataUrl ? (

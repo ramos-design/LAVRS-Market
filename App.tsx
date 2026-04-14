@@ -512,13 +512,69 @@ V příloze najdete vygenerovanou objednávku (PDF).`
     }
 
     // When confirming payment (PAID), regenerate PDF as "DAŇOVÝ DOKLAD" before status change
-    // so the email webhook sends the correct paid invoice PDF
+    // and send email directly with the PDF (don't rely solely on DB webhook)
     if (newStatus === AppStatus.PAID) {
       try {
         const { regeneratePaidInvoicePdf } = await import('./lib/invoice-storage');
-        const success = await regeneratePaidInvoicePdf(id);
-        if (success) {
+        const paidResult = await regeneratePaidInvoicePdf(id);
+        if (paidResult.success) {
           console.log('[Admin] Paid invoice PDF regenerated successfully for:', app?.brandName);
+
+          // Send payment-confirmed email directly with the PDF attached
+          // This is more reliable than relying on the DB webhook to download from Storage
+          if (paidResult.pdfBlob && app) {
+            try {
+              const { supabase } = await import('./lib/supabase');
+              const event = events.find(e => e.id === app.eventId);
+
+              // Convert PDF blob to base64
+              const arrayBuffer = await paidResult.pdfBlob.arrayBuffer();
+              const bytes = new Uint8Array(arrayBuffer);
+              let binary = '';
+              for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+              }
+              const pdfBase64 = btoa(binary);
+
+              const emailPayload = {
+                brandName: app.brandName,
+                contactPerson: app.contactPerson,
+                eventName: event?.title || '',
+                eventDate: event?.date || '',
+                eventEndDate: event?.endDate || null,
+                zoneCategory: app.zoneCategory || '',
+                invoiceNumber: paidResult.invoiceNumber || '',
+                totalAmountCzk: paidResult.amountCzk ? String(paidResult.amountCzk / 100) : '',
+                pdfBase64,
+                xmlString: paidResult.xmlString || '',
+                recipientEmail: app.billingEmail || app.email,
+                recipientType: 'exhibitor',
+                isPaymentConfirmed: true,
+              };
+
+              // Send to exhibitor
+              const { error: emailErr } = await supabase.functions.invoke('send-invoice-notification', {
+                body: emailPayload,
+              });
+              if (emailErr) {
+                console.warn('[Admin] Payment confirmed email to exhibitor failed:', emailErr);
+              } else {
+                console.log('[Admin] Payment confirmed email sent to exhibitor:', emailPayload.recipientEmail);
+              }
+
+              // Send to admin
+              const { error: adminErr } = await supabase.functions.invoke('send-invoice-notification', {
+                body: { ...emailPayload, recipientType: 'admin', recipientEmail: undefined },
+              });
+              if (adminErr) {
+                console.warn('[Admin] Payment confirmed email to admin failed:', adminErr);
+              } else {
+                console.log('[Admin] Payment confirmed email sent to admin');
+              }
+            } catch (emailErr) {
+              console.warn('[Admin] Failed to send payment confirmed email directly:', emailErr);
+            }
+          }
         } else {
           console.warn('[Admin] Could not regenerate paid invoice PDF — original will be used');
         }

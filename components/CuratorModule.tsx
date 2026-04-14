@@ -366,24 +366,22 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
           ) : (
             <div className="h-full flex flex-col">
               {/* Header */}
-              <div className="p-8 border-b border-gray-100 bg-lavrs-beige/20">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-6">
+              <div className="px-6 py-4 border-b border-gray-100 bg-lavrs-beige/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
                     {(() => {
                       const bp = brandProfileMap.get(selectedApp.brandName.toLowerCase());
                       return bp?.logoUrl ? (
-                        <div className="w-20 h-20 rounded-none overflow-hidden border border-gray-200 shrink-0">
+                        <div className="w-12 h-12 rounded-none overflow-hidden border border-gray-200 shrink-0">
                           <img src={bp.logoUrl} alt={selectedApp.brandName} className="w-full h-full object-contain" />
                         </div>
                       ) : (
-                        <div className="w-20 h-20 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-3xl shadow-lg">
+                        <div className="w-12 h-12 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-xl shadow-lg">
                           {selectedApp.brandName[0]}
                         </div>
                       );
                     })()}
-                    <div>
-                      <h3 className="text-3xl font-extrabold tracking-tight text-lavrs-dark mb-0">{selectedApp.brandName}</h3>
-                    </div>
+                    <h3 className="text-xl font-extrabold tracking-tight text-lavrs-dark mb-0">{selectedApp.brandName}</h3>
                   </div>
                   {(() => {
                     const statusBadge = getStatusBadge(selectedApp.status, selectedApp.brandName);
@@ -397,7 +395,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                 {/* Event Info - Expanded */}
                 <section>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -519,14 +517,14 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                         <Mail size={16} className="text-lavrs-red" />
                         <p className="text-[10px] text-gray-400 uppercase font-bold">Email</p>
                       </div>
-                      <p className="text-sm font-bold text-lavrs-dark truncate">{selectedApp.email}</p>
+                      <a href={`mailto:${selectedApp.email}`} className="text-sm font-bold text-lavrs-dark truncate block hover:text-lavrs-red transition-colors">{selectedApp.email}</a>
                     </div>
                     <div className="bg-white p-5 rounded-none border border-gray-100 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
                         <Phone size={16} className="text-lavrs-red" />
                         <p className="text-[10px] text-gray-400 uppercase font-bold">Telefon</p>
                       </div>
-                      <p className="text-sm font-bold text-lavrs-dark">{selectedApp.phone}</p>
+                      <a href={`tel:${selectedApp.phone}`} className="text-sm font-bold text-lavrs-dark block hover:text-lavrs-red transition-colors">{selectedApp.phone}</a>
                     </div>
                   </div>
                 </section>
@@ -685,9 +683,9 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
               </div>
 
               {/* Action Buttons */}
-              <div className="p-8 border-t border-gray-100 bg-lavrs-beige/20">
+              <div className="px-6 py-4 border-t border-gray-100 bg-lavrs-beige/20">
                 {normalizeStatus(selectedApp.status) === AppStatus.DELETED ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                     <button
                       onClick={async () => {
                         setIsProcessing(true);
@@ -699,13 +697,13 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                         }
                       }}
                       disabled={isProcessing}
-                      className="bg-lavrs-dark text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-black transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+                      className="bg-lavrs-dark text-white py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-black transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
                     >
                       <Check size={18} /> OBNOVIT
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
                     <button
                       onClick={() => {
                         if (isMissingRequiredPrice) {
@@ -715,7 +713,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                         handleAction(selectedApp.id, AppStatus.APPROVED);
                       }}
                       disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status) === AppStatus.PAID || normalizeStatus(selectedApp.status) === AppStatus.PAYMENT_UNDER_REVIEW}
-                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
                         isMissingRequiredPrice
                           ? 'bg-green-300 text-white cursor-not-allowed'
                           : 'bg-green-600 text-white hover:bg-green-700'
@@ -728,7 +726,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAID)}
                       disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus))}
-                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status).includes('PAYMENT_')
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status).includes('PAYMENT_')
                         ? 'bg-lavrs-dark text-white hover:bg-black'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
@@ -739,7 +737,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
                       disabled={isProcessing || normalizeStatus(selectedApp.status) !== AppStatus.APPROVED}
-                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED
                         ? 'bg-amber-500 text-white hover:bg-amber-600'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
@@ -750,7 +748,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
                       disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus))}
-                      className={`py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus)
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus)
                         ? 'bg-orange-600 text-white hover:bg-orange-700'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
@@ -761,14 +759,14 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.REJECTED)}
                       disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.REJECTED}
-                      className="bg-white text-red-600 border-2 border-red-200 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-white text-red-600 border-2 border-red-200 py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <X size={18} /> ZAMÍTNOUT
                     </button>
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.WAITLIST)}
                       disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.WAITLIST}
-                      className="bg-blue-600 text-white py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-blue-600 text-white py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-blue-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Clock size={18} /> WAITLIST
                     </button>
@@ -785,44 +783,34 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                         }
                       }}
                       disabled={isProcessing}
-                      className="bg-white text-red-600 border-2 border-red-600 py-4 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50"
+                      className="bg-white text-red-600 border-2 border-red-600 py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-red-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50"
                     >
-                      <Trash2 size={18} /> SMAZAT
+                      <Trash2 size={16} /> SMAZAT PŘIHLÁŠKU
                     </button>
+                    {onTrashBrand && (() => {
+                      const bp = brandProfileMap.get(selectedApp.brandName.toLowerCase());
+                      if (!bp) return null;
+                      return (
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm(`Opravdu chcete přesunout celou značku "${selectedApp.brandName}" (včetně všech přihlášek) do koše?`)) return;
+                            setIsProcessing(true);
+                            try {
+                              await onTrashBrand(bp.id, selectedApp.brandName);
+                              setSelectedAppId(null);
+                            } finally {
+                              setIsProcessing(false);
+                            }
+                          }}
+                          disabled={isProcessing}
+                          className="bg-red-600 text-white py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-red-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                          <Trash2 size={16} /> SMAZAT ZNAČKU
+                        </button>
+                      );
+                    })()}
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <button className="py-3 bg-white text-gray-600 border border-gray-200 rounded-none font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                    <Mail size={18} /> Odeslat email
-                  </button>
-                  <button className="py-3 bg-white text-gray-600 border border-gray-200 rounded-none font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                    <Phone size={18} /> Zavolat
-                  </button>
-                </div>
-
-                {/* Trash entire brand */}
-                {onTrashBrand && (() => {
-                  const bp = brandProfileMap.get(selectedApp.brandName.toLowerCase());
-                  if (!bp) return null;
-                  return (
-                    <button
-                      onClick={async () => {
-                        if (!window.confirm(`Opravdu chcete přesunout celou značku "${selectedApp.brandName}" (včetně všech přihlášek) do koše?`)) return;
-                        setIsProcessing(true);
-                        try {
-                          await onTrashBrand(bp.id, selectedApp.brandName);
-                          setSelectedAppId(null);
-                        } finally {
-                          setIsProcessing(false);
-                        }
-                      }}
-                      disabled={isProcessing}
-                      className="w-full py-3 bg-red-50 text-red-500 border border-red-200 rounded-none text-[10px] font-bold uppercase tracking-wider hover:bg-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <Trash2 size={14} /> Přesunout celou značku do koše
-                    </button>
-                  );
-                })()}
               </div>
             </div>
           )}

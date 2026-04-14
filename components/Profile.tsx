@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock, Pencil, Clock, Camera, Image, X, Upload, Loader } from 'lucide-react';
-import { sanitizePhoneInput } from '../lib/phoneValidation';
+import { sanitizePhoneInput, validatePhone } from '../lib/phoneValidation';
 import { BrandProfile, AppStatus } from '../types';
 import { useBrandProfiles, useApplications } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
@@ -100,8 +100,11 @@ const BrandEditForm: React.FC<{
                         onChange={(e) => updateFormField('phone', sanitizePhoneInput(e.target.value))}
                         type="tel"
                         maxLength={16}
-                        className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
+                        className={`w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 focus:bg-white transition-all ${editForm.phone && validatePhone(editForm.phone) ? 'border-red-300 focus:border-red-500' : 'border-transparent focus:border-lavrs-red'}`}
                     />
+                    {editForm.phone && validatePhone(editForm.phone) && (
+                        <p className="text-[10px] text-red-500 font-semibold ml-4 mt-1">{validatePhone(editForm.phone)}</p>
+                    )}
                 </div>
             </div>
         </div>

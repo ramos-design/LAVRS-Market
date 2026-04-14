@@ -30,12 +30,22 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
         return map;
     }, [invoices]);
 
-    const formatEventDate = React.useCallback((dateStr?: string) => {
+    const formatEventDate = React.useCallback((dateStr?: string, endDateStr?: string) => {
         if (!dateStr) return '';
         const trimmed = dateStr.trim();
         if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
             const d = new Date(trimmed);
-            if (!isNaN(d.getTime())) return d.toLocaleDateString('cs-CZ');
+            if (!isNaN(d.getTime())) {
+                const startFormatted = d.toLocaleDateString('cs-CZ');
+                if (endDateStr && endDateStr.trim() !== trimmed) {
+                    const endTrimmed = endDateStr.trim();
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(endTrimmed)) {
+                        const ed = new Date(endTrimmed);
+                        if (!isNaN(ed.getTime())) return `${startFormatted} – ${ed.toLocaleDateString('cs-CZ')}`;
+                    }
+                }
+                return startFormatted;
+            }
         }
         return trimmed;
     }, []);
@@ -77,7 +87,7 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
             const status = isPaid ? 'paid' : isOverdue ? 'overdue' : 'pending';
             const event = eventById.get(normalizeId(app.eventId));
             const eventTitle = event?.title || '-';
-            const eventDate = formatEventDate(event?.date);
+            const eventDate = formatEventDate(event?.date, event?.endDate);
             const amount = getAmountForApp(app);
             const invoice = invoiceByAppId.get(app.id);
 

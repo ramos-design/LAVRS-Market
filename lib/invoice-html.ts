@@ -279,7 +279,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
     <div class="bottom">
         <div class="qr-col">
             ${isPaid
-                ? `<div style="font-size:28pt;font-weight:bold;color:#27ae60;text-align:center;padding-top:30px;">\u2713 ZAPLACENO</div>`
+                ? `<div style="font-size:16pt;font-weight:bold;color:#27ae60;text-align:center;padding-top:30px;">Již uhrazeno</div>`
                 : qrDataUrl ? `<img src="${esc(qrDataUrl)}" alt="QR platba"><div class="qr-label">QR platba</div>` : ''}
         </div>
         <div class="sign-col">

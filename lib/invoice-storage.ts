@@ -224,13 +224,21 @@ export async function downloadInvoiceXml(invoiceNumber: string, xmlStoragePath: 
  * Updates the invoice DB record: is_paid=true, paid_at, paid_pdf_storage_path, paid_pdf_url,
  * and also updates pdf_storage_path so email webhooks automatically attach the paid version.
  */
-export async function regeneratePaidInvoicePdf(applicationId: string): Promise<boolean> {
+export interface PaidPdfResult {
+    success: boolean;
+    pdfBlob?: Blob;
+    invoiceNumber?: string;
+    amountCzk?: number;
+    xmlString?: string;
+}
+
+export async function regeneratePaidInvoicePdf(applicationId: string): Promise<PaidPdfResult> {
     try {
         // 1. Get invoice from DB
         const invoice = await invoicesDb.getByApplicationId(applicationId);
         if (!invoice) {
             console.warn('[PaidPDF] No invoice found for application:', applicationId);
-            return false;
+            return { success: false };
         }
 
         console.log('[PaidPDF] Starting paid PDF generation for invoice:', invoice.invoice_number);
@@ -243,7 +251,7 @@ export async function regeneratePaidInvoicePdf(applicationId: string): Promise<b
 
         if (paramsError || !paramsData) {
             console.warn('[PaidPDF] No saved PDF params found:', paramsPath, paramsError?.message);
-            return false;
+            return { success: false };
         }
 
         const paramsText = await paramsData.text();
@@ -256,7 +264,7 @@ export async function regeneratePaidInvoicePdf(applicationId: string): Promise<b
 
         if (!pdfBlob || pdfBlob.size === 0) {
             console.warn('[PaidPDF] Generated PDF is empty');
-            return false;
+            return { success: false };
         }
 
         console.log('[PaidPDF] PDF generated:', pdfBlob.size, 'bytes');
@@ -272,7 +280,7 @@ export async function regeneratePaidInvoicePdf(applicationId: string): Promise<b
 
         if (uploadError) {
             console.warn('[PaidPDF] Upload failed:', uploadError.message);
-            return false;
+            return { success: false };
         }
 
         // Get public URL for the paid PDF
@@ -300,9 +308,26 @@ export async function regeneratePaidInvoicePdf(applicationId: string): Promise<b
             paid_pdf_url: paidPdfUrl,
         });
 
-        return true;
+        // Also download XML if available (for email attachment)
+        let xmlString: string | undefined;
+        if (invoice.xml_storage_path) {
+            try {
+                const { data: xmlData } = await supabase.storage
+                    .from('attachments')
+                    .download(invoice.xml_storage_path);
+                if (xmlData) xmlString = await xmlData.text();
+            } catch { /* XML is optional */ }
+        }
+
+        return {
+            success: true,
+            pdfBlob,
+            invoiceNumber: invoice.invoice_number,
+            amountCzk: invoice.amount_czk,
+            xmlString,
+        };
     } catch (error) {
         console.warn('[PaidPDF] Failed to regenerate paid invoice:', error);
-        return false;
+        return { success: false };
     }
 }

@@ -71,8 +71,16 @@ function buildLineItems(
         const dd = String(eventDate.getDate()).padStart(2, '0');
         const mm = String(eventDate.getMonth() + 1).padStart(2, '0');
         const yyyy = eventDate.getFullYear();
+        let dateStr = `${dd}.${mm}.${yyyy}`;
+        if (event.endDate && event.endDate !== event.date) {
+            const endDate = new Date(event.endDate);
+            const edd = String(endDate.getDate()).padStart(2, '0');
+            const emm = String(endDate.getMonth() + 1).padStart(2, '0');
+            const eyyyy = endDate.getFullYear();
+            dateStr = `${dd}.${mm}.${yyyy} – ${edd}.${emm}.${eyyyy}`;
+        }
         items.push({
-            description: `Vystavovatelský poplatek včetně inventáře na LAVRS market ${dd}.${mm}.${yyyy} (${application.zoneCategory || 'bez kategorie'})`,
+            description: `Vystavovatelský poplatek včetně inventáře na LAVRS market ${dateStr} (${application.zoneCategory || 'bez kategorie'})`,
             quantity: 1,
             unitPriceCzk: basePriceCzk,
             dphRate: DPH_RATE,
@@ -158,8 +166,16 @@ export async function prepareInvoiceData(params: GenerateInvoiceParams): Promise
     const eventDd = String(eventDate.getDate()).padStart(2, '0');
     const eventMm = String(eventDate.getMonth() + 1).padStart(2, '0');
     const eventYyyy = eventDate.getFullYear();
+    let qrDateStr = `${eventDd}.${eventMm}.${eventYyyy}`;
+    if (event.endDate && event.endDate !== event.date) {
+        const endDate = new Date(event.endDate);
+        const eDd = String(endDate.getDate()).padStart(2, '0');
+        const eMm = String(endDate.getMonth() + 1).padStart(2, '0');
+        const eYyyy = endDate.getFullYear();
+        qrDateStr = `${eventDd}.${eventMm}.${eventYyyy}-${eDd}.${eMm}.${eYyyy}`;
+    }
     const category = application.zoneCategory || '';
-    const qrMessage = `${event.title} ${eventDd}.${eventMm}.${eventYyyy} ${category}`.trim().substring(0, 60);
+    const qrMessage = `${event.title} ${qrDateStr} ${category}`.trim().substring(0, 60);
 
     const bankAccount = companySettings.bankAccount || '';
     const bankIban = companySettings.bankIban || '';
