@@ -272,8 +272,8 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                       {(() => {
                         const bp = brandProfileMap.get(app.brandName.toLowerCase());
                         return bp?.logoUrl ? (
-                          <div className="w-12 h-12 rounded-none overflow-hidden border border-gray-200 shrink-0">
-                            <img src={bp.logoUrl} alt={app.brandName} className="w-full h-full object-contain" />
+                          <div className="w-12 h-12 rounded-none overflow-hidden border border-gray-200 shrink-0 cursor-pointer" onClick={() => setLightbox({ images: [bp.logoUrl!], index: 0 })}>
+                            <img src={bp.logoUrl} alt={app.brandName} className="w-full h-full object-contain hover:scale-105 transition-transform" />
                           </div>
                         ) : (
                           <div className="w-12 h-12 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-xl shadow-lg shrink-0">
@@ -480,8 +480,8 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                               {(() => {
                                 const bp = brandProfileMap.get(app.brandName.toLowerCase());
                                 return bp?.logoUrl ? (
-                                  <div className="w-20 h-20 rounded-none overflow-hidden border border-gray-200 shrink-0">
-                                    <img src={bp.logoUrl} alt={app.brandName} className="w-full h-full object-contain" />
+                                  <div className="w-20 h-20 rounded-none overflow-hidden border border-gray-200 shrink-0 cursor-pointer" onClick={() => setLightbox({ images: [bp.logoUrl!], index: 0 })}>
+                                    <img src={bp.logoUrl} alt={app.brandName} className="w-full h-full object-contain hover:scale-105 transition-transform" />
                                   </div>
                                 ) : (
                                   <div className="w-20 h-20 rounded-none bg-lavrs-red flex items-center justify-center text-white font-black text-3xl shadow-lg shrink-0">

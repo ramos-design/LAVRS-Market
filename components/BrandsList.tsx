@@ -322,7 +322,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                       <td className="px-6 py-4 max-w-0">
                         <div className="flex items-center gap-2">
                           {bp?.logoUrl ? (
-                            <div className="w-7 h-7 rounded-none overflow-hidden border border-gray-200 shrink-0">
+                            <div className="w-7 h-7 rounded-none overflow-hidden border border-gray-200 shrink-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); setLightbox({ images: [bp.logoUrl!], index: 0 }); }}>
                               <img src={bp.logoUrl} alt="" className="w-full h-full object-contain" />
                             </div>
                           ) : null}
@@ -402,8 +402,8 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                             {bp?.logoUrl && (
                               <div className="shrink-0">
                                 <p className="text-[9px] text-gray-400 uppercase font-bold mb-2">Logo</p>
-                                <div className="w-16 h-16 rounded-none overflow-hidden border border-gray-200 bg-white">
-                                  <img src={bp.logoUrl} alt={row.brandName} className="w-full h-full object-contain" />
+                                <div className="w-16 h-16 rounded-none overflow-hidden border border-gray-200 bg-white cursor-pointer" onClick={(e) => { e.stopPropagation(); setLightbox({ images: [bp.logoUrl!], index: 0 }); }}>
+                                  <img src={bp.logoUrl} alt={row.brandName} className="w-full h-full object-contain hover:scale-105 transition-transform" />
                                 </div>
                               </div>
                             )}
@@ -437,8 +437,8 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                                 {bp?.logoUrl && (
                                   <div className="shrink-0">
                                     <p className="text-[9px] text-gray-400 uppercase font-bold mb-2">Logo</p>
-                                    <div className="w-16 h-16 rounded-none overflow-hidden border border-gray-200 bg-white">
-                                      <img src={bp.logoUrl} alt={row.brandName} className="w-full h-full object-contain" />
+                                    <div className="w-16 h-16 rounded-none overflow-hidden border border-gray-200 bg-white cursor-pointer" onClick={(e) => { e.stopPropagation(); setLightbox({ images: [bp.logoUrl!], index: 0 }); }}>
+                                      <img src={bp.logoUrl} alt={row.brandName} className="w-full h-full object-contain hover:scale-105 transition-transform" />
                                     </div>
                                   </div>
                                 )}
