@@ -282,7 +282,8 @@ export function useApplications(options: UserScopedQueryOptions = {}) {
         },
         deleteApplication: async (id: string) => {
             await applicationsDb.update(id, { status: 'DELETED' });
-            queryEmitter.invalidatePattern(/^applications:/);
+            // Await refetch so callers see updated state before switching views (e.g. to TRASH)
+            await query.refetch();
         },
         permanentDeleteAllTrash: async () => {
             const allApps = query.data || [];

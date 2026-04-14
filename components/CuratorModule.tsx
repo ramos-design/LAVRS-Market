@@ -12,7 +12,7 @@ interface CuratorModuleProps {
   planPrices?: Array<{ event_id: string; prices: Record<string, string> }>;
   onUpdateStatus: (id: string, status: AppStatus) => void;
   onUpdateApplication: (id: string, updates: Partial<DbApplication>) => Promise<void>;
-  onDeleteApplication: (id: string) => void;
+  onDeleteApplication: (id: string) => Promise<void>;
   onRestoreApplication: (id: string) => void;
   onPermanentDeleteAllTrash: () => Promise<void>;
   onTrashBrand?: (brandProfileId: string, brandName: string) => Promise<void>;
@@ -778,6 +778,9 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                           await onDeleteApplication(selectedApp.id);
                           setSelectedAppId(null);
                           setViewMode('TRASH');
+                        } catch (err) {
+                          console.error('Failed to move application to trash:', err);
+                          alert('Nepodařilo se přesunout přihlášku do koše. Zkuste to prosím znovu.');
                         } finally {
                           setIsProcessing(false);
                         }

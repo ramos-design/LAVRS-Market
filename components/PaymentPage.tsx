@@ -745,57 +745,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                             await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
                             console.log('[Order] Status updated to PAYMENT_UNDER_REVIEW');
 
-                            // 4. Send email notifications directly (don't rely on DB triggers)
-                            try {
-                              // Convert PDF to base64 for email attachment
-                              let pdfBase64 = '';
-                              if (pdfBlob) {
-                                const arrayBuffer = await pdfBlob.arrayBuffer();
-                                const bytes = new Uint8Array(arrayBuffer);
-                                let binary = '';
-                                for (let i = 0; i < bytes.length; i++) {
-                                  binary += String.fromCharCode(bytes[i]);
-                                }
-                                pdfBase64 = btoa(binary);
-                              }
-
-                              const emailPayload = {
-                                brandName: activeApp.brandName,
-                                contactPerson: activeApp.contactPerson,
-                                eventName: activeEvent.title,
-                                eventDate: activeEvent.date,
-                                eventEndDate: activeEvent.endDate || null,
-                                zoneCategory: activeApp.zoneCategory || '',
-                                invoiceNumber: invoiceResult.invoiceNumber,
-                                totalAmountCzk: new Intl.NumberFormat('cs-CZ').format(invoiceResult.totalAmountWithDph ? invoiceResult.totalAmountWithDph / 100 : totalAmount),
-                                pdfBase64,
-                                xmlString: invoiceResult.xmlString || '',
-                                recipientEmail: activeApp.billingEmail || activeApp.email,
-                                recipientType: 'exhibitor',
-                              };
-
-                              // Send to exhibitor
-                              const { error: emailErr } = await supabase.functions.invoke('send-invoice-notification', {
-                                body: emailPayload,
-                              });
-                              if (emailErr) {
-                                console.warn('[Email] Exhibitor notification failed:', emailErr);
-                              } else {
-                                console.log('[Email] Exhibitor invoice notification sent to:', emailPayload.recipientEmail);
-                              }
-
-                              // Send to admin (accounting email only gets payment-confirmed, not order)
-                              const { error: adminEmailErr } = await supabase.functions.invoke('send-invoice-notification', {
-                                body: { ...emailPayload, recipientType: 'admin', recipientEmail: undefined },
-                              });
-                              if (adminEmailErr) {
-                                console.warn('[Email] Admin notification failed:', adminEmailErr);
-                              } else {
-                                console.log('[Email] Admin invoice notification sent');
-                              }
-                            } catch (emailError) {
-                              console.warn('[Email] Failed to send notifications (order still saved):', emailError);
-                            }
+                            // 4. Email notifications are handled by DB trigger (applications_send_email_update)
+                            //    when status changes to PAYMENT_UNDER_REVIEW — no direct call needed here.
 
                             // 5. Generate invoice HTML preview (UI only)
                             await generateInvoiceHtmlPreview();

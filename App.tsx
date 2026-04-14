@@ -932,7 +932,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`
       />
 
       <main className="flex-1 p-4 md:p-6 lg:p-12 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
-        <div className="max-w-7xl mx-auto animate-fadeIn">
+        <div className={`mx-auto animate-fadeIn ${currentScreen === 'BRANDS' || currentScreen === 'BRAND_TRASH' ? 'max-w-full' : 'max-w-7xl'}`}>
 
           {/* Global loading indicator */}
           {isLoading && !authError && (

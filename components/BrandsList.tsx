@@ -287,15 +287,15 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
         ))}
       </div>
 
-      <div className="bg-white border border-gray-100 shadow-sm overflow-x-auto">
-        <table className="min-w-full text-sm table-fixed" style={{ minWidth: '900px' }}>
+      <div className="bg-white border border-gray-100 shadow-sm">
+        <table className="w-full text-sm">
           <thead className="bg-lavrs-beige/50 text-gray-500 text-[10px] uppercase tracking-widest">
             <tr>
-              <th className="text-left px-6 py-4 w-[28%]">Značka</th>
-              <th className="text-left px-6 py-4 w-[24%]">Kontakt</th>
-              <th className="text-left px-6 py-4 w-[18%]">Kategorie zóny</th>
-              <th className="text-left px-6 py-4 w-[18%]">Akce / Stav</th>
-              <th className="text-right px-6 py-4 w-[12%]">Akce</th>
+              <th className="text-left px-6 py-4">Značka</th>
+              <th className="text-left px-6 py-4">Kontakt</th>
+              <th className="text-left px-6 py-4">Kategorie zóny</th>
+              <th className="text-left px-6 py-4">Akce / Stav</th>
+              <th className="text-right px-6 py-4 w-[120px]">Akce</th>
             </tr>
           </thead>
           <tbody>
@@ -318,14 +318,14 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                       className={`border-t border-gray-50 hover:bg-lavrs-beige/20 transition-colors ${hasMedia ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-lavrs-beige/20' : ''}`}
                       onClick={() => hasMedia && setExpandedBrand(isExpanded ? null : row.id)}
                     >
-                      <td className="px-6 py-4 max-w-0">
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {bp?.logoUrl ? (
                             <div className="w-7 h-7 rounded-none overflow-hidden border border-gray-200 shrink-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); setLightbox({ images: [bp.logoUrl!], index: 0 }); }}>
                               <img src={bp.logoUrl} alt="" className="w-full h-full object-contain" />
                             </div>
                           ) : null}
-                          <div className="font-bold text-lavrs-dark truncate">{row.brandName}</div>
+                          <div className="font-bold text-lavrs-dark">{row.brandName}</div>
                           {row.isApproved && (
                             <Heart size={14} className="text-lavrs-red fill-lavrs-red flex-shrink-0" />
                           )}
@@ -339,12 +339,12 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                             <span className="text-[11px] font-semibold text-amber-600">Vystavovatel žádá o smazání</span>
                           </div>
                         ) : (
-                          <div className="text-[11px] text-gray-400 truncate">{row.instagram || row.website || '—'}</div>
+                          <div className="text-[11px] text-gray-400">{row.instagram || row.website || '—'}</div>
                         )}
                       </td>
-                      <td className="px-6 py-4 max-w-0">
-                        <div className="font-semibold text-gray-700 truncate">{row.contactPerson || '—'}</div>
-                        <div className="text-[11px] text-gray-400 truncate">{row.email || '—'}</div>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-gray-700">{row.contactPerson || '—'}</div>
+                        <div className="text-[11px] text-gray-400">{row.email || '—'}</div>
                       </td>
                       <td className="px-6 py-4 font-semibold text-gray-700">{getZoneCategoryLabel(row.zoneCategory)}</td>
                       <td className="px-6 py-4">
