@@ -11,9 +11,10 @@ interface ApprovedApplicationsProps {
   onTrashBrand?: (brandProfileId: string, brandName: string) => Promise<void>;
   onNavigateToTrash?: () => void;
   trashedCount?: number;
+  planPrices?: Array<{ event_id: string; prices: Record<string, string> }>;
 }
 
-const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack, events, applications, brandProfiles, onTrashBrand, onNavigateToTrash, trashedCount = 0 }) => {
+const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack, events, applications, brandProfiles, onTrashBrand, onNavigateToTrash, trashedCount = 0, planPrices = [] }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
   const [trashConfirm, setTrashConfirm] = useState<{ id: string; name: string } | null>(null);
   const [trashing, setTrashing] = useState(false);
@@ -31,6 +32,28 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
     (brandProfiles || []).forEach(bp => map.set(bp.brandName.toLowerCase(), bp));
     return map;
   }, [brandProfiles]);
+
+  // Map event_id -> prices for price lookup
+  const pricesByEventId = React.useMemo(() => {
+    const map = new Map<string, Record<string, string>>();
+    for (const p of planPrices) {
+      map.set(p.event_id, p.prices);
+    }
+    return map;
+  }, [planPrices]);
+
+  const getAppPrice = (app: Application): string | null => {
+    if (app.customPrice != null && app.customPrice > 0) {
+      return `${app.customPrice.toLocaleString('cs-CZ')} Kč`;
+    }
+    const rawPrice = app.zoneCategory ? pricesByEventId.get(app.eventId)?.[app.zoneCategory] : undefined;
+    if (rawPrice != null && rawPrice !== '') {
+      const num = Number(rawPrice);
+      if (!isNaN(num)) return `${num.toLocaleString('cs-CZ')} Kč`;
+      return 'Dohodou';
+    }
+    return null;
+  };
 
   // Filter only approved and paid applications
   const approvedApplications = applications.filter(a => {
@@ -233,7 +256,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                     <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-400">
                       <span className="truncate">{event?.title || '—'}</span>
                       <span>·</span>
-                      <span className="shrink-0">{getZoneCategoryLabel(app.zoneCategory)}</span>
+                      <span className="shrink-0">{getZoneCategoryLabel(app.zoneCategory)}{getAppPrice(app) ? ` · ${getAppPrice(app)}` : ''}</span>
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 rounded-none text-[9px] font-bold uppercase shrink-0 ${statusInfo.bg} ${statusInfo.text}`}>
@@ -433,7 +456,10 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                         <div className="font-semibold text-gray-700 truncate">{event?.title || '—'}</div>
                         <div className="text-[11px] text-gray-400 truncate">{formatEventDateLong(event?.date)}</div>
                       </td>
-                      <td className="px-6 py-4 overflow-hidden font-semibold text-gray-700 truncate">{getZoneCategoryLabel(app.zoneCategory)}</td>
+                      <td className="px-6 py-4 overflow-hidden">
+                        <div className="font-semibold text-gray-700 truncate">{getZoneCategoryLabel(app.zoneCategory)}</div>
+                        {getAppPrice(app) && <div className="text-[11px] text-gray-400 truncate">{getAppPrice(app)}</div>}
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-none text-[9px] font-bold uppercase ${statusInfo.bg} ${statusInfo.text}`}>
                           {statusInfo.label}

@@ -983,6 +983,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`
               onTrashBrand={handleTrashBrand}
               onNavigateToTrash={() => setCurrentScreen('BRAND_TRASH')}
               trashedCount={trashedBrands.length}
+              planPrices={planPrices}
             />
           )}
 
