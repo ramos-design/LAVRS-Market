@@ -327,6 +327,9 @@ export function dbInvoiceToApp(i: DbInvoice): Invoice {
         xmlStoragePath: i.xml_storage_path || undefined,
         pdfUrl: i.pdf_url || undefined,
         xmlUrl: i.xml_url || undefined,
+        isPaid: i.is_paid || false,
+        paidPdfUrl: i.paid_pdf_url || undefined,
+        paidPdfStoragePath: i.paid_pdf_storage_path || undefined,
         createdAt: i.created_at || '',
     };
 }

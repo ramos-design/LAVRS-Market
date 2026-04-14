@@ -186,6 +186,9 @@ export interface Invoice {
   xmlStoragePath?: string;
   pdfUrl?: string;
   xmlUrl?: string;
+  isPaid?: boolean;
+  paidPdfUrl?: string;
+  paidPdfStoragePath?: string;
   createdAt: string;
 }
 

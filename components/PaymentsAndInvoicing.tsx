@@ -104,6 +104,8 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                 pdfUrl: invoice?.pdfUrl || null,
                 invoiceNumber: invoice?.invoiceNumber || null,
                 pdfStoragePath: invoice?.pdfStoragePath || null,
+                isPaid: invoice?.isPaid || false,
+                paidPdfUrl: invoice?.paidPdfUrl || null,
             };
         });
     }, [applications, eventById, normalizeId, formatEventDate, getAmountForApp, invoiceByAppId, parseAmountNumber]);
@@ -232,29 +234,29 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                                                 </span>
                                             </td>
                                             <td className="px-8 py-6 text-right">
-                                                {payment.pdfUrl ? (
+                                                {payment.isPaid && payment.paidPdfUrl ? (
                                                     <button
                                                         onClick={async () => {
+                                                            const url = payment.paidPdfUrl!;
                                                             try {
-                                                                const res = await fetch(payment.pdfUrl!);
-                                                                if (payment.pdfUrl!.endsWith('.pdf')) {
+                                                                const res = await fetch(url);
+                                                                if (url.endsWith('.pdf')) {
                                                                     const blob = await res.blob();
-                                                                    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-                                                                    window.open(url, '_blank');
+                                                                    const blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+                                                                    window.open(blobUrl, '_blank');
                                                                 } else {
                                                                     let html = await res.text();
-                                                                    // Inject export bar if not present
                                                                     if (!html.includes('pdf-export-bar')) {
                                                                         const styles = `<style>.pdf-export-bar{text-align:center;padding:24px 0 32px}.pdf-export-btn{display:inline-flex;align-items:center;gap:8px;background:#D32F2F;color:#fff;border:none;padding:14px 40px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;border-radius:4px}.pdf-export-btn:hover{background:#b71c1c}@media print{.pdf-export-bar{display:none!important}}</style>`;
                                                                         const exportBtn = `<div class="pdf-export-bar"><button class="pdf-export-btn" onclick="window.print()"><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/></svg>Uložit jako PDF</button></div>`;
                                                                         html = html.replace('</body>', `${styles}${exportBtn}</body>`);
                                                                     }
                                                                     const blob = new Blob([html], { type: 'text/html' });
-                                                                    const url = URL.createObjectURL(blob);
-                                                                    window.open(url, '_blank');
+                                                                    const blobUrl = URL.createObjectURL(blob);
+                                                                    window.open(blobUrl, '_blank');
                                                                 }
                                                             } catch {
-                                                                window.open(payment.pdfUrl!, '_blank');
+                                                                window.open(url, '_blank');
                                                             }
                                                         }}
                                                         className="inline-flex items-center gap-1.5 text-lavrs-red text-xs font-bold hover:underline"
@@ -263,7 +265,7 @@ const PaymentsAndInvoicing: React.FC<PaymentsAndInvoicingProps> = ({ application
                                                         Faktura
                                                     </button>
                                                 ) : (
-                                                    <span className="text-xs text-gray-300">-</span>
+                                                    <span className="text-xs text-gray-300">—</span>
                                                 )}
                                             </td>
                                         </tr>
