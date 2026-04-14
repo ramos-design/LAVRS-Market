@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Search, AlertTriangle, Camera, ChevronDown, ChevronUp, Sparkles, CreditCard, Instagram, Globe, Mail, Phone, Building2, MapPin, Check, X, Save, Loader } from 'lucide-react';
+import { Heart, Search, AlertTriangle, Camera, ChevronDown, ChevronUp, Sparkles, CreditCard, Instagram, Globe, Mail, Phone, Building2, MapPin, Check, X, Save, Loader, Trash2 } from 'lucide-react';
 import { AppStatus, ZoneCategory, Application, BrandProfile, MarketEvent } from '../types';
 import ImageLightbox from './ImageLightbox';
 
@@ -9,6 +9,7 @@ interface BrandsListProps {
   events: MarketEvent[];
   onDeleteBrand: (brandProfileId: string) => Promise<void>;
   onUpdateBrand: (brand: BrandProfile) => Promise<void>;
+  onTrashBrand?: (brandProfileId: string, brandName: string) => Promise<void>;
 }
 
 const zoneCategoryTabs: { id: 'ALL' | string; label: string }[] = [
@@ -41,11 +42,13 @@ const getZoneCategoryLabel = (category?: ZoneCategory) => {
   }
 };
 
-const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, onDeleteBrand, onUpdateBrand }) => {
+const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, onDeleteBrand, onUpdateBrand, onTrashBrand }) => {
 
   const [tab, setTab] = React.useState<'ALL' | string>('ALL');
   const [query, setQuery] = React.useState('');
   const [deletingBrandId, setDeletingBrandId] = React.useState<string | null>(null);
+  const [trashConfirm, setTrashConfirm] = React.useState<{ profileId: string; name: string } | null>(null);
+  const [trashing, setTrashing] = React.useState(false);
   const [expandedBrand, setExpandedBrand] = React.useState<string | null>(null);
   const [lightbox, setLightbox] = React.useState<{ images: string[]; index: number } | null>(null);
   const [editingBrandId, setEditingBrandId] = React.useState<string | null>(null);
@@ -100,7 +103,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
       );
     };
 
-    applications.forEach(app => {
+    applications.filter(app => (app.status || '').toUpperCase() !== 'DELETED').forEach(app => {
       const key = app.brandName.toLowerCase();
       const existing = byName.get(key);
       byName.set(key, {
@@ -369,13 +372,23 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                           >
                             {editingBrandId === row.id ? 'Zavřít' : 'Upravit'}
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteBrand(row); }}
-                            disabled={deletingBrandId === row.profileId}
-                            className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {deletingBrandId === row.profileId ? 'Mažu...' : 'Smazat'}
-                          </button>
+                          {onTrashBrand && row.profileId ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTrashConfirm({ profileId: row.profileId!, name: row.brandName }); }}
+                              className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1"
+                            >
+                              <Trash2 size={11} />
+                              Do koše
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBrand(row); }}
+                              disabled={deletingBrandId === row.profileId}
+                              className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {deletingBrandId === row.profileId ? 'Mažu...' : 'Smazat'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -621,6 +634,59 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
           onClose={() => setLightbox(null)}
           onNavigate={(i) => setLightbox({ ...lightbox, index: i })}
         />
+      )}
+
+      {/* Trash confirmation dialog */}
+      {trashConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => !trashing && setTrashConfirm(null)}>
+          <div className="bg-white p-8 shadow-2xl max-w-md w-full mx-4 border border-gray-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 flex items-center justify-center">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-extrabold text-lavrs-dark">Přesunout do koše?</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Značka <strong className="text-lavrs-dark">{trashConfirm.name}</strong> a všechny její přihlášky budou přesunuty do koše.
+            </p>
+            <p className="text-xs text-gray-400 mb-6">
+              Značku můžete později obnovit nebo trvale smazat v sekci Koš.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setTrashConfirm(null)}
+                disabled={trashing}
+                className="px-5 py-2.5 border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={async () => {
+                  if (!onTrashBrand || trashing) return;
+                  setTrashing(true);
+                  try {
+                    await onTrashBrand(trashConfirm.profileId, trashConfirm.name);
+                    setTrashConfirm(null);
+                  } catch (err) {
+                    console.error('Trash brand failed:', err);
+                    alert('Přesunutí do koše selhalo.');
+                  } finally {
+                    setTrashing(false);
+                  }
+                }}
+                disabled={trashing}
+                className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+              >
+                {trashing ? (
+                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Trash2 size={14} />
+                )}
+                {trashing ? 'Mažu...' : 'Přesunout do koše'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

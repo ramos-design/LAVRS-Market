@@ -82,6 +82,7 @@ export interface DbBrandProfile {
     billing_address: string | null;
     billing_email: string | null;
     deletion_requested_at: string | null;
+    trashed_at: string | null;
     logo_url: string | null;
     gallery_urls: string[];
     created_at?: string;
@@ -343,6 +344,7 @@ export const brandProfilesDb = {
         let query = supabase
             .from('brand_profiles')
             .select('*')
+            .is('trashed_at', null)
             .order('brand_name');
 
         if (!isAdmin) {
@@ -388,6 +390,32 @@ export const brandProfilesDb = {
             .update({ deletion_requested_at: new Date().toISOString() })
             .eq('id', id);
         if (error) throw error;
+    },
+
+    async moveToTrash(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('brand_profiles')
+            .update({ trashed_at: new Date().toISOString() })
+            .eq('id', id);
+        if (error) throw error;
+    },
+
+    async restoreFromTrash(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('brand_profiles')
+            .update({ trashed_at: null })
+            .eq('id', id);
+        if (error) throw error;
+    },
+
+    async getTrashed(): Promise<DbBrandProfile[]> {
+        const { data, error } = await supabase
+            .from('brand_profiles')
+            .select('*')
+            .not('trashed_at', 'is', null)
+            .order('trashed_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
     },
 };
 
@@ -458,6 +486,17 @@ export const applicationsDb = {
             .from('applications')
             .update({ status: 'DELETED' })
             .eq('brand_profile_id', brandProfileId)
+            .neq('status', 'DELETED')
+            .select('id');
+        if (error) throw error;
+        return data?.length || 0;
+    },
+
+    async softDeleteByBrandName(brandName: string): Promise<number> {
+        const { data, error } = await supabase
+            .from('applications')
+            .update({ status: 'DELETED' })
+            .ilike('brand_name', brandName)
             .neq('status', 'DELETED')
             .select('id');
         if (error) throw error;
@@ -863,6 +902,10 @@ export interface DbInvoice {
     xml_storage_path?: string | null;
     pdf_url?: string | null;
     xml_url?: string | null;
+    is_paid?: boolean;
+    paid_at?: string | null;
+    paid_pdf_storage_path?: string | null;
+    paid_pdf_url?: string | null;
     created_at?: string;
 }
 

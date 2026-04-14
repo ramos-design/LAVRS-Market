@@ -79,6 +79,7 @@ export interface UpdateInvoiceFilesParams {
     applicationId: string;
     pdfBlob: Blob;
     xmlString?: string;
+    pdfParams?: Record<string, any>;
 }
 
 /**
@@ -86,7 +87,7 @@ export interface UpdateInvoiceFilesParams {
  * Called after saveInvoice() succeeds and PDF has been generated.
  */
 export async function updateInvoiceFiles(params: UpdateInvoiceFilesParams): Promise<void> {
-    const { invoiceId, invoiceNumber, applicationId, pdfBlob, xmlString } = params;
+    const { invoiceId, invoiceNumber, applicationId, pdfBlob, xmlString, pdfParams } = params;
 
     try {
         let pdfUrl: string | null = null;
@@ -135,7 +136,24 @@ export async function updateInvoiceFiles(params: UpdateInvoiceFilesParams): Prom
             }
         }
 
-        // 3. Update invoice record with file paths/URLs
+        // 3. Save PDF generation params for later regeneration (paid invoice)
+        if (pdfParams) {
+            const paramsPath = `invoices/${applicationId}/${invoiceNumber}-params.json`;
+            const paramsBlob = new Blob([JSON.stringify(pdfParams)], { type: 'application/json' });
+            const { error: paramsError } = await supabase.storage
+                .from('attachments')
+                .upload(paramsPath, paramsBlob, {
+                    contentType: 'application/json',
+                    upsert: true,
+                });
+            if (paramsError) {
+                console.warn(`PDF params upload failed: ${paramsError.message}`);
+            } else {
+                console.log(`[Invoice] PDF params saved: ${paramsPath}`);
+            }
+        }
+
+        // 4. Update invoice record with file paths/URLs
         await invoicesDb.update(invoiceId, {
             pdf_storage_path: pdfPath,
             xml_storage_path: xmlPath,
@@ -196,5 +214,95 @@ export async function downloadInvoiceXml(invoiceNumber: string, xmlStoragePath: 
     } catch (error) {
         console.error('Failed to download invoice XML:', error);
         throw error;
+    }
+}
+
+/**
+ * Regenerates the invoice PDF as a paid "DAŇOVÝ DOKLAD" (no QR code, paid stamp).
+ * Downloads the saved PDF params from storage, regenerates PDF with isPaid=true,
+ * and saves the paid PDF to a SEPARATE storage path (original is preserved).
+ * Updates the invoice DB record: is_paid=true, paid_at, paid_pdf_storage_path, paid_pdf_url,
+ * and also updates pdf_storage_path so email webhooks automatically attach the paid version.
+ */
+export async function regeneratePaidInvoicePdf(applicationId: string): Promise<boolean> {
+    try {
+        // 1. Get invoice from DB
+        const invoice = await invoicesDb.getByApplicationId(applicationId);
+        if (!invoice) {
+            console.warn('[PaidPDF] No invoice found for application:', applicationId);
+            return false;
+        }
+
+        console.log('[PaidPDF] Starting paid PDF generation for invoice:', invoice.invoice_number);
+
+        // 2. Download saved PDF params from storage
+        const paramsPath = `invoices/${applicationId}/${invoice.invoice_number}-params.json`;
+        const { data: paramsData, error: paramsError } = await supabase.storage
+            .from('attachments')
+            .download(paramsPath);
+
+        if (paramsError || !paramsData) {
+            console.warn('[PaidPDF] No saved PDF params found:', paramsPath, paramsError?.message);
+            return false;
+        }
+
+        const paramsText = await paramsData.text();
+        const pdfParams = JSON.parse(paramsText);
+
+        // 3. Regenerate PDF with isPaid=true (DAŇOVÝ DOKLAD, no QR, ZAPLACENO stamp)
+        const { generateInvoicePdf } = await import('./invoice-generator');
+        const invoiceData = { _pdfParams: pdfParams } as any;
+        const pdfBlob = await generateInvoicePdf(invoiceData, true);
+
+        if (!pdfBlob || pdfBlob.size === 0) {
+            console.warn('[PaidPDF] Generated PDF is empty');
+            return false;
+        }
+
+        console.log('[PaidPDF] PDF generated:', pdfBlob.size, 'bytes');
+
+        // 4. Upload paid PDF to SEPARATE storage path (keep original intact)
+        const paidPdfPath = `invoices/${applicationId}/${invoice.invoice_number}-paid.pdf`;
+        const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(paidPdfPath, pdfBlob, {
+                contentType: 'application/pdf',
+                upsert: true,
+            });
+
+        if (uploadError) {
+            console.warn('[PaidPDF] Upload failed:', uploadError.message);
+            return false;
+        }
+
+        // Get public URL for the paid PDF
+        const { data: paidPdfUrlData } = supabase.storage
+            .from('attachments')
+            .getPublicUrl(paidPdfPath);
+        const paidPdfUrl = paidPdfUrlData?.publicUrl || null;
+
+        // 5. Update invoice record in DB — mark as paid, store paid PDF paths
+        //    Also update pdf_storage_path so send-email webhook attaches the paid version
+        const now = new Date().toISOString();
+        await invoicesDb.update(invoice.id, {
+            is_paid: true,
+            paid_at: now,
+            paid_pdf_storage_path: paidPdfPath,
+            paid_pdf_url: paidPdfUrl,
+            pdf_storage_path: paidPdfPath, // Email webhook reads this → will send paid PDF
+        });
+
+        console.log('[PaidPDF] Invoice DB updated:', {
+            invoice_number: invoice.invoice_number,
+            is_paid: true,
+            paid_at: now,
+            paid_pdf_storage_path: paidPdfPath,
+            paid_pdf_url: paidPdfUrl,
+        });
+
+        return true;
+    } catch (error) {
+        console.warn('[PaidPDF] Failed to regenerate paid invoice:', error);
+        return false;
     }
 }

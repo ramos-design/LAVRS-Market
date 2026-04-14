@@ -9,7 +9,7 @@ type EditorMode = 'list' | 'edit' | 'preview';
 const TEMPLATE_VARIABLES = [
     { key: '{{brand_name}}', label: 'Název značky', example: 'Vintage Soul' },
     { key: '{{event_name}}', label: 'Název eventu', example: 'LAVRS market #12' },
-    { key: '{{event_date}}', label: 'Datum eventu', example: '15. března 2026' },
+    { key: '{{event_date}}', label: 'Datum eventu', example: '15.–16. března 2026' },
     { key: '{{event_location}}', label: 'Místo konání', example: 'Vnitroblock, Praha 7' },
     { key: '{{contact_person}}', label: 'Kontaktní osoba', example: 'Tereza Nováková' },
     { key: '{{payment_deadline}}', label: 'Splatnost objednávky', example: '20. března 2026' },

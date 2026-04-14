@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
+import { Menu, X, User, LayoutDashboard, FileText, CreditCard, Layers, DollarSign, Settings, Mail, Users, Image as ImageIcon, Tags, LogOut, Trash2 } from 'lucide-react';
 import { ViewMode } from '../types';
 import { prefetchScreen } from '../App';
 import logo from '../media/LAVRSmarket_logo_white_transp1.png';
@@ -116,6 +116,12 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ role, activeItem, onNavigat
                         </button>
 
                         <div className="grid grid-cols-1 gap-1">
+                            {role === 'ADMIN' && (
+                              <button onClick={() => handleNavigate('BRAND_TRASH')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors flex items-center gap-1.5">
+                                <Trash2 size={10} />
+                                Koš značek
+                              </button>
+                            )}
                             <button onClick={() => handleNavigate('PRIVACY')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</button>
                             <button onClick={() => handleNavigate('TERMS')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</button>
                             <button onClick={() => handleNavigate('STORNO')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Storno podmínky</button>

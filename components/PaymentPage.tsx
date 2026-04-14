@@ -22,6 +22,7 @@ import { useEventPlan } from '../hooks/useSupabase';
 import { formatEventDate, formatEventDateRange } from '../lib/mappers';
 import HeartLoader from './HeartLoader';
 import { fetchFromARES, isValidIcoFormat } from '../lib/aresAPI';
+import { supabase } from '../lib/supabase';
 interface PaymentPageProps {
   onBack: () => void;
   initialBillingDetails?: Partial<BrandProfile>;
@@ -726,24 +727,77 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                               invoiceResult.pdfBlob = pdfBlob;
 
                               // Upload PDF + XML and update invoice record with file URLs
+                              // Also save _pdfParams for later paid PDF regeneration
                               await updateInvoiceFiles({
                                 invoiceId: savedInvoice.id,
                                 invoiceNumber: invoiceResult.invoiceNumber,
                                 applicationId: activeApp.id,
                                 pdfBlob,
                                 xmlString: invoiceResult.xmlString,
+                                pdfParams: (invoiceResult as any)._pdfParams,
                               });
                               console.log('[Invoice] Files uploaded and DB updated');
                             } catch (pdfErr) {
                               console.warn('[Invoice] PDF generation/upload failed (invoice DB record still saved):', pdfErr);
                             }
 
-                            // 3. Update status — this triggers DB webhook which sends 'payment-submitted' email
-                            //    with PDF attachment automatically (no need for separate send-invoice-notification call)
+                            // 3. Update status
                             await onUpdateStatus(activeApp.id, AppStatus.PAYMENT_UNDER_REVIEW);
-                            console.log('[Order] Status updated to PAYMENT_UNDER_REVIEW → trigger will send email with PDF');
+                            console.log('[Order] Status updated to PAYMENT_UNDER_REVIEW');
 
-                            // 5. Generate invoice HTML preview
+                            // 4. Send email notifications directly (don't rely on DB triggers)
+                            try {
+                              // Convert PDF to base64 for email attachment
+                              let pdfBase64 = '';
+                              if (pdfBlob) {
+                                const arrayBuffer = await pdfBlob.arrayBuffer();
+                                const bytes = new Uint8Array(arrayBuffer);
+                                let binary = '';
+                                for (let i = 0; i < bytes.length; i++) {
+                                  binary += String.fromCharCode(bytes[i]);
+                                }
+                                pdfBase64 = btoa(binary);
+                              }
+
+                              const emailPayload = {
+                                brandName: activeApp.brandName,
+                                contactPerson: activeApp.contactPerson,
+                                eventName: activeEvent.title,
+                                eventDate: activeEvent.date,
+                                eventEndDate: activeEvent.endDate || null,
+                                zoneCategory: activeApp.zoneCategory || '',
+                                invoiceNumber: invoiceResult.invoiceNumber,
+                                totalAmountCzk: String(invoiceResult.totalAmountCzk || totalAmount),
+                                pdfBase64,
+                                xmlString: invoiceResult.xmlString || '',
+                                recipientEmail: activeApp.billingEmail || activeApp.email,
+                                recipientType: 'exhibitor',
+                              };
+
+                              // Send to exhibitor
+                              const { error: emailErr } = await supabase.functions.invoke('send-invoice-notification', {
+                                body: emailPayload,
+                              });
+                              if (emailErr) {
+                                console.warn('[Email] Exhibitor notification failed:', emailErr);
+                              } else {
+                                console.log('[Email] Exhibitor invoice notification sent to:', emailPayload.recipientEmail);
+                              }
+
+                              // Send to admin
+                              const { error: adminEmailErr } = await supabase.functions.invoke('send-invoice-notification', {
+                                body: { ...emailPayload, recipientType: 'admin', recipientEmail: undefined },
+                              });
+                              if (adminEmailErr) {
+                                console.warn('[Email] Admin notification failed:', adminEmailErr);
+                              } else {
+                                console.log('[Email] Admin invoice notification sent');
+                              }
+                            } catch (emailError) {
+                              console.warn('[Email] Failed to send notifications (order still saved):', emailError);
+                            }
+
+                            // 5. Generate invoice HTML preview (UI only)
                             await generateInvoiceHtmlPreview();
 
                             setConfirmedPayment(true);

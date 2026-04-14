@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users, Image as ImageIcon, Tags, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, User, Settings, Layers, DollarSign, Mail, Users, Image as ImageIcon, Tags, LogOut, Trash2 } from 'lucide-react';
 import { ViewMode } from '../types';
 import { AdminPresenceState, getScreenLabel } from '../hooks/useAdminPresence';
 import { prefetchScreen } from '../App';
@@ -104,6 +104,16 @@ const Sidebar: React.FC<SidebarProps> = ({ role, activeItem, onNavigate, onSignO
       <div className="pt-8 border-t border-white/10">
 
         <div className="grid grid-cols-1 gap-2">
+          {role === 'ADMIN' && (
+            <button
+              onClick={() => onNavigate('BRAND_TRASH')}
+              onMouseEnter={() => prefetchScreen('BRAND_TRASH')}
+              className={`text-[10px] text-left uppercase font-bold tracking-widest transition-colors flex items-center gap-1.5 ${activeItem === 'BRAND_TRASH' ? 'text-white' : 'text-white/60 hover:text-white'}`}
+            >
+              <Trash2 size={10} />
+              Koš značek
+            </button>
+          )}
           <button onClick={() => onNavigate('PRIVACY')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Zpracování osobních údajů</button>
           <button onClick={() => onNavigate('TERMS')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Obchodní podmínky</button>
           <button onClick={() => onNavigate('STORNO')} className="text-[10px] text-left uppercase font-bold tracking-widest text-white/60 hover:text-white transition-colors">Storno podmínky</button>

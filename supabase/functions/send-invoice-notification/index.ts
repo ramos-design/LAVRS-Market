@@ -21,6 +21,24 @@ function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
 }
 
+/** Format event date as range if multi-day, single date if one-day */
+function formatEventDateRange(dateStr: string, endDateStr?: string | null): string {
+    if (!dateStr) return '';
+    const fmt = (d: Date) => new Intl.DateTimeFormat('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+    const start = new Date(dateStr);
+    if (isNaN(start.getTime())) return dateStr;
+    if (!endDateStr || dateStr === endDateStr) return fmt(start);
+    const end = new Date(endDateStr);
+    if (isNaN(end.getTime())) return fmt(start);
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+    const startMonth = new Intl.DateTimeFormat('cs-CZ', { month: 'long' }).format(start);
+    const endMonth = new Intl.DateTimeFormat('cs-CZ', { month: 'long' }).format(end);
+    const year = end.getFullYear();
+    if (startMonth === endMonth) return `${startDay}.–${endDay}. ${endMonth} ${year}`;
+    return `${startDay}. ${startMonth} – ${endDay}. ${endMonth} ${year}`;
+}
+
 /** Build the order details table HTML */
 function buildOrderTable(brandName: string, contactPerson: string, eventName: string, eventDate: string, zoneCategory: string, invoiceNumber: string, totalAmountCzk: string): string {
     const e = escapeHtml;
@@ -80,6 +98,7 @@ Deno.serve(async (req) => {
             contactPerson,
             eventName,
             eventDate,
+            eventEndDate,
             zoneCategory,
             invoiceNumber,
             totalAmountCzk,
@@ -101,8 +120,9 @@ Deno.serve(async (req) => {
         console.log(`XML length: ${xmlString?.length || 0}`);
 
         // --- Build order table HTML ---
+        const formattedEventDate = formatEventDateRange(eventDate || '', eventEndDate);
         const orderTableHtml = buildOrderTable(
-            brandName, contactPerson, eventName, eventDate,
+            brandName, contactPerson, eventName, formattedEventDate,
             zoneCategory, invoiceNumber, totalAmountCzk
         );
 

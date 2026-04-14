@@ -41,7 +41,7 @@ export function generateInvoiceHtml(props: InvoicePdfProps): string {
         issuerPhone, issuerEmail, issuedBy,
         bankAccount, bankIban,
         customerName, customerAddress, customerIC, customerDIC,
-        lineItems, qrDataUrl, invoiceNote,
+        lineItems, qrDataUrl, invoiceNote, isPaid,
     } = props;
 
     // DPH calculation
@@ -193,7 +193,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 
     <!-- Header -->
     <div class="header">
-        <h1>OBJEDNÁVKA – VÝZVA K PLATBĚ</h1>
+        <h1>${isPaid ? 'DAŇOVÝ DOKLAD' : 'OBJEDNÁVKA – VÝZVA K PLATBĚ'}</h1>
         <div class="inv-num">číslo: ${esc(invoiceNumber)}</div>
     </div>
 
@@ -272,13 +272,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Ar
 
     <!-- Grand total -->
     <div class="grand-total">
-        Celkem k úhradě: <span>${fmt(grandTotal)} CZK</span>
+        ${isPaid ? 'Celkem' : 'Celkem k úhradě'}: <span>${fmt(grandTotal)} CZK</span>
     </div>
 
     <!-- QR + Signature -->
     <div class="bottom">
         <div class="qr-col">
-            ${qrDataUrl ? `<img src="${esc(qrDataUrl)}" alt="QR platba"><div class="qr-label">QR platba</div>` : ''}
+            ${isPaid
+                ? `<div style="font-size:28pt;font-weight:bold;color:#27ae60;text-align:center;padding-top:30px;">\u2713 ZAPLACENO</div>`
+                : qrDataUrl ? `<img src="${esc(qrDataUrl)}" alt="QR platba"><div class="qr-label">QR platba</div>` : ''}
         </div>
         <div class="sign-col">
             <div class="sign-line">Vystavil</div>

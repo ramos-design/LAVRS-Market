@@ -159,6 +159,7 @@ export interface BrandProfile {
   billingAddress?: string;
   billingEmail?: string;
   deletionRequestedAt?: string;
+  trashedAt?: string;
   logoUrl?: string;
   galleryUrls?: string[];
 }

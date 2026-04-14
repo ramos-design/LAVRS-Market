@@ -8,7 +8,7 @@ import HeartLoader from './components/HeartLoader';
 
 // Supabase hooks & mappers
 import { useAuth } from './hooks/useAuth';
-import { useEvents, useApplications, useBrandProfiles, useEventPlan, useEventPlans, useAllEventPlanPrices, useInvoices, useBanners, useCategories, useCompanySettings } from './hooks/useSupabase';
+import { useEvents, useApplications, useBrandProfiles, useBrandTrash, useEventPlan, useEventPlans, useAllEventPlanPrices, useInvoices, useBanners, useCategories, useCompanySettings } from './hooks/useSupabase';
 import { logAdminAction, checkVersionConflict } from './lib/activityLog';
 import { useAdminPresence } from './hooks/useAdminPresence';
 import {
@@ -50,6 +50,7 @@ const componentImports: Record<string, () => Promise<{ default: React.ComponentT
   EVENTS_CONFIG: () => import('./components/EventsConfig'),
   EMAILS: () => import('./components/AutomatedEmails'),
   BRANDS: () => import('./components/BrandsList'),
+  BRAND_TRASH: () => import('./components/BrandTrash'),
   EVENT_PLAN: () => import('./components/EventLayoutManager'),
   BANNERS: () => import('./components/BannerManager'),
   CATEGORIES: () => import('./components/CategoryManager'),
@@ -89,6 +90,7 @@ const PaymentsAndInvoicing = lazyWithRetry(componentImports.PAYMENTS);
 const EventsConfig = lazyWithRetry(componentImports.EVENTS_CONFIG);
 const AutomatedEmails = lazyWithRetry(componentImports.EMAILS);
 const BrandsList = lazyWithRetry(componentImports.BRANDS);
+const BrandTrash = lazyWithRetry(componentImports.BRAND_TRASH);
 const EventLayoutManager = lazyWithRetry(componentImports.EVENT_PLAN);
 const BannerManager = lazyWithRetry(componentImports.BANNERS);
 const CategoryManager = lazyWithRetry(componentImports.CATEGORIES);
@@ -209,7 +211,7 @@ const App: React.FC = () => {
   const { events: dbEvents, loading: eventsLoading, deleteEvent, createEvent } = useEvents(canFetchUserData);
   const {
     applications: dbApplications, loading: appsLoading,
-    createApplication, updateStatus: updateAppStatus, updateApplication, deleteApplication, permanentDeleteAllTrash, softDeleteByBrandProfileId,
+    createApplication, updateStatus: updateAppStatus, updateApplication, deleteApplication, permanentDeleteAllTrash, softDeleteByBrandProfileId, softDeleteByBrandName,
   } = useApplications({
     enabled: canFetchUserData,
     userId: user?.id,
@@ -218,11 +220,13 @@ const App: React.FC = () => {
   const {
     profiles: dbProfiles, loading: profilesLoading,
     createProfile, updateProfile, deleteProfile,
+    moveToTrash, restoreFromTrash, permanentDeleteBrand,
   } = useBrandProfiles({
     enabled: canFetchUserData,
     userId: user?.id,
     role: userRole,
   });
+  const { trashedBrands: dbTrashedBrands } = useBrandTrash(canFetchUserData && userRole === 'ADMIN');
 
   // Auto-seed email templates on app startup (for ADMIN)
   React.useEffect(() => {
@@ -332,6 +336,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`
   // ─── Map DB data to app types ─────────────────────────────
   const events = useMemo(() => dbEvents.map(dbEventToApp), [dbEvents]);
   const brandProfiles = useMemo(() => dbProfiles.map(dbBrandProfileToApp), [dbProfiles]);
+  const trashedBrands = useMemo(() => (dbTrashedBrands || []).map(dbBrandProfileToApp), [dbTrashedBrands]);
   const applications = useMemo(() => {
     return dbApplications.map(dbApplicationToApp).map(app => {
       if (locallyUnderReview.includes(app.id) && app.status !== AppStatus.PAID) {
@@ -501,6 +506,23 @@ V příloze najdete vygenerovanou objednávku (PDF).`
       const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
       paymentDeadline = new Date(now.getTime() + sevenDaysMs).toISOString();
     }
+
+    // When confirming payment (PAID), regenerate PDF as "DAŇOVÝ DOKLAD" before status change
+    // so the email webhook sends the correct paid invoice PDF
+    if (newStatus === AppStatus.PAID) {
+      try {
+        const { regeneratePaidInvoicePdf } = await import('./lib/invoice-storage');
+        const success = await regeneratePaidInvoicePdf(id);
+        if (success) {
+          console.log('[Admin] Paid invoice PDF regenerated successfully for:', app?.brandName);
+        } else {
+          console.warn('[Admin] Could not regenerate paid invoice PDF — original will be used');
+        }
+      } catch (err) {
+        console.warn('[Admin] Paid PDF regeneration failed:', err);
+      }
+    }
+
     const result = await updateAppStatus(id, newStatus, paymentDeadline, approvedAt);
     if (user) {
       logAdminAction({
@@ -586,10 +608,85 @@ V příloze najdete vygenerovanou objednávku (PDF).`
   };
 
   const handleDeleteBrandProfile = async (brandProfileId: string) => {
-    // Cascade: soft-delete all applications linked to this brand (move to trash)
+    // Look up the brand name so we can cascade-delete applications by name
+    const profile = brandProfiles.find(bp => bp.id === brandProfileId);
+    const brandName = profile?.brandName;
+
+    // Cascade: soft-delete all applications linked to this brand
     await softDeleteByBrandProfileId(brandProfileId);
+    if (brandName) {
+      await softDeleteByBrandName(brandName);
+    }
+
     // Then delete the brand profile itself
     await deleteProfile(brandProfileId);
+  };
+
+  const handleTrashBrand = async (brandProfileId: string, brandName: string) => {
+    // Soft-delete all applications linked to this brand
+    await softDeleteByBrandProfileId(brandProfileId);
+    if (brandName) {
+      await softDeleteByBrandName(brandName);
+    }
+    // Move brand to trash
+    await moveToTrash(brandProfileId);
+    if (user) {
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'brand_trashed',
+        entityType: 'brand',
+        entityId: brandProfileId,
+        metadata: { brandName },
+      });
+    }
+  };
+
+  const handleRestoreBrand = async (brandProfileId: string) => {
+    const brand = trashedBrands.find(b => b.id === brandProfileId);
+    await restoreFromTrash(brandProfileId);
+    // Restore applications linked to this brand back to PENDING
+    if (brand?.brandName) {
+      // We use the existing applications data to find DELETED apps for this brand
+      const deletedApps = applications.filter(
+        a => a.brandName.toLowerCase() === brand.brandName.toLowerCase() && a.status === AppStatus.DELETED
+      );
+      for (const app of deletedApps) {
+        await updateAppStatus(app.id, AppStatus.PENDING);
+      }
+    }
+    if (user) {
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'brand_restored',
+        entityType: 'brand',
+        entityId: brandProfileId,
+        metadata: { brandName: brand?.brandName },
+      });
+    }
+  };
+
+  const handlePermanentDeleteBrand = async (brandProfileId: string, brandName: string) => {
+    // Permanently delete all applications linked to this brand
+    const deletedApps = applications.filter(
+      a => a.brandName.toLowerCase() === brandName.toLowerCase() && a.status === AppStatus.DELETED
+    );
+    for (const app of deletedApps) {
+      await deleteApplication(app.id);
+    }
+    // Permanently delete the brand profile
+    await permanentDeleteBrand(brandProfileId);
+    if (user) {
+      logAdminAction({
+        adminId: user.id,
+        adminName: user.fullName || user.email,
+        action: 'brand_permanently_deleted',
+        entityType: 'brand',
+        entityId: brandProfileId,
+        metadata: { brandName },
+      });
+    }
   };
 
   const handleSaveBilling = async (details: Partial<BrandProfile>) => {
@@ -861,6 +958,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`
               onDeleteApplication={handleDeleteApplication}
               onRestoreApplication={handleRestoreApplication}
               onPermanentDeleteAllTrash={handlePermanentDeleteAllTrash}
+              onTrashBrand={handleTrashBrand}
             />
           )}
 
@@ -870,6 +968,19 @@ V příloze najdete vygenerovanou objednávku (PDF).`
               events={events}
               applications={applications}
               brandProfiles={brandProfiles}
+              onTrashBrand={handleTrashBrand}
+              onNavigateToTrash={() => setCurrentScreen('BRAND_TRASH')}
+              trashedCount={trashedBrands.length}
+            />
+          )}
+
+          {currentScreen === 'BRAND_TRASH' && userRole === 'ADMIN' && (
+            <BrandTrash
+              trashedBrands={trashedBrands}
+              applications={applications}
+              onRestore={handleRestoreBrand}
+              onPermanentDelete={handlePermanentDeleteBrand}
+              onBack={() => setCurrentScreen('APPROVED_APPS')}
             />
           )}
 
@@ -911,6 +1022,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`
               events={events}
               onDeleteBrand={handleDeleteBrandProfile}
               onUpdateBrand={handleSaveBrand}
+              onTrashBrand={handleTrashBrand}
             />
           )}
 

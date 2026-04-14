@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Instagram, Globe, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, ChevronDown, ChevronUp, Search, Heart, Camera, Image } from 'lucide-react';
+import { Instagram, Globe, Mail, Phone, Building, MapPin, Calendar, User, Package, CheckCircle, ChevronDown, ChevronUp, Search, Heart, Camera, Image, Trash2, Archive } from 'lucide-react';
 import { Application, AppStatus, ZoneCategory, MarketEvent, BrandProfile } from '../types';
 import ImageLightbox from './ImageLightbox';
 
@@ -8,10 +8,15 @@ interface ApprovedApplicationsProps {
   events: MarketEvent[];
   applications: Application[];
   brandProfiles?: BrandProfile[];
+  onTrashBrand?: (brandProfileId: string, brandName: string) => Promise<void>;
+  onNavigateToTrash?: () => void;
+  trashedCount?: number;
 }
 
-const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack, events, applications, brandProfiles }) => {
+const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack, events, applications, brandProfiles, onTrashBrand, onNavigateToTrash, trashedCount = 0 }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
+  const [trashConfirm, setTrashConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [trashing, setTrashing] = useState(false);
 
   // Create a map for O(1) event lookups
   const eventsMap = React.useMemo(() => {
@@ -134,15 +139,32 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
           <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight text-lavrs-dark mb-1 md:mb-2">Aktivní přihlášky</h2>
           <p className="text-sm md:text-base text-gray-500">Přehled schválených a zaplacených přihlášek ({filtered.length})</p>
         </div>
-        <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-lavrs-red transition-colors" size={18} />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Hledat značku, kontakt, event..."
-            className="pl-12 pr-6 py-3 bg-white border-2 border-gray-100 rounded-none focus:outline-none focus:border-lavrs-red transition-all text-sm w-full md:w-64 shadow-sm"
-          />
+        <div className="flex items-center gap-3">
+          {onNavigateToTrash && (
+            <button
+              onClick={onNavigateToTrash}
+              className="relative flex items-center gap-2 px-4 py-3 bg-white border-2 border-gray-100 text-gray-500 hover:border-lavrs-red hover:text-lavrs-red transition-all text-sm font-bold shadow-sm"
+              title="Koš smazaných značek"
+            >
+              <Trash2 size={16} />
+              <span className="hidden md:inline">Koš</span>
+              {trashedCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-lavrs-red text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full">
+                  {trashedCount}
+                </span>
+              )}
+            </button>
+          )}
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-lavrs-red transition-colors" size={18} />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Hledat značku, kontakt, event..."
+              className="pl-12 pr-6 py-3 bg-white border-2 border-gray-100 rounded-none focus:outline-none focus:border-lavrs-red transition-all text-sm w-full md:w-64 shadow-sm"
+            />
+          </div>
         </div>
       </header>
 
@@ -335,6 +357,23 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                               </div>
                             ))}
                           </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Trash brand action (mobile) */}
+                    {onTrashBrand && (() => {
+                      const bp = brandProfileMap.get(app.brandName.toLowerCase());
+                      if (!bp) return null;
+                      return (
+                        <div className="pt-3 border-t border-gray-200 flex justify-end">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setTrashConfirm({ id: bp.id, name: app.brandName }); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-50 border-2 border-red-200 text-red-600 hover:bg-red-100 transition-all text-[10px] font-bold uppercase tracking-wider"
+                          >
+                            <Trash2 size={12} />
+                            Přesunout do koše
+                          </button>
                         </div>
                       );
                     })()}
@@ -553,6 +592,23 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                                 </div>
                               );
                             })()}
+
+                            {/* Trash brand action */}
+                            {onTrashBrand && (() => {
+                              const bp = brandProfileMap.get(app.brandName.toLowerCase());
+                              if (!bp) return null;
+                              return (
+                                <div className="pt-4 border-t border-gray-200 flex justify-end">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setTrashConfirm({ id: bp.id, name: app.brandName }); }}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-red-50 border-2 border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 transition-all text-xs font-bold uppercase tracking-wider"
+                                  >
+                                    <Trash2 size={14} />
+                                    Přesunout do koše
+                                  </button>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </td>
                       </tr>
@@ -582,6 +638,65 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
           onClose={() => setLightbox(null)}
           onNavigate={(i) => setLightbox({ ...lightbox, index: i })}
         />
+      )}
+
+      {/* Trash confirmation dialog */}
+      {trashConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => !trashing && setTrashConfirm(null)}>
+          <div className="bg-white p-8 shadow-2xl max-w-md w-full mx-4 border border-gray-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 flex items-center justify-center">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-extrabold text-lavrs-dark">Přesunout do koše?</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Značka <strong className="text-lavrs-dark">{trashConfirm.name}</strong> a všechny její přihlášky budou přesunuty do koše.
+            </p>
+            <p className="text-xs text-gray-400 mb-6">
+              Značku můžete později obnovit nebo trvale smazat v sekci Koš.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setTrashConfirm(null)}
+                disabled={trashing}
+                className="px-5 py-2.5 border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={async () => {
+                  if (!onTrashBrand || trashing) return;
+                  setTrashing(true);
+                  try {
+                    await onTrashBrand(trashConfirm.id, trashConfirm.name);
+                    setTrashConfirm(null);
+                    setSelectedAppId(null);
+                  } catch (err) {
+                    console.error('Trash brand failed:', err);
+                    alert('Přesunutí do koše selhalo.');
+                  } finally {
+                    setTrashing(false);
+                  }
+                }}
+                disabled={trashing}
+                className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+              >
+                {trashing ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Mažu...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    Přesunout do koše
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

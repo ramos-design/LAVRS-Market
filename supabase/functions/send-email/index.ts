@@ -15,6 +15,24 @@ const adminEmail = Deno.env.get("ADMIN_EMAIL") || "lavrs@lavrs.cz";
 const escapeHtml = (str: string) =>
     str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/** Format event date as range if multi-day, single date if one-day */
+function formatEventDateRange(dateStr: string, endDateStr?: string | null): string {
+    if (!dateStr) return '';
+    const fmt = (d: Date) => new Intl.DateTimeFormat('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+    const start = new Date(dateStr);
+    if (isNaN(start.getTime())) return dateStr;
+    if (!endDateStr || dateStr === endDateStr) return fmt(start);
+    const end = new Date(endDateStr);
+    if (isNaN(end.getTime())) return fmt(start);
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+    const startMonth = new Intl.DateTimeFormat('cs-CZ', { month: 'long' }).format(start);
+    const endMonth = new Intl.DateTimeFormat('cs-CZ', { month: 'long' }).format(end);
+    const year = end.getFullYear();
+    if (startMonth === endMonth) return `${startDay}.–${endDay}. ${endMonth} ${year}`;
+    return `${startDay}. ${startMonth} – ${endDay}. ${endMonth} ${year}`;
+}
+
 // Compact HTML — no indentation to avoid SMTP quoted-printable =3d / =20 artifacts
 const getHtmlTemplate = (title: string, bodyText: string) => {
     const safeTitle = escapeHtml(title);
@@ -177,11 +195,16 @@ Deno.serve(async (req) => {
             if (invoice) {
                 invoiceData = invoice;
 
-                if (invoice.pdf_storage_path) {
+                // For payment-confirmed (PAID), prefer the paid PDF (DAŇOVÝ DOKLAD) if available
+                const pdfPath = (templateId === 'payment-confirmed' && invoice.paid_pdf_storage_path)
+                    ? invoice.paid_pdf_storage_path
+                    : invoice.pdf_storage_path;
+
+                if (pdfPath) {
                     const { data: pdfData, error: pdfError } = await supabase
                         .storage
                         .from('attachments')
-                        .download(invoice.pdf_storage_path);
+                        .download(pdfPath);
 
                     if (!pdfError && pdfData && pdfData.size > 0) {
                         const arrayBuffer = await pdfData.arrayBuffer();
@@ -190,7 +213,7 @@ Deno.serve(async (req) => {
                             content: new Uint8Array(arrayBuffer),
                             contentType: "application/pdf",
                         });
-                        console.log(`- Auto-attached invoice PDF: ${invoice.invoice_number}.pdf (${pdfData.size} bytes)`);
+                        console.log(`- Auto-attached invoice PDF: ${invoice.invoice_number}.pdf (${pdfData.size} bytes, path: ${pdfPath})`);
                     } else {
                         console.warn(`- Could not attach invoice PDF: ${pdfError?.message || 'Unknown error'}`);
                     }
@@ -221,9 +244,7 @@ Deno.serve(async (req) => {
         // 4. Substitution
         let body = template.body || "";
         let subject = template.subject || "";
-        const formattedDate = event.date
-            ? new Date(event.date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })
-            : "";
+        const formattedDate = formatEventDateRange(event.date, event.end_date);
         const vars: Record<string, string> = {
             '{{event_name}}': event.title || "LAVRS market",
             '{{event_date}}': formattedDate,
@@ -287,6 +308,7 @@ Deno.serve(async (req) => {
                     contactPerson: app.contact_person,
                     eventName: event.title,
                     eventDate: event.date,
+                    eventEndDate: event.end_date || null,
                     zoneCategory: app.zone_category,
                     invoiceNumber: invoiceData?.invoice_number || 'N/A',
                     totalAmountCzk: invoiceData?.amount_czk ? (invoiceData.amount_czk / 100).toFixed(2) : '0',

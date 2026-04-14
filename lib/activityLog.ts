@@ -14,7 +14,10 @@ export type AdminActionType =
     | 'event_deleted'
     | 'event_updated'
     | 'event_plan_saved'
-    | 'all_trash_permanently_deleted';
+    | 'all_trash_permanently_deleted'
+    | 'brand_trashed'
+    | 'brand_restored'
+    | 'brand_permanently_deleted';
 
 function translateStatus(status: string): string {
     const map: Record<string, string> = {
@@ -49,6 +52,12 @@ const ACTION_DESCRIPTIONS: Record<AdminActionType, (meta: Record<string, any>) =
         `Uložil/a plán pro event „${m.eventTitle || '?'}"`,
     all_trash_permanently_deleted: () =>
         `Trvale smazal/a všechny přihlášky z koše`,
+    brand_trashed: (m) =>
+        `Přesunul/a značku „${m.brandName || '?'}" do koše`,
+    brand_restored: (m) =>
+        `Obnovil/a značku „${m.brandName || '?'}" z koše`,
+    brand_permanently_deleted: (m) =>
+        `Trvale smazal/a značku „${m.brandName || '?'}"`,
 };
 
 export interface LogActionParams {

@@ -14,12 +14,31 @@ ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT false;
 -- 2. Vytvoř trigger funkci pro email webhooky
 CREATE OR REPLACE FUNCTION public.trigger_send_email_webhook()
 RETURNS TRIGGER AS $$
+DECLARE
+  service_role_key text;
 BEGIN
+  -- Získej service_role_key z Vault (Supabase secret management)
+  -- Alternativně: nastav jako GUC proměnnou v DB settings
+  SELECT decrypted_secret INTO service_role_key
+    FROM vault.decrypted_secrets
+    WHERE name = 'service_role_key'
+    LIMIT 1;
+
+  -- Fallback: pokud není ve Vault, zkus current_setting
+  IF service_role_key IS NULL THEN
+    BEGIN
+      service_role_key := current_setting('app.settings.service_role_key', true);
+    EXCEPTION WHEN OTHERS THEN
+      service_role_key := NULL;
+    END;
+  END IF;
+
   -- Zavolej edge function přes HTTP POST
   PERFORM net.http_post(
     url := 'https://wllstifewvjtdrzfgbxj.supabase.co/functions/v1/send-email',
     headers := jsonb_build_object(
-      'Content-Type', 'application/json'
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || COALESCE(service_role_key, '')
     ),
     body := jsonb_build_object(
       'type', CASE WHEN TG_OP = 'INSERT' THEN 'INSERT' ELSE 'UPDATE' END,
@@ -82,6 +101,38 @@ CREATE TRIGGER applications_mark_invoice_paid
   EXECUTE FUNCTION public.mark_invoice_as_paid();
 
 -- ═══════════════════════════════════════════════════════════════
+-- KOŠ PRO ZNAČKY (BRAND TRASH) — 2026-04-14
+-- ═══════════════════════════════════════════════════════════════
+
+-- Přidej trashed_at sloupec do brand_profiles (soft-delete / koš)
+ALTER TABLE public.brand_profiles
+ADD COLUMN IF NOT EXISTS trashed_at TIMESTAMPTZ DEFAULT NULL;
+
+-- Index pro rychlé filtrování koše
+CREATE INDEX IF NOT EXISTS idx_brand_profiles_trashed_at
+ON public.brand_profiles (trashed_at)
+WHERE trashed_at IS NOT NULL;
+
+-- ═══════════════════════════════════════════════════════════════
+-- PLACENÁ FAKTURA (DAŇOVÝ DOKLAD) — 2026-04-14
+-- ═══════════════════════════════════════════════════════════════
+
+-- Rozšíření invoices tabulky o sloupce pro placenou verzi faktury
+ALTER TABLE public.invoices
+ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ DEFAULT NULL;
+
+ALTER TABLE public.invoices
+ADD COLUMN IF NOT EXISTS paid_pdf_storage_path TEXT DEFAULT NULL;
+
+ALTER TABLE public.invoices
+ADD COLUMN IF NOT EXISTS paid_pdf_url TEXT DEFAULT NULL;
+
+-- Index pro rychlé filtrování placených faktur
+CREATE INDEX IF NOT EXISTS idx_invoices_is_paid
+ON public.invoices (is_paid)
+WHERE is_paid = true;
+
+-- ═══════════════════════════════════════════════════════════════
 -- OVĚŘENÍ
 -- ═══════════════════════════════════════════════════════════════
 -- Po aplikaci tohoto scriptu, spusť tyto SQL queries aby ověřil:
@@ -97,10 +148,15 @@ CREATE TRIGGER applications_mark_invoice_paid
 --    SELECT routine_name FROM information_schema.routines
 --    WHERE routine_schema = 'public' AND routine_name = 'trigger_send_email_webhook';
 
+-- 4. Zkontroluj Invoice sloupce:
+--    SELECT column_name, data_type FROM information_schema.columns
+--    WHERE table_name = 'invoices' AND column_name IN ('is_paid', 'paid_at', 'paid_pdf_storage_path', 'paid_pdf_url');
+
 -- ═══════════════════════════════════════════════════════════════
 -- VÝSLEDEK:
 -- ✅ Email templates - jsou v DB
 -- ✅ Edge functions - send-email je nasazená
 -- ✅ Database triggers - BUDOU VYTVOŘENY TÍMTO SCRIPTEM
+-- ✅ Invoice paid columns - is_paid, paid_at, paid_pdf_storage_path, paid_pdf_url
 -- ✅ Email system - BUDE FUNKČNÍ
 -- ═══════════════════════════════════════════════════════════════

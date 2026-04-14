@@ -15,9 +15,10 @@ interface CuratorModuleProps {
   onDeleteApplication: (id: string) => void;
   onRestoreApplication: (id: string) => void;
   onPermanentDeleteAllTrash: () => Promise<void>;
+  onTrashBrand?: (brandProfileId: string, brandName: string) => Promise<void>;
 }
 
-const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, brandProfiles, planPrices, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash }) => {
+const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, brandProfiles, planPrices, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash, onTrashBrand }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
 
   // Create a map for O(1) event lookups instead of O(n) find()
@@ -798,6 +799,30 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <Phone size={18} /> Zavolat
                   </button>
                 </div>
+
+                {/* Trash entire brand */}
+                {onTrashBrand && (() => {
+                  const bp = brandProfileMap.get(selectedApp.brandName.toLowerCase());
+                  if (!bp) return null;
+                  return (
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(`Opravdu chcete přesunout celou značku "${selectedApp.brandName}" (včetně všech přihlášek) do koše?`)) return;
+                        setIsProcessing(true);
+                        try {
+                          await onTrashBrand(bp.id, selectedApp.brandName);
+                          setSelectedAppId(null);
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      disabled={isProcessing}
+                      className="w-full py-3 bg-red-50 text-red-500 border border-red-200 rounded-none text-[10px] font-bold uppercase tracking-wider hover:bg-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <Trash2 size={14} /> Přesunout celou značku do koše
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           )}

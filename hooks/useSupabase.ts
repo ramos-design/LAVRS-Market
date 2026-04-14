@@ -214,6 +214,38 @@ export function useBrandProfiles(options: UserScopedQueryOptions = {}) {
             await brandProfilesDb.requestDeletion(id);
             queryEmitter.invalidatePattern(/^brand_profiles:/);
         },
+        moveToTrash: async (id: string) => {
+            await brandProfilesDb.moveToTrash(id);
+            queryEmitter.invalidatePattern(/^brand_profiles:/);
+            queryEmitter.invalidatePattern(/^brand_trash$/);
+        },
+        restoreFromTrash: async (id: string) => {
+            await brandProfilesDb.restoreFromTrash(id);
+            queryEmitter.invalidatePattern(/^brand_profiles:/);
+            queryEmitter.invalidatePattern(/^brand_trash$/);
+        },
+        permanentDeleteBrand: async (id: string) => {
+            await brandProfilesDb.delete(id);
+            queryEmitter.invalidatePattern(/^brand_profiles:/);
+            queryEmitter.invalidatePattern(/^brand_trash$/);
+        },
+    };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BRAND TRASH
+═══════════════════════════════════════════════════════════ */
+export function useBrandTrash(enabled = true) {
+    const query = useQuery(
+        'brand_trash',
+        () => brandProfilesDb.getTrashed(),
+        [],
+        [],
+        { enabled }
+    );
+    return {
+        ...query,
+        trashedBrands: query.data,
     };
 }
 
@@ -262,6 +294,11 @@ export function useApplications(options: UserScopedQueryOptions = {}) {
         },
         softDeleteByBrandProfileId: async (brandProfileId: string) => {
             const count = await applicationsDb.softDeleteByBrandProfileId(brandProfileId);
+            queryEmitter.invalidatePattern(/^applications:/);
+            return count;
+        },
+        softDeleteByBrandName: async (brandName: string) => {
+            const count = await applicationsDb.softDeleteByBrandName(brandName);
             queryEmitter.invalidatePattern(/^applications:/);
             return count;
         },
