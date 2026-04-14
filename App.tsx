@@ -489,7 +489,9 @@ V příloze najdete vygenerovanou objednávku (PDF).`
   const handleUpdateApplicationStatus = async (id: string, newStatus: AppStatus) => {
     const app = applications.find(a => a.id === id);
     // Optimistic locking: check if another admin modified this application
-    if (app?.updatedAt) {
+    // Skip conflict check for PAYMENT_UNDER_REVIEW — exhibitor confirming payment
+    // after admin approval is expected, not a conflict
+    if (app?.updatedAt && newStatus !== AppStatus.PAYMENT_UNDER_REVIEW) {
       const { conflict } = await checkVersionConflict('applications', id, app.updatedAt);
       if (conflict) {
         const proceed = window.confirm(
