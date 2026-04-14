@@ -169,8 +169,10 @@ const App: React.FC = () => {
     const screens = user.role === 'ADMIN'
       ? ['DASHBOARD_ADMIN', 'CURATOR', 'APPROVED_APPS', 'EVENTS_CONFIG', 'BRANDS']
       : ['DASHBOARD_EXHIBITOR', 'APPLICATIONS', 'PROFILE'];
-    const id = requestIdleCallback(() => screens.forEach(prefetchScreen), { timeout: 3000 });
-    return () => cancelIdleCallback(id);
+    const rIC = typeof requestIdleCallback === 'function' ? requestIdleCallback : (cb: () => void) => setTimeout(cb, 100) as unknown as number;
+    const cIC = typeof cancelIdleCallback === 'function' ? cancelIdleCallback : (id: number) => clearTimeout(id);
+    const id = rIC(() => screens.forEach(prefetchScreen), { timeout: 3000 });
+    return () => cIC(id);
   }, [user]);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -831,6 +833,14 @@ V příloze najdete vygenerovanou objednávku (PDF).`
   }
 
   return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6">
+          <HeartLoader size={64} className="text-lavrs-red" />
+          <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Načítám aplikaci...</p>
+        </div>
+      </div>
+    }>
     <ToastProvider currentUserId={user?.id ?? null} enabled={userRole === 'ADMIN'}>
     <div className="flex flex-col md:flex-row min-h-screen bg-lavrs-beige/30">
 
@@ -1098,6 +1108,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`
       `}</style>
     </div>
     </ToastProvider>
+    </React.Suspense>
   );
 };
 
