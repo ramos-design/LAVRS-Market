@@ -71,11 +71,13 @@ export function useAdminActivity(enabled = true) {
                     setActivities(prev => [newEntry, ...prev].slice(0, 30));
                 }
             })
-            .subscribe();
+            .subscribe((status, err) => {
+                if (err) console.warn('[AdminActivity] Realtime subscribe error:', err);
+            });
 
         return () => {
             mountedRef.current = false;
-            supabase.removeChannel(channel);
+            supabase.removeChannel(channel).catch(() => {});
         };
     }, [fetchActivities, enabled]);
 

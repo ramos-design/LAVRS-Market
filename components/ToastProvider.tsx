@@ -80,11 +80,13 @@ const ToastProvider: React.FC<{
                 const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                 setToasts(prev => [{ id, message: row.description, adminName: row.admin_name, timestamp: Date.now() }, ...prev].slice(0, MAX_TOASTS));
             })
-            .subscribe();
+            .subscribe((status, err) => {
+                if (err) console.warn('[ToastProvider] Realtime subscribe error:', err);
+            });
 
         return () => {
             mountedRef.current = false;
-            supabase.removeChannel(channel);
+            supabase.removeChannel(channel).catch(() => {});
         };
     }, [enabled, currentUserId]);
 

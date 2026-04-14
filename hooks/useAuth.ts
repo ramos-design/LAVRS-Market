@@ -138,7 +138,9 @@ export function useAuth() {
                         console.log('Profil smazán z DB, odhlašuji...');
                         signOut();
                     })
-                    .subscribe();
+                    .subscribe((status, err) => {
+                        if (err) console.warn('[Auth] profile_sync subscribe error:', err);
+                    });
             }
         });
 
@@ -146,7 +148,7 @@ export function useAuth() {
             mounted = false;
             subscription.unsubscribe();
             if (profileChannel) {
-                supabase.removeChannel(profileChannel);
+                supabase.removeChannel(profileChannel).catch(() => {});
             }
         };
     }, []);

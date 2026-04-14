@@ -63,23 +63,31 @@ export function useAdminPresence(
                 // Filter out self
                 setOnlineAdmins(admins.filter(a => a.userId !== userId));
             })
-            .subscribe(async (status) => {
+            .subscribe(async (status, err) => {
+                if (err) {
+                    console.warn('[AdminPresence] Realtime subscribe error:', err);
+                    return;
+                }
                 if (status === 'SUBSCRIBED') {
-                    await channel.track({
-                        userId,
-                        fullName,
-                        email,
-                        screen: currentScreen,
-                        lastSeen: new Date().toISOString(),
-                    });
+                    try {
+                        await channel.track({
+                            userId,
+                            fullName,
+                            email,
+                            screen: currentScreen,
+                            lastSeen: new Date().toISOString(),
+                        });
+                    } catch (e) {
+                        console.warn('[AdminPresence] track error:', e);
+                    }
                 }
             });
 
         channelRef.current = channel;
 
         return () => {
-            channel.untrack();
-            supabase.removeChannel(channel);
+            try { channel.untrack(); } catch (_) {}
+            supabase.removeChannel(channel).catch(() => {});
             channelRef.current = null;
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +102,7 @@ export function useAdminPresence(
             email,
             screen: currentScreen,
             lastSeen: new Date().toISOString(),
-        });
+        }).catch(() => {});
     }, [currentScreen, userId, fullName, email]);
 
     return { onlineAdmins };
