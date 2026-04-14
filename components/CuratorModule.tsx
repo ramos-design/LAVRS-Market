@@ -712,7 +712,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                         }
                         handleAction(selectedApp.id, AppStatus.APPROVED);
                       }}
-                      disabled={isProcessing || normalizeStatus(selectedApp.status) === AppStatus.APPROVED || normalizeStatus(selectedApp.status) === AppStatus.PAID || normalizeStatus(selectedApp.status) === AppStatus.PAYMENT_UNDER_REVIEW}
+                      disabled={isProcessing || [AppStatus.APPROVED, AppStatus.PAID, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus)}
                       className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
                         isMissingRequiredPrice
                           ? 'bg-green-300 text-white cursor-not-allowed'

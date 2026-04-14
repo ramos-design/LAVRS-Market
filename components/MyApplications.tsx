@@ -124,6 +124,10 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                                     <span className="font-medium text-gray-700">{getEventDate(app.eventId)}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-400 w-24 shrink-0">Kategorie:</span>
+                                    <span className="font-medium text-gray-700">{app.zoneCategory || 'Neuvedeno'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
                                     <span className="text-gray-400 w-24 shrink-0">Odesláno:</span>
                                     <span className="font-medium text-gray-700 flex items-center gap-1"><Clock size={12} /> {new Date(app.submittedAt).toLocaleDateString('cs-CZ')}</span>
                                 </div>
