@@ -137,8 +137,7 @@ Deno.serve(async (req) => {
             : (isAdmin ? 'Nov\u00e1 objedn\u00e1vka (admin)' : 'Nov\u00e1 objedn\u00e1vka');
 
         const footerText = isPaymentConfirmedEmail
-            ? '<p><strong>Váš příspěvek byl potvrzený!</strong></p>'
-            + '<p>Daňový doklad (fakturu) si můžete stáhnout z vaší aplikace v sekci "Mé objednávky".</p>'
+            ? '<p><strong>Váš daňový doklad najdete v příloze tohoto e-mailu.</strong></p>'
             + '<p>Děkujeme za účast na LAVRS market!</p>'
             : isAdmin
             ? '<p>V příloze najdete vygenerovanou objednávku (PDF).</p>'
@@ -146,7 +145,9 @@ Deno.serve(async (req) => {
             + '<p>Pokud jste tuto objednávku již zaplatili, tento e-mail prosím ignorujte.</p>'
             + '<p>Jakmile tým LAVRS market schválí Vaši platbu, obdržíte fakturu e-mailem a budete informováni o zařazení do eventu.</p>';
 
-        const bodyHtml = '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>'
+        const bodyHtml = (isPaymentConfirmedEmail
+            ? '<p><strong>Va\u0161e objedn\u00e1vka byla potvrzena na LAVRS market!</strong></p>'
+            : '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>')
             + orderTableHtml
             + footerText;
 
@@ -162,11 +163,8 @@ Deno.serve(async (req) => {
                 contentType: "application/pdf",
             });
             console.log(`PDF attachment: ${pdfBase64.length} base64 chars`);
-        } else if (!isPaymentConfirmedEmail) {
-            // Only warn if this is NOT a payment confirmation (where PDF generation happens elsewhere)
-            console.warn("PDF base64 missing or too short, skipping attachment");
         } else {
-            console.log("Payment confirmed: PDF will be generated separately in application");
+            console.warn("PDF base64 missing or too short, skipping attachment");
         }
 
         if (xmlString && xmlString.length > 10) {
