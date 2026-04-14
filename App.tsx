@@ -511,9 +511,26 @@ V příloze najdete vygenerovanou objednávku (PDF).`
       paymentDeadline = new Date(now.getTime() + sevenDaysMs).toISOString();
     }
 
-    // When confirming payment (PAID), regenerate PDF as "DAŇOVÝ DOKLAD" before status change
-    // so the DB trigger's send-email function can fetch it from storage
+    // When confirming payment (PAID), verify invoice exists and regenerate PDF as "DAŇOVÝ DOKLAD"
+    // before status change so the DB trigger's send-email function can fetch it from storage
     if (newStatus === AppStatus.PAID) {
+      // Check that an invoice exists — without it the payment-confirmed email
+      // will be sent with empty amount and invoice number
+      try {
+        const { invoicesDb } = await import('./lib/database');
+        const existingInvoice = await invoicesDb.getByApplicationId(id);
+        if (!existingInvoice) {
+          alert('Nelze potvrdit platbu — pro tuto přihlášku neexistuje faktura.\n\nVystavovatel musí nejprve dokončit objednávku na platební stránce, aby se vygenerovala faktura.');
+          return null;
+        }
+      } catch (err) {
+        console.warn('[Admin] Invoice check failed:', err);
+        const proceed = window.confirm(
+          'Nepodařilo se ověřit existenci faktury. Chcete přesto pokračovat?\n\nPokud faktura neexistuje, e-mail o potvrzení platby bude odeslán bez částky a čísla faktury.'
+        );
+        if (!proceed) return null;
+      }
+
       try {
         const { regeneratePaidInvoicePdf } = await import('./lib/invoice-storage');
         const paidResult = await regeneratePaidInvoicePdf(id);
