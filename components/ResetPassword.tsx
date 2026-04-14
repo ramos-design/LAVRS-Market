@@ -21,60 +21,74 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onCancel }) =>
     const [isValidRecoveryLink, setIsValidRecoveryLink] = useState(false);
 
     useEffect(() => {
+        let mounted = true;
+        let resolved = false;
+
+        const resolve = (valid: boolean, errorMsg?: string) => {
+            if (!mounted || resolved) return;
+            resolved = true;
+            if (errorMsg) setError(errorMsg);
+            setIsValidRecoveryLink(valid);
+            setSessionLoading(false);
+        };
+
+        // 1. Listener pro auth state changes — zachytí session z PKCE code exchange i implicit flow
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session) resolve(true);
+        });
+
         const checkRecoveryLink = async () => {
             try {
-                // Nejdřív zkontroluj, zda už existuje platná session (recovery už zpracován Supabase)
+                // 2. Zkontroluj, zda už Supabase vytvořil session (z detectSessionInUrl)
                 const { data: sessionData } = await supabase.auth.getSession();
                 if (sessionData.session) {
-                    setIsValidRecoveryLink(true);
-                    setSessionLoading(false);
+                    resolve(true);
                     return;
                 }
 
-                // Pokud session není, zkus zpracovat recovery token z URL fragmentu
+                // 3. Zkus PKCE code exchange manuálně (pokud detectSessionInUrl nestihl/selhal)
+                const searchParams = new URLSearchParams(window.location.search);
+                const code = searchParams.get('code');
+                if (code) {
+                    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+                    if (data.session) {
+                        resolve(true);
+                        return;
+                    }
+                    if (error) {
+                        console.warn('PKCE code exchange failed:', error.message);
+                    }
+                }
+
+                // 4. Zkus implicit flow (hash fragment)
                 const hash = window.location.hash;
-                const params = new URLSearchParams(hash.substring(1));
-                const accessToken = params.get('access_token');
-                const type = params.get('type');
-
-                if (!accessToken || type !== 'recovery') {
-                    setError('Neplatný odkaz na reset hesla. Zkuste obnovit heslo znovu.');
-                    setSessionLoading(false);
-                    return;
+                if (hash.includes('type=recovery') && hash.includes('access_token')) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    const { data } = await supabase.auth.getSession();
+                    if (data.session) {
+                        resolve(true);
+                        return;
+                    }
                 }
 
-                // Čekej na Supabase aby zpracoval token z URL
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                const { error: refreshError } = await supabase.auth.refreshSession();
-                if (refreshError) {
-                    console.warn('Refresh error (non-critical):', refreshError);
+                // 5. Jsme na /reset-password — počkáme ještě na onAuthStateChange s timeoutem
+                if (!resolved) {
+                    setTimeout(() => {
+                        resolve(false, 'Odkaz na reset hesla vypršel nebo je neplatný. Zkuste obnovit heslo znovu.');
+                    }, 5000);
                 }
-
-                const { data, error: sessionError } = await supabase.auth.getSession();
-
-                if (sessionError) {
-                    setError('Nepodařilo se ověřit relaci.');
-                    setSessionLoading(false);
-                    return;
-                }
-
-                if (!data.session) {
-                    setError('Relace nenalezena. Zkuste obnovit heslo znovu.');
-                    setSessionLoading(false);
-                    return;
-                }
-
-                setIsValidRecoveryLink(true);
             } catch (err) {
                 console.error('Recovery check error:', err);
-                setError('Nepodařilo se ověřit odkaz na reset hesla.');
-            } finally {
-                setSessionLoading(false);
+                resolve(false, 'Nepodařilo se ověřit odkaz na reset hesla.');
             }
         };
 
         checkRecoveryLink();
+
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const handleResetPassword = async (e: React.FormEvent) => {
