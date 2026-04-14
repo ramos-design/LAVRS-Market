@@ -16,6 +16,7 @@ export function useAuth() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+    const isRecoveryRef = useRef(false);
     const hasInit = useRef(false);
 
     const signOut = async () => {
@@ -63,8 +64,11 @@ export function useAuth() {
                 setError(null);
             } else {
                 // POKUD PROFIL NENÍ V DATABÁZI (Byl smazán nebo nikdy neexistoval)
-                // Pokud uživatel už v aplikaci je (není to úplně první load bez session),
-                // tak ho odhlásíme, protože jeho účet už v DB neexistuje.
+                if (isRecoveryRef.current) {
+                    // Při password recovery NEODHLAŠUJEME — uživatel potřebuje session
+                    // pro změnu hesla, i když profil neexistuje
+                    return;
+                }
                 console.warn('Profil nenalezen v DB, odhlašuji uživatele.');
                 signOut();
             }
@@ -88,6 +92,7 @@ export function useAuth() {
                 const hasCodeParam = searchParams.has('code');
 
                 if (hasHashRecovery || isRecoveryPath) {
+                    isRecoveryRef.current = true;
                     setIsPasswordRecovery(true);
                 }
 
@@ -98,6 +103,7 @@ export function useAuth() {
                 // Pokud session existuje a přišli jsme z recovery path/code, nastavíme recovery flag
                 // (PASSWORD_RECOVERY event mohl být emitován před naším subscriptionem)
                 if (session && (isRecoveryPath || hasCodeParam) && !hasInit.current) {
+                    isRecoveryRef.current = true;
                     setIsPasswordRecovery(true);
                 }
                 hasInit.current = true;
@@ -127,6 +133,7 @@ export function useAuth() {
             if (!mounted) return;
 
             if (event === 'PASSWORD_RECOVERY' && session) {
+                isRecoveryRef.current = true;
                 setIsPasswordRecovery(true);
                 fetchProfile(session.user.id, session.user.email!);
             } else if (event === 'SIGNED_IN' && session) {
@@ -178,7 +185,7 @@ export function useAuth() {
         error,
         signOut,
         isPasswordRecovery,
-        clearPasswordRecovery: () => setIsPasswordRecovery(false),
+        clearPasswordRecovery: () => { isRecoveryRef.current = false; setIsPasswordRecovery(false); },
         refetch: () => user && fetchProfile(user.id, user.email)
     };
 }
