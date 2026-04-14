@@ -296,63 +296,7 @@ Deno.serve(async (req) => {
 
         console.log("Email sent successfully!");
 
-        // 6. Auto-send invoice notification for payment-confirmed (with paid PDF attachment)
-        if (templateId === 'payment-confirmed') {
-            console.log(`For payment-confirmed, sending invoice notification email with paid PDF...`);
-            try {
-                // Extract paid PDF from already-downloaded attachments to forward as base64
-                const pdfAtt = attachments.find(a => a.filename.endsWith('.pdf'));
-                let pdfBase64 = '';
-                if (pdfAtt) {
-                    let binary = '';
-                    const chunkSize = 8192;
-                    for (let i = 0; i < pdfAtt.content.length; i += chunkSize) {
-                        const chunk = pdfAtt.content.subarray(i, Math.min(i + chunkSize, pdfAtt.content.length));
-                        binary += String.fromCharCode(...chunk);
-                    }
-                    pdfBase64 = btoa(binary);
-                    console.log(`Prepared paid PDF base64 for invoice notification: ${pdfBase64.length} chars`);
-                } else {
-                    console.warn('No paid PDF found in attachments to forward to invoice notification');
-                }
-
-                // Extract ISDOC XML from attachments
-                const xmlAtt = attachments.find(a => a.filename.endsWith('.isdoc'));
-                const xmlString = xmlAtt ? new TextDecoder().decode(xmlAtt.content) : '';
-
-                const invoiceNotificationPayload = {
-                    brandName: app.brand_name,
-                    contactPerson: app.contact_person,
-                    eventName: event.title,
-                    eventDate: event.date,
-                    eventEndDate: event.end_date || null,
-                    zoneCategory: app.zone_category,
-                    invoiceNumber: invoiceData?.invoice_number || 'N/A',
-                    totalAmountCzk: invoiceData?.amount_czk ? (invoiceData.amount_czk / 100).toFixed(2) : '0',
-                    pdfBase64: pdfBase64 || undefined,
-                    xmlString: xmlString || undefined,
-                    recipientEmail: app.email,
-                    recipientType: 'exhibitor',
-                    isPaymentConfirmed: true,
-                };
-
-                const invoiceRes = await fetch('https://wllstifewvjtdrzfgbxj.supabase.co/functions/v1/send-invoice-notification', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(invoiceNotificationPayload),
-                });
-
-                if (!invoiceRes.ok) {
-                    console.warn(`send-invoice-notification returned ${invoiceRes.status}: ${await invoiceRes.text()}`);
-                } else {
-                    console.log(`send-invoice-notification (payment-confirmed) sent successfully`);
-                }
-            } catch (invoiceErr: any) {
-                console.warn(`Failed to send invoice notification: ${invoiceErr.message}`, 'continuing...');
-            }
-        }
-
-        // 7. Send admin notification if payment is confirmed
+        // 6. Send admin notification if payment is confirmed
         if (templateId === 'payment-confirmed') {
             console.log(`Sending 'payment-approved-admin' to admin (${adminEmail})...`);
             try {

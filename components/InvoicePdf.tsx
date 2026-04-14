@@ -23,11 +23,11 @@ Font.register({
     family: 'Roboto',
     fonts: [
         {
-            src: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf',
+            src: 'https://cdn.jsdelivr.net/gh/googlefonts/roboto/src/hinted/Roboto-Regular.ttf',
             fontWeight: 'normal',
         },
         {
-            src: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf',
+            src: 'https://cdn.jsdelivr.net/gh/googlefonts/roboto/src/hinted/Roboto-Medium.ttf',
             fontWeight: 'bold',
         },
     ],
