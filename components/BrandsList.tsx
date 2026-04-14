@@ -291,18 +291,17 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
         <table className="min-w-full text-sm table-fixed" style={{ minWidth: '900px' }}>
           <thead className="bg-lavrs-beige/50 text-gray-500 text-[10px] uppercase tracking-widest">
             <tr>
-              <th className="text-left px-6 py-4 w-[18%]">Značka</th>
-              <th className="text-left px-6 py-4 w-[18%]">Kontakt</th>
-              <th className="text-left px-6 py-4 w-[18%]">Fakturace</th>
-              <th className="text-left px-6 py-4 w-[14%]">Kategorie zóny</th>
-              <th className="text-left px-6 py-4 w-[16%]">Akce / Stav</th>
-              <th className="text-right px-6 py-4 w-[16%]">Akce</th>
+              <th className="text-left px-6 py-4 w-[28%]">Značka</th>
+              <th className="text-left px-6 py-4 w-[24%]">Kontakt</th>
+              <th className="text-left px-6 py-4 w-[18%]">Kategorie zóny</th>
+              <th className="text-left px-6 py-4 w-[18%]">Akce / Stav</th>
+              <th className="text-right px-6 py-4 w-[12%]">Akce</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={6}>
+                <td className="px-6 py-10 text-center text-gray-400 font-bold uppercase tracking-widest" colSpan={5}>
                   Nic nenalezeno
                 </td>
               </tr>
@@ -347,49 +346,19 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                         <div className="font-semibold text-gray-700 truncate">{row.contactPerson || '—'}</div>
                         <div className="text-[11px] text-gray-400 truncate">{row.email || '—'}</div>
                       </td>
-                      <td className="px-6 py-4 max-w-0">
-                        <div className="font-semibold text-gray-700 text-xs truncate">{row.billingName || '—'}</div>
-                        {(row.ic || row.dic) && (
-                          <div className="text-[11px] text-gray-400">
-                            {row.ic && <span>IČ: {row.ic}</span>}
-                            {row.ic && row.dic && <span> · </span>}
-                            {row.dic && <span>DIČ: {row.dic}</span>}
-                          </div>
-                        )}
-                        {row.billingAddress && (
-                          <div className="text-[11px] text-gray-400 truncate max-w-[180px]" title={row.billingAddress}>{row.billingAddress}</div>
-                        )}
-                      </td>
                       <td className="px-6 py-4 font-semibold text-gray-700">{getZoneCategoryLabel(row.zoneCategory)}</td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-700">{row.lastEventTitle || '—'}</div>
                         <div className="text-[11px] text-gray-400">{row.statusLabel || '—'}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end">
                           <button
                             onClick={(e) => { e.stopPropagation(); editingBrandId === row.id ? cancelEditing() : startEditing(row); }}
                             className={`px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border transition-colors ${editingBrandId === row.id ? 'border-lavrs-red text-lavrs-red bg-red-50' : 'border-gray-200 text-gray-600 hover:border-lavrs-red hover:text-lavrs-red'}`}
                           >
                             {editingBrandId === row.id ? 'Zavřít' : 'Upravit'}
                           </button>
-                          {onTrashBrand && row.profileId ? (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setTrashConfirm({ profileId: row.profileId!, name: row.brandName }); }}
-                              className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1"
-                            >
-                              <Trash2 size={11} />
-                              Do koše
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteBrand(row); }}
-                              disabled={deletingBrandId === row.profileId}
-                              className="px-3 py-1.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {deletingBrandId === row.profileId ? 'Mažu...' : 'Smazat'}
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -397,7 +366,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                     {/* Expanded Gallery Row */}
                     {isExpanded && hasMedia && editingBrandId !== row.id && (
                       <tr className="border-t border-lavrs-red/10">
-                        <td colSpan={6} className="px-6 py-5 bg-lavrs-beige/10">
+                        <td colSpan={5} className="px-6 py-5 bg-lavrs-beige/10">
                           <div className="flex items-start gap-6">
                             {bp?.logoUrl && (
                               <div className="shrink-0">
@@ -429,7 +398,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                     {/* Inline Edit Form Row */}
                     {editingBrandId === row.id && editForm && (
                       <tr className="border-t-2 border-lavrs-red/20">
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={5} className="p-0">
                           <div className="bg-lavrs-beige/10 p-6 md:p-8 space-y-8 animate-fadeIn">
                             {/* Gallery preview */}
                             {hasMedia && (
@@ -605,21 +574,32 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); cancelEditing(); }}
-                                className="px-6 py-2.5 rounded-none text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-lavrs-dark transition-colors"
-                              >
-                                Zrušit
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleSaveEdit(); }}
-                                disabled={!editForm.brandName.trim() || saving}
-                                className={`px-8 py-2.5 rounded-none text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${!editForm.brandName.trim() || saving ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark shadow-lg'}`}
-                              >
-                                {saving ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
-                                {saving ? 'Ukládám...' : 'Uložit úpravy'}
-                              </button>
+                            <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
+                              {onTrashBrand && row.profileId ? (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setTrashConfirm({ profileId: row.profileId!, name: row.brandName }); }}
+                                  className="px-5 py-2.5 rounded-none text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                >
+                                  <Trash2 size={14} />
+                                  Přesunout do koše
+                                </button>
+                              ) : <div />}
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); cancelEditing(); }}
+                                  className="px-6 py-2.5 rounded-none text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-lavrs-dark transition-colors"
+                                >
+                                  Zrušit
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleSaveEdit(); }}
+                                  disabled={!editForm.brandName.trim() || saving}
+                                  className={`px-8 py-2.5 rounded-none text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${!editForm.brandName.trim() || saving ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark shadow-lg'}`}
+                                >
+                                  {saving ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
+                                  {saving ? 'Ukládám...' : 'Uložit úpravy'}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </td>
