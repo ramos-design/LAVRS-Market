@@ -71,8 +71,19 @@ const Auth: React.FC<AuthProps> = ({ onSuccess }) => {
                     throw error;
                 }
 
-                if (data.user && data.user.identities?.length === 0) {
-                    throw new Error('Tento e-mail je již zaregistrován. Zkuste se přihlásit.');
+                // Detect duplicate email registration:
+                // Case 1: Confirmed user — Supabase returns empty identities
+                // Case 2: Unconfirmed user — Supabase returns the existing user
+                //         with original created_at (not current time)
+                if (data.user) {
+                    const isEmptyIdentities = data.user.identities?.length === 0;
+                    const createdAt = new Date(data.user.created_at).getTime();
+                    const now = Date.now();
+                    const isExistingUser = (now - createdAt) > 10000; // created >10s ago
+
+                    if (isEmptyIdentities || isExistingUser) {
+                        throw new Error('Účet s tímto e-mailem je již zaregistrovaný. Zkuste se přihlásit.');
+                    }
                 }
 
                 setShowSuccess(true);
