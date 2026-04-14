@@ -80,8 +80,14 @@ export function useAuth() {
         const initAuth = async () => {
             try {
                 // Detekce recovery tokenu v URL při prvním načtení
+                // Podporuje: implicit flow (hash), PKCE flow (code param), pathname /reset-password
                 const hash = window.location.hash;
-                if (hash.includes('type=recovery') && hash.includes('access_token')) {
+                const searchParams = new URLSearchParams(window.location.search);
+                const hasHashRecovery = hash.includes('type=recovery') && hash.includes('access_token');
+                const isRecoveryPath = window.location.pathname.includes('/reset-password');
+                const hasCodeParam = searchParams.has('code');
+
+                if (hasHashRecovery || isRecoveryPath) {
                     setIsPasswordRecovery(true);
                 }
 
@@ -89,8 +95,21 @@ export function useAuth() {
 
                 if (!mounted) return;
 
+                // Pokud session existuje a přišli jsme z recovery path/code, nastavíme recovery flag
+                // (PASSWORD_RECOVERY event mohl být emitován před naším subscriptionem)
+                if (session && (isRecoveryPath || hasCodeParam) && !hasInit.current) {
+                    setIsPasswordRecovery(true);
+                }
+                hasInit.current = true;
+
                 if (session) {
                     fetchProfile(session.user.id, session.user.email!);
+                } else if (isRecoveryPath || hasCodeParam) {
+                    // Čekáme na PKCE code exchange - necháme loading true
+                    // onAuthStateChange to zachytí, ale dáme timeout pro případ selhání
+                    setTimeout(() => {
+                        if (mounted) setLoading(false);
+                    }, 5000);
                 } else {
                     setLoading(false);
                 }

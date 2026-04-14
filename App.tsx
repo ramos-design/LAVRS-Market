@@ -859,10 +859,11 @@ V příloze najdete vygenerovanou objednávku (PDF).`
     const isResetPasswordPage = window.location.pathname.includes('/auth/reset-password') ||
                               window.location.pathname.includes('/reset-password');
 
-    // Zkontroluj, zda v URL je recovery token
+    // Zkontroluj, zda v URL je recovery token (implicit flow: hash, PKCE flow: code param)
     const hasRecoveryToken = window.location.hash.includes('type=recovery') && window.location.hash.includes('access_token');
+    const hasCodeParam = new URLSearchParams(window.location.search).has('code');
 
-    if (isResetPasswordPage || hasRecoveryToken) {
+    if (isResetPasswordPage || hasRecoveryToken || (hasCodeParam && !user)) {
       return (
         <React.Suspense fallback={
           <div className="min-h-screen bg-[#0F0F12] flex items-center justify-center">
