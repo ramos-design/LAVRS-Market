@@ -736,8 +736,8 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
-                      disabled={isProcessing || normalizeStatus(selectedApp.status) !== AppStatus.APPROVED}
-                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${normalizeStatus(selectedApp.status) === AppStatus.APPROVED
+                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus)
                         ? 'bg-amber-500 text-white hover:bg-amber-600'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
@@ -747,8 +747,8 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
-                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus))}
-                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus)
+                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus)
                         ? 'bg-orange-600 text-white hover:bg-orange-700'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}

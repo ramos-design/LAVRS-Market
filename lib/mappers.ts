@@ -345,6 +345,7 @@ export function dbCompanySettingsToApp(cs: DbCompanySettings): CompanySettings {
         bankSwift: cs.bank_swift || undefined,
         invoiceDueDays: cs.invoice_due_days,
         invoiceNote: cs.invoice_note || undefined,
+        accountingEmail: cs.accounting_email || undefined,
         updatedAt: cs.updated_at || '',
     };
 }

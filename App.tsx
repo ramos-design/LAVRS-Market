@@ -542,9 +542,11 @@ V příloze najdete vygenerovanou objednávku (PDF).`
                 eventName: event?.title || '',
                 eventDate: event?.date || '',
                 eventEndDate: event?.endDate || null,
+                eventLocation: event?.location || '',
                 zoneCategory: app.zoneCategory || '',
                 invoiceNumber: paidResult.invoiceNumber || '',
-                totalAmountCzk: paidResult.amountCzk ? String(paidResult.amountCzk / 100) : '',
+                totalAmountCzk: paidResult.amountCzk ? new Intl.NumberFormat('cs-CZ').format(paidResult.amountCzk / 100) : '',
+                paymentDeadline: app.paymentDeadline || '',
                 pdfBase64,
                 xmlString: paidResult.xmlString || '',
                 recipientEmail: app.billingEmail || app.email,
@@ -570,6 +572,18 @@ V příloze najdete vygenerovanou objednávku (PDF).`
                 console.warn('[Admin] Payment confirmed email to admin failed:', adminErr);
               } else {
                 console.log('[Admin] Payment confirmed email sent to admin');
+              }
+
+              // Send to accounting email (from company settings)
+              if (companySettings?.accountingEmail) {
+                const { error: accErr } = await supabase.functions.invoke('send-invoice-notification', {
+                  body: { ...emailPayload, recipientType: 'admin', recipientEmail: companySettings.accountingEmail },
+                });
+                if (accErr) {
+                  console.warn('[Admin] Accounting email failed:', accErr);
+                } else {
+                  console.log('[Admin] Accounting email sent to:', companySettings.accountingEmail);
+                }
               }
             } catch (emailErr) {
               console.warn('[Admin] Failed to send payment confirmed email directly:', emailErr);

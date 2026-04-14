@@ -767,7 +767,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                                 eventEndDate: activeEvent.endDate || null,
                                 zoneCategory: activeApp.zoneCategory || '',
                                 invoiceNumber: invoiceResult.invoiceNumber,
-                                totalAmountCzk: String(invoiceResult.totalAmountCzk || totalAmount),
+                                totalAmountCzk: new Intl.NumberFormat('cs-CZ').format(invoiceResult.totalAmountWithDph ? invoiceResult.totalAmountWithDph / 100 : totalAmount),
                                 pdfBase64,
                                 xmlString: invoiceResult.xmlString || '',
                                 recipientEmail: activeApp.billingEmail || activeApp.email,
@@ -784,7 +784,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({
                                 console.log('[Email] Exhibitor invoice notification sent to:', emailPayload.recipientEmail);
                               }
 
-                              // Send to admin
+                              // Send to admin (accounting email only gets payment-confirmed, not order)
                               const { error: adminEmailErr } = await supabase.functions.invoke('send-invoice-notification', {
                                 body: { ...emailPayload, recipientType: 'admin', recipientEmail: undefined },
                               });

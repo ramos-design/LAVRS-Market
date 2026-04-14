@@ -233,6 +233,10 @@ const BrandGallerySection: React.FC<{
     }, [brand.id, galleryUrls, userId, onUpdate]);
 
     const handleDeleteGalleryImage = useCallback(async (url: string) => {
+        if (galleryUrls.length <= MIN_GALLERY_IMAGES) {
+            alert(`Nelze smazat – v galerii musí být minimálně ${MIN_GALLERY_IMAGES} fotky.`);
+            return;
+        }
         setDeleting(url);
         try {
             await deleteBrandImage(url);
@@ -245,7 +249,8 @@ const BrandGallerySection: React.FC<{
         }
     }, [brand.id, galleryUrls, onUpdate]);
 
-    const isBelowMinimum = galleryUrls.length > 0 && galleryUrls.length < MIN_GALLERY_IMAGES;
+    const isBelowMinimum = galleryUrls.length < MIN_GALLERY_IMAGES;
+    const canDelete = galleryUrls.length > MIN_GALLERY_IMAGES;
 
     return (
         <div className="space-y-6 pt-6 border-t border-gray-100">
@@ -352,8 +357,9 @@ const BrandGallerySection: React.FC<{
                             <img src={url} alt={`Galerie ${i + 1}`} className="w-full h-full object-cover" />
                             <button
                                 onClick={() => handleDeleteGalleryImage(url)}
-                                disabled={deleting === url}
-                                className="absolute top-1.5 right-1.5 w-7 h-7 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                disabled={deleting === url || !canDelete}
+                                className={`absolute top-1.5 right-1.5 w-7 h-7 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${canDelete ? 'bg-black/60 hover:bg-red-600' : 'bg-black/30 cursor-not-allowed'}`}
+                                title={!canDelete ? `Minimum je ${MIN_GALLERY_IMAGES} fotek` : 'Smazat fotku'}
                             >
                                 {deleting === url ? (
                                     <Loader size={14} className="animate-spin" />
@@ -417,6 +423,12 @@ const ProfileInner: React.FC<ProfileProps> = () => {
     }, [dbApps]);
 
     const isBrandApproved = useCallback((brandName: string) => approvedBrandNames.has(brandName.toLowerCase()), [approvedBrandNames]);
+
+    /** For approved brands, check if logo + minimum gallery images are uploaded */
+    const isGalleryRequirementMet = useCallback((brand: BrandProfile): boolean => {
+        if (!isBrandApproved(brand.brandName)) return true;
+        return !!brand.logoUrl && (brand.galleryUrls?.length || 0) >= MIN_GALLERY_IMAGES;
+    }, [isBrandApproved]);
 
     const handleGalleryUpdate = useCallback(async (brandId: string, updates: { logo_url?: string | null; gallery_urls?: string[] }) => {
         try {
@@ -486,6 +498,16 @@ const ProfileInner: React.FC<ProfileProps> = () => {
             if (!editForm.brandName.trim()) {
                 alert('Název značky je povinný údaj.');
                 return;
+            }
+            // For approved brands, require logo + minimum gallery images
+            const currentBrand = brands.find(b => b.id === editForm.id);
+            if (currentBrand && isBrandApproved(currentBrand.brandName)) {
+                const hasLogo = !!currentBrand.logoUrl;
+                const galleryCount = currentBrand.galleryUrls?.length || 0;
+                if (!hasLogo || galleryCount < MIN_GALLERY_IMAGES) {
+                    alert(`Pro uložení profilu je nutné nahrát logo a minimálně ${MIN_GALLERY_IMAGES} fotky do galerie.`);
+                    return;
+                }
             }
             const dbBrand = appBrandProfileToDb(editForm, authUser?.id);
             const exists = brands.find(b => b.id === editForm.id);
@@ -721,8 +743,8 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                         </button>
                                         <button
                                             onClick={handleSave}
-                                            disabled={!editForm.brandName.trim()}
-                                            className={`px-8 py-2.5 rounded-none font-bold transition-all shadow-lg flex items-center gap-2 text-xs ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
+                                            disabled={!editForm.brandName.trim() || !isGalleryRequirementMet(brand)}
+                                            className={`px-8 py-2.5 rounded-none font-bold transition-all shadow-lg flex items-center gap-2 text-xs ${(!editForm.brandName.trim() || !isGalleryRequirementMet(brand)) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
                                         >
                                             <Check size={16} /> Uložit úpravy
                                         </button>
@@ -743,6 +765,23 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                         </div>
                                     )}
 
+                                    {/* Gallery requirement warning — blocks save for approved brands */}
+                                    {isBrandApproved(brand.brandName) && !isGalleryRequirementMet(brand) && (
+                                        <div className="bg-red-50 border-2 border-red-200 px-5 py-4 flex items-start gap-3">
+                                            <Info size={18} className="text-red-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-sm font-bold text-red-700">Pro uložení profilu je nutné doplnit:</p>
+                                                <ul className="text-xs text-red-600 mt-1.5 space-y-1">
+                                                    {!brand.logoUrl && <li>• Logo značky</li>}
+                                                    {(brand.galleryUrls?.length || 0) < MIN_GALLERY_IMAGES && (
+                                                        <li>• Minimálně {MIN_GALLERY_IMAGES} fotky v galerii (nahráno: {brand.galleryUrls?.length || 0}/{MIN_GALLERY_IMAGES})</li>
+                                                    )}
+                                                </ul>
+                                                <p className="text-[11px] text-red-500 mt-2">Dokud nenahrajete logo a fotky, tlačítko „Uložit úpravy" zůstane neaktivní.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* BOTTOM ACTION BAR — desktop only */}
                                     <div className="hidden md:flex items-center justify-end gap-3 md:gap-4 pt-6 mt-6 border-t border-gray-100">
                                         <button
@@ -753,8 +792,8 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                         </button>
                                         <button
                                             onClick={handleSave}
-                                            disabled={!editForm.brandName.trim()}
-                                            className={`px-10 py-4 rounded-none font-bold transition-all shadow-xl flex items-center gap-2 ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
+                                            disabled={!editForm.brandName.trim() || !isGalleryRequirementMet(brand)}
+                                            className={`px-10 py-4 rounded-none font-bold transition-all shadow-xl flex items-center gap-2 ${(!editForm.brandName.trim() || !isGalleryRequirementMet(brand)) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-lavrs-red text-white hover:bg-lavrs-dark'}`}
                                         >
                                             <Check size={18} /> Uložit úpravy
                                         </button>
@@ -784,8 +823,8 @@ const ProfileInner: React.FC<ProfileProps> = () => {
                                         </button>
                                         <button
                                             onClick={handleSave}
-                                            disabled={!editForm.brandName.trim()}
-                                            className={`flex-[2] py-3 rounded-none font-bold transition-all flex items-center justify-center gap-2 text-xs ${!editForm.brandName.trim() ? 'bg-gray-200 text-gray-400' : 'bg-lavrs-red text-white shadow-lg'}`}
+                                            disabled={!editForm.brandName.trim() || !isGalleryRequirementMet(brand)}
+                                            className={`flex-[2] py-3 rounded-none font-bold transition-all flex items-center justify-center gap-2 text-xs ${(!editForm.brandName.trim() || !isGalleryRequirementMet(brand)) ? 'bg-gray-200 text-gray-400' : 'bg-lavrs-red text-white shadow-lg'}`}
                                         >
                                             <Check size={16} /> Uložit úpravy
                                         </button>

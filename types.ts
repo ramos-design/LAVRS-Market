@@ -204,5 +204,6 @@ export interface CompanySettings {
   email?: string;
   registrationInfo?: string;
   issuedBy?: string;
+  accountingEmail?: string;
   updatedAt: string;
 }

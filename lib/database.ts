@@ -857,6 +857,7 @@ export interface DbCompanySettings {
     bank_swift?: string | null;
     invoice_due_days: number;
     invoice_note?: string | null;
+    accounting_email?: string | null;
     updated_at?: string;
 }
 

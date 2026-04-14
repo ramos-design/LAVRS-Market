@@ -1,4 +1,8 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6";
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
@@ -107,10 +111,13 @@ Deno.serve(async (req) => {
             recipientEmail,
             recipientType,
             isPaymentConfirmed,
+            paymentDeadline,
+            eventLocation,
         } = payload;
 
         const recipient = recipientEmail || TEST_RECIPIENT;
         const isAdmin = recipientType === 'admin';
+        const isPaymentConfirmedEmail = isPaymentConfirmed === true;
 
         console.log(`--- Invoice Notification ---`);
         console.log(`Brand: ${brandName}, Event: ${eventName}, Category: ${zoneCategory}`);
@@ -126,32 +133,101 @@ Deno.serve(async (req) => {
             zoneCategory, invoiceNumber, totalAmountCzk
         );
 
-        // --- Build hardcoded fallback template (always works, even without DB) ---
-        console.log("Using hardcoded fallback template (no DB fetch required).");
-        const isPaymentConfirmedEmail = isPaymentConfirmed === true;
-        const subject = isPaymentConfirmedEmail
-            ? `Platba ov\u011b\u0159ena: ${brandName} \u2014 ${eventName} (${zoneCategory})`
-            : `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
-        const emailTitle = isPaymentConfirmedEmail
-            ? (isAdmin ? 'Platba ov\u011b\u0159ena (admin)' : 'Platba ov\u011b\u0159ena')
-            : (isAdmin ? 'Nov\u00e1 objedn\u00e1vka (admin)' : 'Nov\u00e1 objedn\u00e1vka');
+        // --- Determine which DB template to use ---
+        // Order confirmation: invoice-notification (exhibitor) / invoice-notification-admin (admin)
+        // Payment confirmed: payment-confirmed for ALL recipients (exhibitor + admin + accounting)
+        const templateId = isPaymentConfirmedEmail
+            ? 'payment-confirmed'
+            : (isAdmin ? 'invoice-notification-admin' : 'invoice-notification');
 
-        const footerText = isPaymentConfirmedEmail
-            ? '<p><strong>Váš daňový doklad najdete v příloze tohoto e-mailu.</strong></p>'
-            + '<p>Děkujeme za účast na LAVRS market!</p>'
-            : isAdmin
-            ? '<p>V příloze najdete vygenerovanou objednávku (PDF).</p>'
-            : '<p>V příloze najdete vygenerovanou objednávku (PDF).</p>'
-            + '<p>Pokud jste tuto objednávku již zaplatili, tento e-mail prosím ignorujte.</p>'
-            + '<p>Jakmile tým LAVRS market schválí Vaši platbu, obdržíte fakturu e-mailem a budete informováni o zařazení do eventu.</p>';
+        // --- Try to fetch template from DB ---
+        let subject = '';
+        let finalHtml = '';
+        let templateUsed = 'fallback';
 
-        const bodyHtml = (isPaymentConfirmedEmail
-            ? '<p><strong>Va\u0161e objedn\u00e1vka byla potvrzena na LAVRS market!</strong></p>'
-            : '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>')
-            + orderTableHtml
-            + footerText;
+        try {
+            const supabase = createClient(supabaseUrl, supabaseServiceKey);
+            const { data: template, error: tmplError } = await supabase
+                .from('email_templates')
+                .select('*')
+                .eq('id', templateId)
+                .single();
 
-        const finalHtml = buildEmailHtml(emailTitle, bodyHtml);
+            if (!tmplError && template && template.enabled) {
+                console.log(`Using DB template: ${templateId} (${template.name})`);
+                templateUsed = templateId;
+
+                let body = template.body || '';
+                subject = template.subject || '';
+
+                // Build substitution variables
+                const formattedDeadline = paymentDeadline
+                    ? new Date(paymentDeadline).toLocaleDateString('cs-CZ')
+                    : '';
+                const vars: Record<string, string> = {
+                    '{{brand_name}}': brandName || '',
+                    '{{contact_person}}': contactPerson || '',
+                    '{{event_name}}': eventName || '',
+                    '{{event_date}}': formattedEventDate,
+                    '{{event_location}}': eventLocation || '',
+                    '{{zone_type}}': zoneCategory || '',
+                    '{{invoice_amount}}': totalAmountCzk ? `${totalAmountCzk} K\u010d` : '',
+                    '{{invoice_number}}': invoiceNumber || '',
+                    '{{payment_deadline}}': formattedDeadline,
+                };
+
+                // Replace text variables in body and subject
+                Object.entries(vars).forEach(([k, v]) => {
+                    body = body.split(k).join(v);
+                    subject = subject.split(k).join(v);
+                });
+
+                // Handle {{order_table}}: replace with placeholder before HTML escaping
+                const ORDER_TABLE_PLACEHOLDER = '___ORDER_TABLE___';
+                body = body.split('{{order_table}}').join(ORDER_TABLE_PLACEHOLDER);
+
+                // Escape body text and convert newlines to <br>
+                const escapedBody = escapeHtml(body).replace(/\n/g, '<br>');
+
+                // Put back the order table HTML (placeholder has no HTML chars, stays intact after escaping)
+                const bodyHtml = escapedBody.split(ORDER_TABLE_PLACEHOLDER).join(orderTableHtml);
+
+                finalHtml = buildEmailHtml(template.name || 'LAVRS market', bodyHtml);
+            } else {
+                const reason = tmplError ? tmplError.message : (!template ? 'not found' : 'disabled');
+                console.log(`DB template '${templateId}' unavailable (${reason}), using hardcoded fallback.`);
+            }
+        } catch (dbErr: any) {
+            console.warn(`DB template fetch failed: ${dbErr.message}. Using hardcoded fallback.`);
+        }
+
+        // --- Hardcoded fallback (if DB template was not available) ---
+        if (!finalHtml) {
+            console.log("Using hardcoded fallback template.");
+            subject = isPaymentConfirmedEmail
+                ? `Platba ov\u011b\u0159ena: ${brandName} \u2014 ${eventName} (${zoneCategory})`
+                : `Nov\u00e1 objedn\u00e1vka: ${brandName} \u2014 ${eventName} (${zoneCategory})`;
+            const emailTitle = isPaymentConfirmedEmail
+                ? (isAdmin ? 'Platba ov\u011b\u0159ena (admin)' : 'Platba ov\u011b\u0159ena')
+                : (isAdmin ? 'Nov\u00e1 objedn\u00e1vka (admin)' : 'Nov\u00e1 objedn\u00e1vka');
+
+            const footerText = isPaymentConfirmedEmail
+                ? '<p><strong>V\u00e1\u0161 da\u0148ov\u00fd doklad najdete v p\u0159\u00edloze tohoto e-mailu.</strong></p>'
+                + '<p>D\u011bkujeme za \u00fa\u010dast na LAVRS market!</p>'
+                : isAdmin
+                ? '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
+                : '<p>V p\u0159\u00edloze najdete vygenerovanou objedn\u00e1vku (PDF).</p>'
+                + '<p>Pokud jste tuto objedn\u00e1vku ji\u017e zaplatili, tento e-mail pros\u00edm ignorujte.</p>'
+                + '<p>Jakmile t\u00fdm LAVRS market schv\u00e1l\u00ed Va\u0161i platbu, obdr\u017e\u00edte fakturu e-mailem a budete informov\u00e1ni o za\u0159azen\u00ed do eventu.</p>';
+
+            const bodyHtml = (isPaymentConfirmedEmail
+                ? '<p><strong>Va\u0161e objedn\u00e1vka byla potvrzena na LAVRS market!</strong></p>'
+                : '<p><strong>Nov\u00e1 objedn\u00e1vka na LAVRS market!</strong></p>')
+                + orderTableHtml
+                + footerText;
+
+            finalHtml = buildEmailHtml(emailTitle, bodyHtml);
+        }
 
         // --- Build attachments ---
         const attachments: { filename: string; content: Uint8Array; contentType: string }[] = [];
@@ -167,16 +243,17 @@ Deno.serve(async (req) => {
             console.warn("PDF base64 missing or too short, skipping attachment");
         }
 
-        if (xmlString && xmlString.length > 10) {
-            const encoder = new TextEncoder();
+        // Attach ISDOC XML for DAŇOVÝ DOKLAD (payment confirmed) emails
+        if (isPaymentConfirmedEmail && xmlString && xmlString.length > 10) {
+            const xmlBytes = new TextEncoder().encode(xmlString);
             attachments.push({
-                filename: `${invoiceNumber || "objednavka"}.isdoc`,
-                content: encoder.encode(xmlString),
+                filename: `${invoiceNumber || "faktura"}.isdoc`,
+                content: xmlBytes,
                 contentType: "application/xml",
             });
-            console.log(`ISDOC XML attachment: ${xmlString.length} chars`);
-        } else {
-            console.warn("XML string missing or too short, skipping attachment");
+            console.log(`ISDOC XML attached: ${xmlString.length} chars`);
+        } else if (xmlString && xmlString.length > 10) {
+            console.log(`ISDOC XML available (${xmlString.length} chars) — not attached for order confirmation`);
         }
 
         // --- Send email via SMTP ---
@@ -207,7 +284,7 @@ Deno.serve(async (req) => {
         console.log("Invoice notification email sent successfully!");
 
         return new Response(
-            JSON.stringify({ message: "Invoice notification sent", recipient, attachmentCount: attachments.length, templateUsed: 'fallback' }),
+            JSON.stringify({ message: "Invoice notification sent", recipient, attachmentCount: attachments.length, templateUsed }),
             { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://rezervace.lavrsmarket.cz" } }
         );
     } catch (err: any) {

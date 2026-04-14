@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Mail, Edit, Eye, Copy, Plus, CheckCircle, X, Upload, Paperclip, Trash2, Save, ArrowLeft, FileText, AlertCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import { useEmailTemplates, useEmailAttachments } from '../hooks/useSupabase';
-import { DbEmailTemplate, DbEmailAttachment } from '../lib/database';
+import { useEmailTemplates, useEmailAttachments, useCompanySettings } from '../hooks/useSupabase';
+import { DbEmailTemplate, DbEmailAttachment, companySettingsDb } from '../lib/database';
 
 type EditorMode = 'list' | 'edit' | 'preview';
 
@@ -74,12 +74,15 @@ Tým LAVRS market`,
 
     'payment-confirmed': `Dobrý den, {{contact_person}},
 
-potvrzujeme přijetí Vaší platby za účast na {{event_name}} ({{event_date}}).
+potvrzujeme přijetí Vaší platby za účast na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
 
-Částka: {{invoice_amount}}
-Číslo faktury: {{invoice_number}}
+{{order_table}}
 
-Vaše místo je nyní závazně rezervováno. Organizační instrukce Vám zašleme několik dní před akcí.
+Vaše místo je nyní závazně rezervováno. ✅
+
+Váš daňový doklad (fakturu) najdete v příloze tohoto e-mailu.
+
+Organizační instrukce Vám zašleme několik dní před akcí.
 
 Děkujeme a těšíme se na Vás!
 
@@ -127,36 +130,6 @@ Jakmile tým LAVRS market schválí Vaši platbu, obdržíte fakturu e-mailem a 
 
 V příloze najdete vygenerovanou objednávku (PDF).`,
 
-    'payment-submitted': `Dobrý den, {{contact_person}},
-
-děkujeme za potvrzení objednávky za účast na {{event_name}} ({{event_date}}) za značku {{brand_name}}.
-
-Vaše objednávka – výzva k platbě je přiložena v příloze tohoto emailu.
-
-Číslo objednávky: {{invoice_number}}
-Částka k úhradě: {{invoice_amount}}
-Splatnost: {{payment_deadline}}
-
-Prosím, zkontrolujte údaje objednávky. Pokud jste platbu již provedli, tento e-mail ignorujte a vyčkejte na její schválení.
-
-Jakmile bude Vaše platba připsána na náš účet a schválena týmem LAVRS market, budete informováni a zařazeni do eventu.
-
-S pozdravem,
-Tým LAVRS market`,
-
-    'payment-approved-admin': `Ověřená platba - nová objednávka!
-
-{{order_table}}
-
-Status: ✅ Platba ověřena a schválena
-
-Značka: {{brand_name}}
-Event: {{event_name}} ({{event_date}})
-Kategorie spotu: {{zone_type}}
-Částka k úhradě: {{invoice_amount}}
-Číslo objednávky: {{invoice_number}}
-
-V příloze je finální faktura (PDF).`,
 };
 
 /* ─── Required template definitions for auto-seeding ─────────── */
@@ -165,19 +138,18 @@ const REQUIRED_TEMPLATES: Record<string, { name: string; subject: string; descri
     'application-approved': { name: 'Schválení přihlášky', subject: 'Gratulujeme! Vaše přihláška byla schválena – {{event_name}}', description: 'Email s potvrzením schválení a přiloženou fakturou k úhradě.', category: 'application' },
     'application-rejected': { name: 'Zamítnutí přihlášky', subject: 'Informace o vaší přihlášce na {{event_name}}', description: 'Zdvořilé zamítnutí přihlášky s možností zápisu na waitlist.', category: 'application' },
     'application-waitlist': { name: 'Schválení přihlášky, není kapacita, možnost waitlistu', subject: 'Výsledek přihlášky na {{event_name}}', description: 'Schválení přihlášky do budoucna (nyní není místo).', category: 'application' },
-    'payment-confirmed': { name: 'Potvrzení přijaté platby', subject: 'Platba přijata - {{event_name}}', description: 'Potvrzení o úspěšném přijetí platby za event.', category: 'payment' },
+    'payment-confirmed': { name: 'Platba ověřena — daňový doklad', subject: 'Platba ověřena — {{brand_name}} — {{event_name}}', description: 'Odesláno vystavovateli, když administrátor ověří a schválí platbu (status → ZAPLACENO). Potvrzuje rezervaci místa a v příloze obsahuje daňový doklad (PDF). Šablona je editovatelná.', category: 'payment' },
     'payment-reminder': { name: 'Platební upomínka', subject: 'Připomínka platby - {{event_name}}', description: 'Upomínka na blížící se termín splatnosti faktury.', category: 'payment' },
     'payment-last-call': { name: 'Platební upomínka - Last Call', subject: 'URGENTNÍ: Poslední výzva k úhradě – {{event_name}}', description: 'Finální upomínka před zrušením rezervace místa.', category: 'payment' },
-    'payment-submitted': { name: 'Potvrzení odeslání platby', subject: 'Vaše platba byla odeslána - {{event_name}}', description: 'Automatický email odeslaný vystavovateli ihned po potvrzení platby. V příloze je automaticky přiložena faktura.', category: 'payment' },
-    'invoice-notification': { name: 'Nová objednávka (vystavovatel)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný vystavovateli po vygenerování objednávky s PDF přílohou.', category: 'payment' },
-    'invoice-notification-admin': { name: 'Nová objednávka (admin)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný adminovi po vygenerování objednávky.', category: 'payment' },
-    'payment-approved-admin': { name: 'Ověřená platba (admin)', subject: 'Ověřená platba - {{brand_name}} — {{event_name}}', description: 'Email poslán adminovi když je platba ověřena a schválena. Obsahuje fakturu v příloze a všechny detaily objednávky. Celé tělo je editovatelné.', category: 'payment' },
+    'invoice-notification': { name: 'Nová objednávka (vystavovatel)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný vystavovateli po vygenerování objednávky s PDF přílohou. Šablona je editovatelná.', category: 'payment' },
+    'invoice-notification-admin': { name: 'Nová objednávka (admin)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný adminovi po vygenerování nové objednávky. Šablona je editovatelná.', category: 'payment' },
 
 };
 
 /* ─── Main Component ────────────────────────────────────────── */
 const AutomatedEmails: React.FC = () => {
     const { templates, updateTemplate, createTemplate, deleteTemplate, loading: loadingTemplates } = useEmailTemplates();
+    const { data: companySettings, refetch: refreshCompanySettings } = useCompanySettings();
 
     const [mode, setMode] = useState<EditorMode>('list');
     const [editingTemplate, setEditingTemplate] = useState<DbEmailTemplate | null>(null);
@@ -185,6 +157,15 @@ const AutomatedEmails: React.FC = () => {
     const [showVariables, setShowVariables] = useState(false);
     const [saveNotification, setSaveNotification] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [accountingEmail, setAccountingEmail] = useState('');
+    const [accountingEmailSaved, setAccountingEmailSaved] = useState(false);
+
+    // Sync accounting email from company settings
+    React.useEffect(() => {
+        if (companySettings?.accountingEmail) {
+            setAccountingEmail(companySettings.accountingEmail);
+        }
+    }, [companySettings?.accountingEmail]);
 
     const { attachments, uploadAttachment, deleteAttachment, loading: loadingAttachments } = useEmailAttachments(editingTemplate?.id || null);
 
@@ -212,8 +193,8 @@ const AutomatedEmails: React.FC = () => {
         const existingIds = new Set(templates.map(t => t.id));
         const missingIds = Object.keys(REQUIRED_TEMPLATES).filter(id => !existingIds.has(id));
 
-        // Auto-delete event templates that are no longer wanted
-        const EVENT_TEMPLATE_IDS = ['event-instructions', 'event-reminder', 'post-event'];
+        // Auto-delete templates that are no longer wanted
+        const EVENT_TEMPLATE_IDS = ['event-instructions', 'event-reminder', 'post-event', 'payment-approved-admin', 'payment-submitted'];
         const eventToDelete = templates.filter(t => EVENT_TEMPLATE_IDS.includes(t.id));
 
         if (missingIds.length === 0 && eventToDelete.length === 0) return;
@@ -837,6 +818,43 @@ const AutomatedEmails: React.FC = () => {
                             <h4 className="text-3xl font-extrabold tracking-tight text-lavrs-dark">{stat.value}</h4>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* Email Settings */}
+            <div className="bg-white rounded-none border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-bold text-lavrs-dark mb-4">Nastavení emailů</h3>
+                <div className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="flex-1">
+                        <label className="block text-sm font-semibold text-gray-600 mb-1">
+                            Email pro účetní systém
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                            Kopie faktur a daňových dokladů se automaticky odesílá i na tento email.
+                        </p>
+                        <input
+                            type="email"
+                            value={accountingEmail}
+                            onChange={(e) => { setAccountingEmail(e.target.value); setAccountingEmailSaved(false); }}
+                            placeholder="ucetni@firma.cz"
+                            className="w-full border border-gray-200 rounded-none px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-lavrs-red/30 focus:border-lavrs-red"
+                        />
+                    </div>
+                    <button
+                        onClick={async () => {
+                            try {
+                                await companySettingsDb.update({ accounting_email: accountingEmail || null });
+                                refreshCompanySettings();
+                                setAccountingEmailSaved(true);
+                                setTimeout(() => setAccountingEmailSaved(false), 3000);
+                            } catch (err) {
+                                console.error('Failed to save accounting email:', err);
+                            }
+                        }}
+                        className="bg-lavrs-dark text-white px-6 py-3 rounded-none font-semibold hover:bg-lavrs-red transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                        {accountingEmailSaved ? <><CheckCircle size={16} /> Uloženo</> : <><Save size={16} /> Uložit</>}
+                    </button>
                 </div>
             </div>
 
