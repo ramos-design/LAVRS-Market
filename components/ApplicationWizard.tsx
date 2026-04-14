@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Info, Instagram, Globe, Upload, Check, User, Mail, Phone, Building2, MapPin, CreditCard, ShieldCheck, Sparkles, Image as ImageIcon, Save, PlusCircle, History } from 'lucide-react';
+import { sanitizePhoneInput } from '../lib/phoneValidation';
 import { ZoneCategory, BrandProfile, Application, AppStatus, EventPlan, Category } from '../types';
 import { useEvents, useBrandProfiles, useCategories } from '../hooks/useSupabase';
 import { dbEventToApp, dbBrandProfileToApp, dbCategoryToApp, appBrandProfileToDb, formatEventDate, formatEventDateRange } from '../lib/mappers';
@@ -690,7 +691,7 @@ const ApplicationWizardInner: React.FC<ApplicationWizardProps> = ({
                       <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-4">Telefon</label>
                       <div className="relative">
                         <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input value={phone} onChange={(e) => setPhone(e.target.value)} type="text" placeholder="+420 000 000 000" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
+                        <input value={phone} onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))} type="tel" maxLength={16} placeholder="+420 000 000 000" className="w-full bg-white pl-14 pr-6 py-3 md:py-5 rounded-none border-2 border-gray-200 shadow-sm focus:outline-none focus:border-lavrs-red transition-all" />
                       </div>
                     </div>
                   </div>

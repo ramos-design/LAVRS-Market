@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { User, Shield, Key, Bell, Save, Trash2, Plus, Sparkles, Instagram, Globe, Mail, Phone, Building2, MapPin, CreditCard, ChevronDown, ChevronUp, Check, Info, Eye, EyeOff, Lock, Pencil, Clock, Camera, Image, X, Upload, Loader } from 'lucide-react';
+import { sanitizePhoneInput } from '../lib/phoneValidation';
 import { BrandProfile, AppStatus } from '../types';
 import { useBrandProfiles, useApplications } from '../hooks/useSupabase';
 import { useAuth } from '../hooks/useAuth';
@@ -96,7 +97,9 @@ const BrandEditForm: React.FC<{
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-4">Telefon</label>
                     <input
                         value={editForm.phone}
-                        onChange={(e) => updateFormField('phone', e.target.value)}
+                        onChange={(e) => updateFormField('phone', sanitizePhoneInput(e.target.value))}
+                        type="tel"
+                        maxLength={16}
                         className="w-full bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-none border-2 border-transparent focus:bg-white focus:border-lavrs-red transition-all"
                     />
                 </div>
