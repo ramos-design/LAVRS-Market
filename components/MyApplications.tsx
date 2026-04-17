@@ -2,6 +2,7 @@ import React from 'react';
 import { FileText, Clock, AlertCircle, Mail } from 'lucide-react';
 import { AppStatus, Application, MarketEvent } from '../types';
 import { useInvoices, useAllEventPlanPrices } from '../hooks/useSupabase';
+import { formatEventDateRange } from '../lib/mappers';
 
 interface MyApplicationsProps {
     applications: Application[];
@@ -31,7 +32,7 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
     const getEventTitle = (eventId: string) => events.find(e => e.id === eventId)?.title || 'Neznámý event';
     const getEventDate = (eventId: string) => {
         const event = events.find(e => e.id === eventId);
-        return event?.date ? new Date(event.date).toLocaleDateString('cs-CZ') : '';
+        return event?.date ? formatEventDateRange(event.date, event.endDate) : '';
     };
     const getStatusStyle = (status: AppStatus) => {
         switch (status) {
