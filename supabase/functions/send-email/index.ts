@@ -349,6 +349,12 @@ Deno.serve(async (req) => {
                         adminBody = adminBody.split(k).join(v);
                         adminSubject = adminSubject.split(k).join(v);
                     });
+
+                    // Prefix invoice number for admin + accounting emails (payment-confirmed only)
+                    if (templateId === 'payment-confirmed' && invoiceData?.invoice_number) {
+                        adminSubject = `\u010d. faktury ${invoiceData.invoice_number} - ${adminSubject}`;
+                    }
+
                     adminBody = adminBody.split('{{order_table}}').join(ORDER_TABLE_PLACEHOLDER);
                     const escapedAdminBody = adminBody.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\n/g, '<br>');
                     const adminBodyHtml = escapedAdminBody.split(ORDER_TABLE_PLACEHOLDER).join(orderTableHtml);
