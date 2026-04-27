@@ -98,6 +98,7 @@ const BrandsList: React.FC<BrandsListProps> = ({ applications, brands, events, o
       const normalized = (status || '').toString().toUpperCase();
       return (
         normalized === AppStatus.APPROVED ||
+        normalized === AppStatus.APPROVED_FREE ||
         normalized === AppStatus.PAID ||
         normalized === AppStatus.PAYMENT_REMINDER ||
         normalized === AppStatus.PAYMENT_LAST_CALL

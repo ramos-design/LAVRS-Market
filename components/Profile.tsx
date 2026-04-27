@@ -415,7 +415,7 @@ const ProfileInner: React.FC<ProfileProps> = () => {
         for (const a of dbApps) {
             const app = dbApplicationToApp(a);
             const s = app.status.toUpperCase();
-            if (s === AppStatus.APPROVED || s === AppStatus.PAID || s === AppStatus.PAYMENT_REMINDER || s === AppStatus.PAYMENT_LAST_CALL || s === AppStatus.PAYMENT_UNDER_REVIEW) {
+            if (s === AppStatus.APPROVED || s === AppStatus.APPROVED_FREE || s === AppStatus.PAID || s === AppStatus.PAYMENT_REMINDER || s === AppStatus.PAYMENT_LAST_CALL || s === AppStatus.PAYMENT_UNDER_REVIEW) {
                 set.add(app.brandName.toLowerCase());
             }
         }

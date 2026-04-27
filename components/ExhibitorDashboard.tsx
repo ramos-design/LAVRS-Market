@@ -176,7 +176,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
         const brandsNeedingPhotos = brands.filter(brand => {
           const hasApprovedApp = applications.some(app =>
             app.brandName.toLowerCase() === brand.brandName.toLowerCase() &&
-            [AppStatus.APPROVED, AppStatus.PAID, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(app.status)
+            [AppStatus.APPROVED, AppStatus.APPROVED_FREE, AppStatus.PAID, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL, AppStatus.PAYMENT_UNDER_REVIEW].includes(app.status)
           );
           const hasGallery = (brand.galleryUrls && brand.galleryUrls.length > 0) || !!brand.logoUrl;
           return hasApprovedApp && !hasGallery;
@@ -339,6 +339,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 const visibleApps = applications.filter(app =>
                   app.status === AppStatus.PENDING ||
                   app.status === AppStatus.APPROVED ||
+                  app.status === AppStatus.APPROVED_FREE ||
                   app.status === AppStatus.REJECTED ||
                   app.status === AppStatus.WAITLIST ||
                   app.status === AppStatus.PAYMENT_REMINDER ||
@@ -357,6 +358,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                 return visibleApps.map((app, idx) => (
                   <div key={app.id} className="relative flex gap-3 md:gap-4 group">
                     <div className={`z-10 w-8 h-8 md:w-10 md:h-10 rounded-none flex items-center justify-center border-2 md:border-4 border-white shadow-sm shrink-0 ${
+                        app.status === AppStatus.APPROVED_FREE ? 'bg-emerald-600' :
                         app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-500' :
                         app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-500' :
                         app.status === AppStatus.PENDING ? 'bg-amber-400' :
@@ -364,7 +366,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                         app.status === AppStatus.PAID ? 'bg-green-600' :
                         app.status === AppStatus.EXPIRED ? 'bg-gray-400' : 'bg-red-500'
                       }`}>
-                      {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? <CheckCircle2 size={16} className="text-white" /> :
+                      {app.status === AppStatus.APPROVED || app.status === AppStatus.APPROVED_FREE || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? <CheckCircle2 size={16} className="text-white" /> :
                         app.status === AppStatus.PAYMENT_UNDER_REVIEW ? <Clock size={16} className="text-white" /> :
                         app.status === AppStatus.PENDING ? <Clock size={16} className="text-white" /> :
                         app.status === AppStatus.WAITLIST ? <Clock size={16} className="text-white" /> :
@@ -382,6 +384,7 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                         {eventsMap.get(app.eventId)?.title}
                       </p>
                       <span className={`px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest ${
+                          app.status === AppStatus.APPROVED_FREE ? 'bg-emerald-100 text-emerald-700' :
                           app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'bg-green-100 text-green-700' :
                           app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'bg-blue-100 text-blue-700' :
                           app.status === AppStatus.PENDING ? 'bg-amber-100 text-amber-700' :
@@ -389,7 +392,8 @@ const ExhibitorDashboardInner: React.FC<ExhibitorDashboardProps> = ({ user, even
                           app.status === AppStatus.PAID ? 'bg-green-100 text-green-800' :
                           app.status === AppStatus.EXPIRED ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-700'
                         }`}>
-                        {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
+                        {app.status === AppStatus.APPROVED_FREE ? 'Schváleno ZDARMA' :
+                          app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
                           app.status === AppStatus.PAYMENT_UNDER_REVIEW ? 'Platba se zpracovává' :
                           app.status === AppStatus.PENDING ? 'V posouzení' :
                           app.status === AppStatus.WAITLIST ? 'Waitlist' :

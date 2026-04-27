@@ -201,6 +201,7 @@ const AdminDashboardInner: React.FC<AdminDashboardProps> = ({ user, events, appl
         // Track approved brands
         if ([
           AppStatus.APPROVED,
+          AppStatus.APPROVED_FREE,
           AppStatus.PAID,
           AppStatus.PAYMENT_REMINDER,
           AppStatus.PAYMENT_LAST_CALL

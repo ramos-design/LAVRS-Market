@@ -46,6 +46,22 @@ V případě neuhrazení do uvedeného termínu bude Vaše místo automaticky uv
 S pozdravem,
 Tým LAVRS market`,
 
+    'application-approved-free': `Dobrý den, {{contact_person}},
+
+s radostí Vám oznamujeme, že Vaše přihláška za značku {{brand_name}} na {{event_name}} ({{event_date}}) byla schválena! 🎉
+
+Vaše místo je nyní závazně zarezervováno — ZDARMA, bez nutnosti úhrady objednávky. ✅
+
+Místo konání: {{event_location}}
+Kategorie: {{zone_type}}
+
+Organizační instrukce a další informace Vám zašleme několik dní před akcí.
+
+Děkujeme a těšíme se na Vás!
+
+S pozdravem,
+Tým LAVRS market`,
+
     'application-rejected': `Dobrý den, {{contact_person}},
 
 děkujeme za Váš zájem o účast na {{event_name}} ({{event_date}}).
@@ -136,6 +152,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`,
 const REQUIRED_TEMPLATES: Record<string, { name: string; subject: string; description: string; category: string }> = {
     'confirm-application': { name: 'Potvrzení přihlášení', subject: 'Přihláška přijata - {{event_name}}', description: 'Automatický email odeslaný po úspěšném podání přihlášky k eventu.', category: 'application' },
     'application-approved': { name: 'Schválení přihlášky', subject: 'Gratulujeme! Vaše přihláška byla schválena – {{event_name}}', description: 'Email s potvrzením schválení a přiloženou fakturou k úhradě.', category: 'application' },
+    'application-approved-free': { name: 'Schválení přihlášky ZDARMA', subject: 'Gratulujeme! Vaše místo je rezervováno – {{event_name}}', description: 'Finální email vystavovateli, který byl schválen ZDARMA (kurátor použil tlačítko „ZDARMA" ve Výběru přihlášek). Bez objednávky a faktury — potvrzuje rovnou závaznou rezervaci místa. Šablona je editovatelná.', category: 'application' },
     'application-rejected': { name: 'Zamítnutí přihlášky', subject: 'Informace o vaší přihlášce na {{event_name}}', description: 'Zdvořilé zamítnutí přihlášky s možností zápisu na waitlist.', category: 'application' },
     'application-waitlist': { name: 'Schválení přihlášky, není kapacita, možnost waitlistu', subject: 'Výsledek přihlášky na {{event_name}}', description: 'Schválení přihlášky do budoucna (nyní není místo).', category: 'application' },
     'payment-confirmed': { name: 'Platba ověřena — daňový doklad', subject: 'Platba ověřena — {{brand_name}} — {{event_name}}', description: 'Odesláno vystavovateli, když administrátor ověří a schválí platbu (status → ZAPLACENO). Potvrzuje rezervaci místa a v příloze obsahuje daňový doklad (PDF). Šablona je editovatelná.', category: 'payment' },

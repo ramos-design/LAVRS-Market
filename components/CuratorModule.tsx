@@ -47,10 +47,10 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
   }, [brandProfiles]);
 
   const deletedApplications = applications.filter(a => normalizeStatus(a.status) === AppStatus.DELETED);
-  // Filter out applications that are already paid (those move to the event manager)
+  // Filter out applications that are already paid or free-approved (those move to active applications / event manager)
   const activeApplications = applications.filter(a => {
     const s = normalizeStatus(a.status);
-    return s !== AppStatus.PAID && s !== AppStatus.DELETED;
+    return s !== AppStatus.PAID && s !== AppStatus.APPROVED_FREE && s !== AppStatus.DELETED;
   });
 
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'TRASH'>('ACTIVE');
@@ -115,22 +115,31 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
     }
   }, [selectedApp, priceInput, onUpdateApplication]);
 
-  // Check if approval is blocked because category price is non-numeric and no custom price is set
+  // Compute effective billing price: customPrice overrides category price.
+  // Returns null when there is no usable numeric price.
+  const getEffectivePrice = useCallback((app: Application | null): number | null => {
+    if (!app) return null;
+    if (app.customPrice != null) return app.customPrice;
+    const numPrice = parseCategoryPrice(getCategoryPrice(app));
+    return numPrice;
+  }, [getCategoryPrice, parseCategoryPrice]);
+
+  // SCHVÁLIT (paid) is blocked whenever the effective billing amount is 0 / missing.
+  // For zero-amount approvals the curator MUST use the ZDARMA button (APPROVED_FREE)
+  // which skips the invoice + payment flow entirely.
   const isMissingRequiredPrice = useMemo(() => {
     if (!selectedApp) return false;
-    const catPrice = getCategoryPrice(selectedApp);
-    const numPrice = parseCategoryPrice(catPrice);
-    // If category price exists but is non-numeric (e.g. "domluvou"), and no custom price was saved
-    return catPrice != null && numPrice === null && (selectedApp.customPrice == null || selectedApp.customPrice === 0);
-  }, [selectedApp, getCategoryPrice, parseCategoryPrice]);
+    const eff = getEffectivePrice(selectedApp);
+    return eff == null || eff <= 0;
+  }, [selectedApp, getEffectivePrice]);
 
   const handleAction = useCallback(async (id: string, newStatus: AppStatus) => {
     setIsProcessing(true);
     try {
       await onUpdateStatus(id, newStatus);
 
-      // If it becomes PAID, it will be filtered out, so select next one
-      if (newStatus === AppStatus.PAID) {
+      // If it becomes PAID or APPROVED_FREE, it will be filtered out, so select next one
+      if (newStatus === AppStatus.PAID || newStatus === AppStatus.APPROVED_FREE) {
         const currentIndex = activeApplications.findIndex(a => a.id === id);
         if (currentIndex < activeApplications.length - 1) {
           setSelectedAppId(activeApplications[currentIndex + 1].id);
@@ -170,6 +179,8 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
         return { bg: 'bg-gray-200', text: 'text-gray-600', label: 'V koši' };
       case AppStatus.APPROVED:
         return { bg: 'bg-green-100', text: 'text-green-700', label: 'Schváleno (Čeká na platbu)' };
+      case AppStatus.APPROVED_FREE:
+        return { bg: 'bg-emerald-600', text: 'text-white', label: 'Schváleno ZDARMA' };
       case AppStatus.PAID:
         return { bg: 'bg-green-600', text: 'text-white', label: 'Zaplaceno' };
       case AppStatus.PAYMENT_REMINDER:
@@ -329,7 +340,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2 pr-2 min-w-0">
                         <h4 className="font-bold text-sm truncate">{app.brandName}</h4>
-                        {app.status === AppStatus.APPROVED && (
+                        {(app.status === AppStatus.APPROVED || app.status === AppStatus.APPROVED_FREE) && (
                           <Heart size={14} className="text-lavrs-red fill-lavrs-red shrink-0" />
                         )}
                       </div>
@@ -707,12 +718,12 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <button
                       onClick={() => {
                         if (isMissingRequiredPrice) {
-                          alert('Nelze schválit přihlášku bez vyplněné částky k fakturaci.\n\nCeník kategorie je „dohodou" — nejprve doplňte konkrétní částku v sekci „Částka k fakturaci" a uložte ji.');
+                          alert('Nelze schválit přihlášku s nulovou nebo nevyplněnou částkou.\n\nPokud chcete vystavovatele pustit ZDARMA (bez objednávky a faktury), použijte tlačítko „ZDARMA".\n\nJinak nejprve doplňte konkrétní částku v sekci „Částka k fakturaci" a uložte ji.');
                           return;
                         }
                         handleAction(selectedApp.id, AppStatus.APPROVED);
                       }}
-                      disabled={isProcessing || [AppStatus.APPROVED, AppStatus.PAID, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus)}
+                      disabled={isProcessing || [AppStatus.APPROVED, AppStatus.APPROVED_FREE, AppStatus.PAID, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus)}
                       className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
                         isMissingRequiredPrice
                           ? 'bg-green-300 text-white cursor-not-allowed'
@@ -720,7 +731,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                       }`}
                     >
                       <Check size={18} /> SCHVÁLIT
-                      {isMissingRequiredPrice && <span className="text-[9px] font-normal opacity-80">⚠ Doplňte částku</span>}
+                      {isMissingRequiredPrice && <span className="text-[9px] font-normal opacity-80">⚠ Doplňte částku nebo ZDARMA</span>}
                     </button>
 
                     <button
@@ -790,28 +801,19 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     >
                       <Trash2 size={16} /> SMAZAT PŘIHLÁŠKU
                     </button>
-                    {onTrashBrand && (() => {
-                      const bp = brandProfileMap.get(selectedApp.brandName.toLowerCase());
-                      if (!bp) return null;
-                      return (
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm(`Opravdu chcete přesunout celou značku "${selectedApp.brandName}" (včetně všech přihlášek) do koše?`)) return;
-                            setIsProcessing(true);
-                            try {
-                              await onTrashBrand(bp.id, selectedApp.brandName);
-                              setSelectedAppId(null);
-                            } finally {
-                              setIsProcessing(false);
-                            }
-                          }}
-                          disabled={isProcessing}
-                          className="bg-red-600 text-white py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-red-700 transition-all active:scale-[0.98] disabled:opacity-50"
-                        >
-                          <Trash2 size={16} /> SMAZAT ZNAČKU
-                        </button>
-                      );
-                    })()}
+
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`Opravdu chcete schválit značku „${selectedApp.brandName}" ZDARMA?\n\nVystavovateli NEBUDE vystavena objednávka ani faktura. Bude mu rovnou odeslán potvrzovací email o závazné rezervaci místa na eventu.`)) return;
+                        handleAction(selectedApp.id, AppStatus.APPROVED_FREE);
+                      }}
+                      disabled={isProcessing || [AppStatus.APPROVED, AppStatus.APPROVED_FREE, AppStatus.PAID, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus)}
+                      className="bg-emerald-600 text-white py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-emerald-700 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Schválit vystavovatele zdarma — bez objednávky a faktury"
+                    >
+                      <Heart size={18} /> ZDARMA
+                      <span className="text-[9px] font-normal opacity-80">Bez faktury</span>
+                    </button>
                   </div>
                 )}
               </div>

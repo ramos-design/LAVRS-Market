@@ -37,6 +37,7 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
     const getStatusStyle = (status: AppStatus) => {
         switch (status) {
             case AppStatus.APPROVED:
+            case AppStatus.APPROVED_FREE:
             case AppStatus.PAYMENT_REMINDER:
             case AppStatus.PAYMENT_LAST_CALL:
                 return 'bg-green-50 text-green-700 border-green-100';
@@ -98,7 +99,8 @@ const MyApplicationsInner: React.FC<MyApplicationsProps> = ({ applications, even
                                 <div className="min-w-0 flex-1">
                                     <h3 className="font-bold text-lavrs-dark text-base md:text-lg leading-tight">{app.brandName}</h3>
                                     <span className={`inline-block mt-1 text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-none border ${getStatusStyle(app.status)}`}>
-                                        {app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
+                                        {app.status === AppStatus.APPROVED_FREE ? 'Schváleno ZDARMA' :
+                                            app.status === AppStatus.APPROVED || app.status === AppStatus.PAYMENT_REMINDER || app.status === AppStatus.PAYMENT_LAST_CALL ? 'Schváleno' :
                                             app.status === AppStatus.PENDING ? 'Čeká na posouzení' :
                                                 app.status === AppStatus.REJECTED ? 'Zamítnuto' :
                                                     app.status === AppStatus.WAITLIST ? 'Na waitlistu' :

@@ -19,6 +19,7 @@ const VALID_CATEGORIES = ["Designers", "Beauty ZONE", "GASTRO", "Secondhands"];
 const VALID_STATUSES = [
   "PENDING",
   "APPROVED",
+  "APPROVED_FREE",
   "PAID",
   "REJECTED",
   "WAITLIST",

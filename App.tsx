@@ -510,6 +510,12 @@ V příloze najdete vygenerovanou objednávku (PDF).`
       const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
       paymentDeadline = new Date(now.getTime() + sevenDaysMs).toISOString();
     }
+    // APPROVED_FREE: terminal status — exhibitor approved without invoice/payment.
+    // Stamp approvedAt only; do NOT set paymentDeadline (no invoice will be issued).
+    if (newStatus === AppStatus.APPROVED_FREE) {
+      approvedAt = new Date().toISOString();
+      paymentDeadline = undefined;
+    }
 
     // When confirming payment (PAID), verify invoice exists and regenerate PDF as "DAŇOVÝ DOKLAD"
     // before status change so the DB trigger's send-email function can fetch it from storage

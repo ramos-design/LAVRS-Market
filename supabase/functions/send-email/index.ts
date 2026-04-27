@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
             const newStatus = (record.status || "").toUpperCase();
             if (oldStatus !== newStatus) {
                 if (newStatus === 'APPROVED') templateId = 'application-approved';
+                else if (newStatus === 'APPROVED_FREE') templateId = 'application-approved-free'; // free approval — no invoice, no payment flow
                 else if (newStatus === 'REJECTED') templateId = 'application-rejected';
                 else if (newStatus === 'PAID') templateId = 'payment-confirmed'; // payment confirmed with paid PDF + ISDOC from storage
                 else if (newStatus === 'PAYMENT_UNDER_REVIEW') templateId = 'invoice-notification'; // order confirmation with PDF from storage

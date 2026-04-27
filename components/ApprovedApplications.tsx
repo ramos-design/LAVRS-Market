@@ -55,10 +55,10 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
     return null;
   };
 
-  // Filter only approved and paid applications
+  // Filter only approved (paid, free, or awaiting payment) applications
   const approvedApplications = applications.filter(a => {
     const s = normalizeStatus(a.status);
-    return s === AppStatus.APPROVED || s === AppStatus.PAID;
+    return s === AppStatus.APPROVED || s === AppStatus.APPROVED_FREE || s === AppStatus.PAID;
   });
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
@@ -124,6 +124,8 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
     switch (normalizeStatus(status)) {
       case AppStatus.APPROVED:
         return { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Schváleno' };
+      case AppStatus.APPROVED_FREE:
+        return { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Schváleno ZDARMA' };
       case AppStatus.PAID:
         return { bg: 'bg-green-100', text: 'text-green-700', label: 'Zaplaceno' };
       default:
@@ -442,7 +444,7 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                       <td className="px-6 py-4 overflow-hidden">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="font-bold text-lavrs-dark truncate">{app.brandName}</div>
-                          {(normalizeStatus(app.status) === AppStatus.APPROVED || normalizeStatus(app.status) === AppStatus.PAID) && (
+                          {(normalizeStatus(app.status) === AppStatus.APPROVED || normalizeStatus(app.status) === AppStatus.APPROVED_FREE || normalizeStatus(app.status) === AppStatus.PAID) && (
                             <Heart size={14} className="text-lavrs-red fill-lavrs-red shrink-0" />
                           )}
                         </div>
