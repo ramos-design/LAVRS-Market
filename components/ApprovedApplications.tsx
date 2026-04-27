@@ -43,6 +43,9 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
   }, [planPrices]);
 
   const getAppPrice = (app: Application): string | null => {
+    if (normalizeStatus(app.status) === AppStatus.APPROVED_FREE) {
+      return 'ZDARMA';
+    }
     if (app.customPrice != null && app.customPrice > 0) {
       return `${app.customPrice.toLocaleString('cs-CZ')} Kč`;
     }
@@ -513,6 +516,11 @@ const ApprovedApplicationsInner: React.FC<ApprovedApplicationsProps> = ({ onBack
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Kategorie zóny</p>
                                 <p className="font-semibold text-lavrs-dark">{getZoneCategoryLabel(app.zoneCategory)}</p>
+                                {getAppPrice(app) && (
+                                  <p className={`text-xs font-bold mt-1 ${normalizeStatus(app.status) === AppStatus.APPROVED_FREE ? 'text-emerald-600' : 'text-gray-500'}`}>
+                                    {getAppPrice(app)}
+                                  </p>
+                                )}
                               </div>
                               <div className="bg-white p-4 rounded-none border border-gray-100 shadow-sm">
                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Stav</p>
