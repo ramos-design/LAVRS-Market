@@ -10,6 +10,7 @@ import HeartLoader from './components/HeartLoader';
 import { useAuth } from './hooks/useAuth';
 import { useEvents, useApplications, useBrandProfiles, useBrandTrash, useEventPlan, useEventPlans, useAllEventPlanPrices, useInvoices, useBanners, useCategories, useCompanySettings } from './hooks/useSupabase';
 import { logAdminAction, checkVersionConflict } from './lib/activityLog';
+import { supabase } from './lib/supabase';
 import { useAdminPresence } from './hooks/useAdminPresence';
 import {
   dbEventToApp, dbApplicationToApp, dbBrandProfileToApp,
@@ -569,6 +570,30 @@ V příloze najdete vygenerovanou objednávku (PDF).`
     return result;
   };
 
+  const handleSendAwaitingOrderReminder = async (id: string) => {
+    const app = applications.find(a => a.id === id);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-awaiting-order-reminder', {
+        body: { applicationId: id },
+      });
+      if (error) throw error;
+      if (user) {
+        logAdminAction({
+          adminId: user.id,
+          adminName: user.fullName || user.email,
+          action: 'awaiting_order_reminder_sent',
+          entityType: 'application',
+          entityId: id,
+          metadata: { brandName: app?.brandName, recipient: (data as any)?.recipient },
+        });
+      }
+      return { success: true, recipient: (data as any)?.recipient };
+    } catch (err: any) {
+      console.error('[AwaitingOrderReminder] Failed:', err);
+      return { success: false, error: err?.message || 'Neznámá chyba' };
+    }
+  };
+
   const handleLocalConfirmPayment = (appId: string) => {
     setLocallyUnderReview(prev => {
       const next = [...prev, appId];
@@ -999,6 +1024,7 @@ V příloze najdete vygenerovanou objednávku (PDF).`
               onRestoreApplication={handleRestoreApplication}
               onPermanentDeleteAllTrash={handlePermanentDeleteAllTrash}
               onTrashBrand={handleTrashBrand}
+              onSendAwaitingOrderReminder={handleSendAwaitingOrderReminder}
             />
           )}
 

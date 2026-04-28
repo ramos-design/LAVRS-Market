@@ -17,7 +17,8 @@ export type AdminActionType =
     | 'all_trash_permanently_deleted'
     | 'brand_trashed'
     | 'brand_restored'
-    | 'brand_permanently_deleted';
+    | 'brand_permanently_deleted'
+    | 'awaiting_order_reminder_sent';
 
 function translateStatus(status: string): string {
     const map: Record<string, string> = {
@@ -58,6 +59,8 @@ const ACTION_DESCRIPTIONS: Record<AdminActionType, (meta: Record<string, any>) =
         `Obnovil/a značku „${m.brandName || '?'}" z koše`,
     brand_permanently_deleted: (m) =>
         `Trvale smazal/a značku „${m.brandName || '?'}"`,
+    awaiting_order_reminder_sent: (m) =>
+        `Odeslal/a připomenutí potvrzení objednávky pro „${m.brandName || '?'}"${m.recipient ? ` (${m.recipient})` : ''}`,
 };
 
 export interface LogActionParams {

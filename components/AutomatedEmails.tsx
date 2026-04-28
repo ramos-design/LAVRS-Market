@@ -105,6 +105,19 @@ Děkujeme a těšíme se na Vás!
 S pozdravem,
 Tým LAVRS market`,
 
+    'awaiting-order-reminder': `Dobrý den, {{contact_person}},
+
+rádi bychom Vám připomněli, že Vaše přihláška za značku {{brand_name}} na {{event_name}} ({{event_date}}) byla schválena, ale ještě jste nedokončili potvrzení objednávky v aplikaci.
+
+Pro potvrzení účasti je potřeba se přihlásit do rezervačního systému, vyplnit fakturační údaje a potvrdit objednávku. Teprve poté Vám bude vystavena faktura k úhradě.
+
+Termín pro potvrzení objednávky a úhradu: {{payment_deadline}}
+
+Pokud si potřebujete prodloužit termín nebo máte jakýkoli dotaz, neváhejte nás kontaktovat.
+
+S pozdravem,
+Tým LAVRS market`,
+
     'payment-reminder': `Dobrý den, {{contact_person}},
 
 rádi bychom Vám připomněli blížící se termín splatnosti objednávky za {{event_name}} ({{event_date}}).
@@ -156,6 +169,7 @@ const REQUIRED_TEMPLATES: Record<string, { name: string; subject: string; descri
     'application-rejected': { name: 'Zamítnutí přihlášky', subject: 'Informace o vaší přihlášce na {{event_name}}', description: 'Zdvořilé zamítnutí přihlášky s možností zápisu na waitlist.', category: 'application' },
     'application-waitlist': { name: 'Schválení přihlášky, není kapacita, možnost waitlistu', subject: 'Výsledek přihlášky na {{event_name}}', description: 'Schválení přihlášky do budoucna (nyní není místo).', category: 'application' },
     'payment-confirmed': { name: 'Platba ověřena — daňový doklad', subject: 'Platba ověřena — {{brand_name}} — {{event_name}}', description: 'Odesláno vystavovateli, když administrátor ověří a schválí platbu (status → ZAPLACENO). Potvrzuje rezervaci místa a v příloze obsahuje daňový doklad (PDF). Šablona je editovatelná.', category: 'payment' },
+    'awaiting-order-reminder': { name: 'Připomenutí potvrzení objednávky', subject: 'Připomenutí: dokončete potvrzení objednávky – {{event_name}}', description: 'Manuální připomínka pro vystavovatele, který byl schválen, ale ještě neprošel platebním procesem (nepotvrdil objednávku, nemá vystavenou fakturu). Odesílá se z Výběru přihlášek tlačítkem „PŘIPOMENOUT OBJEDNÁVKU". Bez příloh — faktura ještě neexistuje.', category: 'payment' },
     'payment-reminder': { name: 'Platební upomínka', subject: 'Připomínka platby - {{event_name}}', description: 'Upomínka na blížící se termín splatnosti faktury.', category: 'payment' },
     'payment-last-call': { name: 'Platební upomínka - Last Call', subject: 'URGENTNÍ: Poslední výzva k úhradě – {{event_name}}', description: 'Finální upomínka před zrušením rezervace místa.', category: 'payment' },
     'invoice-notification': { name: 'Nová objednávka (vystavovatel)', subject: 'Nová objednávka: {{brand_name}} — {{event_name}} ({{zone_type}})', description: 'Automatický email odeslaný vystavovateli po vygenerování objednávky s PDF přílohou. Šablona je editovatelná.', category: 'payment' },

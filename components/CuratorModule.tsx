@@ -16,9 +16,10 @@ interface CuratorModuleProps {
   onRestoreApplication: (id: string) => void;
   onPermanentDeleteAllTrash: () => Promise<void>;
   onTrashBrand?: (brandProfileId: string, brandName: string) => Promise<void>;
+  onSendAwaitingOrderReminder?: (id: string) => Promise<{ success: boolean; recipient?: string; error?: string }>;
 }
 
-const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, brandProfiles, planPrices, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash, onTrashBrand }) => {
+const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, applications, brandProfiles, planPrices, onUpdateStatus, onUpdateApplication, onDeleteApplication, onRestoreApplication, onPermanentDeleteAllTrash, onTrashBrand, onSendAwaitingOrderReminder }) => {
   const normalizeStatus = (status?: string) => (status || '').toString().toUpperCase();
 
   // Create a map for O(1) event lookups instead of O(n) find()
@@ -166,6 +167,23 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
   const getEventDetails = useCallback((eventId: string) => {
     return eventsMap.get(eventId);
   }, [eventsMap]);
+
+  const handleSendAwaitingReminder = useCallback(async (app: Application) => {
+    if (!onSendAwaitingOrderReminder) return;
+    const recipientLabel = app.billingEmail || app.email;
+    if (!window.confirm(`Odeslat připomenutí potvrzení objednávky vystavovateli ${app.brandName} (${recipientLabel})?\n\nE-mail vyzve vystavovatele, aby dokončil platební proces v aplikaci.`)) return;
+    setIsProcessing(true);
+    try {
+      const result = await onSendAwaitingOrderReminder(app.id);
+      if (result?.success) {
+        alert(`✅ Připomínka odeslána na ${result.recipient || recipientLabel}.`);
+      } else {
+        alert(`❌ Nepodařilo se odeslat připomínku.\n\n${result?.error || 'Neznámá chyba'}`);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [onSendAwaitingOrderReminder]);
 
   const getZoneCategoryLabel = (category?: ZoneCategory) => category || 'Neuvedeno';
 
@@ -769,20 +787,30 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                       <CreditCard size={18} /> POTVRDIT PLATBU
                     </button>
 
-                    <button
-                      onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
-                      disabled={isProcessing || !hasCompletedPaymentFlow(selectedApp) || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus))}
-                      title={!hasCompletedPaymentFlow(selectedApp) ? 'Vystavovatel ještě nepotvrdil objednávku — upomínku nelze odeslat' : undefined}
-                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus)
-                        ? 'bg-amber-500 text-white hover:bg-amber-600'
-                        : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
-                        }`}
-                    >
-                      <Mail size={18} /> ODESLAT UPOMÍNKU
-                      {!hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus) && (
-                        <span className="text-[9px] font-normal opacity-80">⚠ Bez objednávky</span>
-                      )}
-                    </button>
+                    {/* For APPROVED/REMINDER/LAST_CALL without an invoice, show "PŘIPOMENOUT OBJEDNÁVKU" instead of the regular reminder */}
+                    {!hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus) ? (
+                      <button
+                        onClick={() => handleSendAwaitingReminder(selectedApp)}
+                        disabled={isProcessing || !onSendAwaitingOrderReminder}
+                        title="Připomenout vystavovateli, že má dokončit potvrzení objednávky v aplikaci"
+                        className="py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed bg-amber-500 text-white hover:bg-amber-600"
+                      >
+                        <Mail size={18} /> PŘIPOMENOUT OBJEDNÁVKU
+                        <span className="text-[9px] font-normal opacity-80">Bez faktury</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
+                        disabled={isProcessing || !hasCompletedPaymentFlow(selectedApp) || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                        title={!hasCompletedPaymentFlow(selectedApp) ? 'Vystavovatel ještě nepotvrdil objednávku — upomínku nelze odeslat' : undefined}
+                        className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus)
+                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
+                          }`}
+                      >
+                        <Mail size={18} /> ODESLAT UPOMÍNKU
+                      </button>
+                    )}
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
