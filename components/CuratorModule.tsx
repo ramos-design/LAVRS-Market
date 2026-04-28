@@ -169,7 +169,11 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
   const getZoneCategoryLabel = (category?: ZoneCategory) => category || 'Neuvedeno';
 
-  const getStatusBadge = (status: AppStatus, brandName?: string) => {
+  // Vystavovatel "prošel platebním procesem" jen pokud má vystavenou objednávku (invoiceId).
+  // Bez ní nemá smysl posílat upomínku ani last call — odkazují na neexistující objednávku.
+  const hasCompletedPaymentFlow = (app: Application) => Boolean(app.invoiceId);
+
+  const getStatusBadge = (status: AppStatus, brandName?: string, app?: Application) => {
     // If the brand has a pending deletion request, override badge
     if (brandName && isBrandDeletionRequested(brandName) && normalizeStatus(status) !== AppStatus.DELETED) {
       return { bg: 'bg-amber-100 border border-amber-300', text: 'text-amber-700', label: 'Žádost o smazání' };
@@ -178,6 +182,9 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
       case AppStatus.DELETED:
         return { bg: 'bg-gray-200', text: 'text-gray-600', label: 'V koši' };
       case AppStatus.APPROVED:
+        if (app && !hasCompletedPaymentFlow(app)) {
+          return { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Schváleno (Čeká na potvrzení objednávky)' };
+        }
         return { bg: 'bg-green-100', text: 'text-green-700', label: 'Schváleno (Čeká na platbu)' };
       case AppStatus.APPROVED_FREE:
         return { bg: 'bg-emerald-600', text: 'text-white', label: 'Schváleno ZDARMA' };
@@ -326,7 +333,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
               </div>
             ) : (
               displayedApplications.map(app => {
-                const statusInfo = getStatusBadge(app.status, app.brandName);
+                const statusInfo = getStatusBadge(app.status, app.brandName, app);
                 const event = getEventDetails(app.eventId);
                 return (
                   <button
@@ -395,7 +402,7 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
                     <h3 className="text-xl font-extrabold tracking-tight text-lavrs-dark mb-0">{selectedApp.brandName}</h3>
                   </div>
                   {(() => {
-                    const statusBadge = getStatusBadge(selectedApp.status, selectedApp.brandName);
+                    const statusBadge = getStatusBadge(selectedApp.status, selectedApp.brandName, selectedApp);
                     return (
                       <div className={`px-4 py-2 rounded-none text-xs font-bold uppercase ${statusBadge.bg} ${statusBadge.text}`}>
                         {statusBadge.label}
@@ -407,6 +414,23 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                {/* Payment process warning — exhibitor schválen, ale ještě nepotvrdil objednávku */}
+                {[AppStatus.APPROVED, AppStatus.PAYMENT_REMINDER, AppStatus.PAYMENT_LAST_CALL].includes(normalizeStatus(selectedApp.status) as AppStatus) && !hasCompletedPaymentFlow(selectedApp) && (
+                  <div className="bg-orange-50 border-2 border-orange-300 p-5 flex gap-4 items-start">
+                    <AlertCircle size={24} className="text-orange-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-orange-900 uppercase tracking-wide">
+                        Vystavovatel ještě neprošel platebním procesem
+                      </p>
+                      <p className="text-xs text-orange-800 leading-relaxed">
+                        Vystavovatel zatím nepotvrdil objednávku — chybí fakturační údaje a vystavená faktura.
+                        Upomínku ani last call nelze odeslat, dokud objednávka nebude potvrzena vystavovatelem
+                        (odkazovaly by na neexistující fakturu).
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Event Info - Expanded */}
                 <section>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -747,24 +771,32 @@ const CuratorModuleInner: React.FC<CuratorModuleProps> = ({ onBack, events, appl
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_REMINDER)}
-                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus))}
-                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus)
+                      disabled={isProcessing || !hasCompletedPaymentFlow(selectedApp) || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                      title={!hasCompletedPaymentFlow(selectedApp) ? 'Vystavovatel ještě nepotvrdil objednávku — upomínku nelze odeslat' : undefined}
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW].includes(normalizeStatus(selectedApp.status) as AppStatus)
                         ? 'bg-amber-500 text-white hover:bg-amber-600'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
                     >
                       <Mail size={18} /> ODESLAT UPOMÍNKU
+                      {!hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus) && (
+                        <span className="text-[9px] font-normal opacity-80">⚠ Bez objednávky</span>
+                      )}
                     </button>
 
                     <button
                       onClick={() => handleAction(selectedApp.id, AppStatus.PAYMENT_LAST_CALL)}
-                      disabled={isProcessing || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus))}
-                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${[AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus)
+                      disabled={isProcessing || !hasCompletedPaymentFlow(selectedApp) || (![AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus))}
+                      title={!hasCompletedPaymentFlow(selectedApp) ? 'Vystavovatel ještě nepotvrdil objednávku — last call nelze odeslat' : undefined}
+                      className={`py-2.5 rounded-none font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus)
                         ? 'bg-orange-600 text-white hover:bg-orange-700'
                         : 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none'
                         }`}
                     >
                       <AlertCircle size={18} /> ODESLAT LAST CALL
+                      {!hasCompletedPaymentFlow(selectedApp) && [AppStatus.APPROVED, AppStatus.PAYMENT_UNDER_REVIEW, AppStatus.PAYMENT_REMINDER].includes(normalizeStatus(selectedApp.status) as AppStatus) && (
+                        <span className="text-[9px] font-normal opacity-80">⚠ Bez objednávky</span>
+                      )}
                     </button>
 
                     <button
